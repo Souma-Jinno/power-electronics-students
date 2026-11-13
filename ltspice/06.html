@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第6回 LTspice — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="../sim/common.css">
+<style>
+  h2.sec { font-size: 1rem; margin: 26px 0 10px; padding-left: 10px; border-left: 4px solid var(--accent); }
+  h2.sec .small { font-weight: 400; margin-left: 8px; }
+  .steps { padding-left: 1.4em; font-size: 0.88rem; }
+  .steps li { margin: 5px 0; }
+  .card-h .dl { margin-left: auto; font-size: 0.82rem; font-weight: 700; color: #fff; background: var(--accent); border-radius: 16px; padding: 3px 12px; white-space: nowrap; }
+  .card-h .dl:hover { background: #1557b0; }
+  .card-h .size { font-size: 0.74rem; color: var(--text-secondary); white-space: nowrap; }
+  .lead { font-size: 0.86rem; padding: 10px 14px 4px; }
+  .ckt { border-top: 1px solid var(--border); padding: 10px 14px 12px; }
+  .ckt .nm { font-weight: 700; font-size: 0.92rem; }
+  .ckt .fd { font-family: Menlo, monospace; font-size: 0.74rem; color: var(--text-secondary); margin-left: 6px; word-break: break-all; }
+  .ckt .ds { font-size: 0.85rem; margin-top: 3px; }
+  .ckt .cond { font-size: 0.78rem; color: var(--text-secondary); margin-top: 2px; }
+  .ckt .q { font-size: 0.85rem; margin-top: 6px; padding: 6px 10px; background: #fff8e6; border-left: 3px solid var(--orange); border-radius: 0 6px 6px 0; }
+  .ckt .q::before { content: "やってみよう　"; color: var(--orange); font-weight: 700; font-size: 0.78rem; }
+  .ckt .web { font-size: 0.78rem; margin-top: 5px; }
+  .ckt .web a { color: var(--accent); }
+  .ckt .web a:hover { text-decoration: underline; }
+  .tblwrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.ov { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 0.84rem; background: var(--surface); }
+  table.ov th, table.ov td { border-bottom: 1px solid var(--border); padding: 7px 8px; text-align: left; vertical-align: top; }
+  table.ov th { font-weight: 600; color: var(--text-secondary); font-size: 0.76rem; background: var(--bg); }
+  table.ov td.n { white-space: nowrap; font-weight: 700; }
+  table.ov a { color: var(--accent); }
+  table.ov a:hover { text-decoration: underline; }
+  code { font-family: Menlo, monospace; font-size: 0.82em; background: #f1f3f4; padding: 0 4px; border-radius: 4px; }
+  footer { text-align: center; color: var(--text-secondary); font-size: 0.76rem; padding: 10px 16px 30px; }
+</style>
+</head>
+<body>
+<header>
+  <nav class="hnav"><a href="../index.html">← 科目のページへ戻る</a><a href="index.html">LTspice の入れ方・回の一覧</a><a href="../sim/index.html">回路のシミュレーター（ブラウザ版）</a></nav>
+  <h1>第6回　LTspice の回路ファイル</h1>
+  <div class="subtitle">パワーエレクトロニクス 第6回 直流-直流変換（２） / 大阪工業大学</div>
+</header>
+<main>
+  <div class="notice">
+    この回の授業で見せた回路の LTspice（無料の回路シミュレーター）のファイルです。下の「ダウンロード」から zip を落として<u>展開</u>し、中の <code>.asc</code> を開いて Run すると波形が出ます。LTspice をまだ入れていない人、動かし方がわからない人は、先に<a href="index.html#howto" style="color:var(--accent);font-weight:700">LTspice の入れ方・動かし方</a>を見てください。
+  </div>
+
+  <h2 class="sec" id="r06">第6回<span class="small">直流-直流変換（２）絶縁形</span></h2>
+  <div class="card">
+    <div class="card-h"><span class="ttl">ltspice_06_dcdc2.zip</span><span class="size">11 KB・6回路</span><a class="dl" href="ltspice_06_dcdc2.zip">ダウンロード</a></div>
+    <div class="lead">変圧器は、結合係数 1 で結合した2つのコイル（<code>K1 L1 L2 1</code> という指令）で表しています。コイルのインダクタンスの比が、巻数比の2乗になります。</div>
+    <div class="ckt">
+      <div><span class="nm">変圧器の励磁電流（負荷なし）</span><span class="fd">exitation_current/</span></div>
+      <div class="ds">1 mH : 1 mH の変圧器の1次側に、+10 V と −10 V のパルスを交互に加えます。2次側はほぼ開放（100 MΩ）なので、1次側に流れるのは鉄心を磁化するための励磁電流だけです。</div>
+      <div class="cond">パルス幅 1 µs、周期 10 µs、.tran 10m 10m 9.97m</div>
+      <div class="q">L1 を 2 mH にすると、励磁電流の山の高さはどうなるでしょう。</div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">変圧器の励磁電流（負荷あり）</span><span class="fd">exitation_current2/</span></div>
+      <div class="ds">上と同じで、2次側に 500 Ω の負荷をつないだものです。1次側の電流が「負荷電流＋励磁電流」になることを、上の回路と見比べて確かめます。</div>
+      <div class="cond">R1 = 500 Ω、.tran 10m 10m 9.97m</div>
+      <div class="q">負荷を 100 Ω にすると、1次電流のうち変わるのはどちらの成分でしょう。</div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">スイッチで変圧器に電圧を加える</span><span class="fd">exitation_current_switch/</span></div>
+      <div class="ds">直流 10 V をスイッチで ON/OFF して変圧器に加えます（ON は 1 µs、周期 10 µs）。スイッチが OFF になったあと、励磁電流がどこを流れるかを見ます。</div>
+      <div class="cond">fsw = 100 kHz、R1 = 500 Ω、.tran 10m 10m 9.97m</div>
+      <div class="q">スイッチの両端の電圧は、OFF になった瞬間にどうなっているでしょう。フォワードコンバータにリセット巻線がある理由と結びつけてみてください。</div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">フォワードコンバータ</span><span class="fd">foward_converter/</span></div>
+      <div class="ds">入力 100 V、1次巻線とリセット巻線が 10 mH、2次巻線が 0.1 mH（巻数比 10 : 1）のフォワードコンバータです。出力が入力 × 巻数比 × D（ここでは約 3 V）になることを確かめます。</div>
+      <div class="cond">fsw = 20 kHz、D = 0.3、出力 L = 1 mH、C = 500 µF、R = 5 Ω、.tran 51m 51m 50.85m</div>
+      <div class="q">D を 0.6 にすると、リセット巻線の電流はどうなるでしょう。D に上限がある理由を考えてみてください。</div>
+      <div class="web">ブラウザ版：<a href="../sim/forward.html">フォワードコンバータ</a></div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">フライバックコンバータ（降圧）</span><span class="fd">flyback_converter_back/</span></div>
+      <div class="ds">巻数比 1 : 1 のフライバックコンバータで、入力 12 V から 5 V を作ります。第5回の昇降圧チョッパー（Fig.3.25(a)）と同じ D = 0.2941 なので、波形を見比べてください。</div>
+      <div class="cond">fsw = 20 kHz、D = 0.2941、R = 5 Ω、.tran 500m 500m 499.83m</div>
+      <div class="q">2次側の L2 を 4 倍（巻数で2倍）にすると、出力は何 V になるでしょう。</div>
+      <div class="web">ブラウザ版：<a href="../sim/flyback.html">フライバックコンバータ</a></div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">フライバックコンバータ（昇圧）</span><span class="fd">flyback_converter_boost/</span></div>
+      <div class="ds">同じ回路で D = 0.7059 にして、入力 5 V から 12 V を作ります。</div>
+      <div class="cond">fsw = 20 kHz、D = 0.7059、R = 28.8 Ω、.tran 500m 500m 499.83m</div>
+      <div class="q">変圧器の 1 次電流と 2 次電流が同時に流れていないことを確かめてください。フォワードとの一番の違いはそこです。</div>
+    </div>
+  </div>
+
+  <p class="small" style="margin-top:20px">うまく動かないとき：zip を展開したか、<code>.asc</code> と <code>.plt</code> が同じフォルダにあるかを確かめてください。計算が長い回路（昇圧チョッパー、力率の L 平滑など）は、数十秒かかることがあります。</p>
+</main>
+<footer>パワーエレクトロニクス / 大阪工業大学 神野崇馬</footer>
+<script>
+if (!/github\.io$/.test(location.hostname)) {
+  var b = document.createElement('div');
+  b.textContent = '確認用（Mac mini の作業中の版）。学生に見えるのは git push した後です';
+  b.style.cssText = 'background:#fff3cd;color:#664d03;border-bottom:1px solid #e0c36a;padding:6px 12px;font-size:14px;text-align:center';
+  document.body.prepend(b);
+}
+</script>
+</body>
+</html>

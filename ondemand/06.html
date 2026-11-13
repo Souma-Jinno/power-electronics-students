@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>第6回 直流-直流変換（２） — パワーエレクトロニクス</title>
+  <style>
+
+    :root {
+      --accent: #1a73e8;
+      --accent-light: #e8f0fe;
+      --text: #202124;
+      --text-secondary: #5f6368;
+      --surface: #ffffff;
+      --bg: #f8f9fa;
+      --border: #dadce0;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
+      --shadow-hover: 0 4px 12px rgba(26,115,232,0.18);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Sans', 'Noto Sans JP', 'Meiryo', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    a { color: inherit; text-decoration: none; }
+    header {
+      background: var(--accent);
+      color: #fff;
+      padding: 18px 20px 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+    }
+    header .subtitle {
+      font-size: 0.78rem;
+      opacity: 0.85;
+      margin-top: 2px;
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+    footer {
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      padding: 20px 16px;
+      border-top: 1px solid var(--border);
+      margin-top: 24px;
+    }
+
+    header h1 { font-size: 1.05rem; font-weight: 700; line-height: 1.4; }
+    header .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.8rem;
+      opacity: 0.88;
+      margin-bottom: 8px;
+    }
+    header .back-link:hover { opacity: 1; }
+    .lesson-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .lesson-num {
+      font-size: 0.8rem;
+      color: var(--accent);
+      font-weight: 700;
+      border: 1.5px solid var(--accent);
+      border-radius: 6px;
+      padding: 2px 10px;
+    }
+    .cat-badge {
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 20px;
+      background: #d8f5f6;
+      color: #0d7377;
+    }
+    .ch-count {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+    }
+    .video-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+    .ch-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px 10px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .ch-num {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--accent-light);
+      padding: 2px 9px;
+      border-radius: 5px;
+      white-space: nowrap;
+    }
+    .ch-title {
+      font-size: 0.93rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    video {
+      display: block;
+      background: #000;
+    }
+    .render-note {
+      padding: 20px 16px;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+    .back-bottom {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      padding: 10px 20px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      transition: opacity 0.15s;
+    }
+    .back-bottom:hover { opacity: 0.88; }
+  </style>
+  <style>
+    .ch-question { font-size: 0.82rem; color: var(--text-secondary); margin-top: 2px; }
+    .ch-dur { font-size: 0.78rem; color: var(--text-secondary); margin-left: auto; white-space: nowrap; }
+    .ch-header { align-items: flex-start; }
+    .notice {
+      background: var(--accent-light); border-left: 4px solid var(--accent);
+      border-radius: 8px; padding: 12px 16px; margin: 16px 0 24px;
+      font-size: 0.86rem; color: var(--text);
+    }
+    /* このスタイルシートは a { color: inherit; text-decoration: none } なので、
+       枠の中のリンクが地の文と同じ見た目になってしまう。ここだけ戻す。 */
+    .notice a { color: var(--accent); text-decoration: underline; font-weight: 600; }
+  </style>
+<script>
+if (!/github\.io$/.test(location.hostname)) document.addEventListener("DOMContentLoaded", () => {
+  const b = document.createElement("div");
+  b.textContent = "確認用（Mac mini の作業中の版）。学生に見えるのは git push した後です";
+  b.style.cssText = "background:#fff3cd;color:#664d03;border-bottom:1px solid #e0c36a;padding:6px 12px;font-size:14px;text-align:center";
+  document.body.prepend(b);
+});
+</script>
+</head>
+<body>
+  <header>
+    <a class="back-link" href="../index.html">← 科目のページへ戻る</a>
+    <h1>第6回 直流-直流変換（２）</h1>
+    <div class="subtitle">パワーエレクトロニクス / 大阪工業大学</div>
+  </header>
+  <main>
+    <div class="lesson-meta">
+      <span class="lesson-num">第6回</span>
+      <span class="cat-badge">オンデマンド</span>
+      <span class="ch-count">全15章</span>
+    </div>
+    <div class="notice">
+      章は上から順に見ると話がつながります。全15章で合計33分06秒です。<br>見終わったら <a href="../exercises/06.html">第6回の演習問題</a> を解いて、解答用紙を写真で撮って Google Classroom に提出してください。
+    </div>
+    <section class="video-section">
+      <div class="ch-header">
+        <span class="ch-num">Ch1</span>
+        <span>
+          <span class="ch-title">直流-直流変換（２）と本日の目標</span>
+          <div class="ch-question">今日は何を学ぶのか</div>
+        </span>
+        <span class="ch-dur">1分29秒</span>
+      </div>
+      <video controls preload="metadata" style="width:100%">
+        <source src="../videos/PE06Ch1.mp4" type="video/mp4">
+        お使いのブラウザは動画再生に対応していません。
+      </video>
+    </section>
+    <section class="video-section">
+      <div class="ch-header">
+        <span class="ch-num">Ch2</span>
+        <span>
+          <span class="ch-title">非絶縁型と絶縁型の違い</span>
+          <div class="ch-question">絶縁型は非絶縁型と何が違い、なぜ絶縁するのか</div>
+        </span>
+        <span class="ch-dur">2分19秒</span>
+      </div>
+      <video controls preload="metadata" style="width:100%">
+        <source src="../videos/PE06Ch2.mp4" type="video/mp4">
+        お使いのブラウザは動画再生に対応していません。
+      </video>
+    </section>
+    <section class="video-section">
+      <div class="ch-header">
+        <span class="ch-num">Ch3</span>
+        <span>
+          <span class="ch-title">誘導起電力と電流の向き（復習）</span>
+          <div class="ch-question">磁束が変化すると、誘導起電力と電流はどちら向きに生じるか</div>
+        </span>
+        <span class="ch-dur">2分05秒</span>
+      </div>
+      <video controls preload="metadata" style="width:100%">
+        <source src="../videos/PE06Ch3.mp4" type="video/mp4">
+        お使いのブラウザは動画再生に対応していません。
+      </video>
+    </section>
+    <section class="video-section">
+      <div class="ch-header">
+        <span class="ch-num">Ch4</span>
+        <span>
+          <span class="ch-title">変圧器の鉄心に流れる磁束</span>
+          <div class="ch-question">コイルの電流が作る磁束は、鉄心の中をどちら向きに流れるか</div>
+        </span>
+        <span class="ch-dur">1分49秒</span>
+      </div>
+      <video controls preload="metadata" style="width:100%">
+        <source src="../videos/PE06Ch4.mp4" type="video/mp4">
+        お使いのブラウザは動画再生に対応していません。
+      </video>
+    </section>
+    <section class="video-section">
+      <div class="ch-header">
+        <span class="ch-num">Ch5</span>
+        <span>
+          <span class="ch-title">変圧器の2次側の起電力と電流の向き</span>
+          <div class="ch-question">2次側の電圧と負荷電流は、どちら向きになるか</div>
+        </span>
+        <span class="ch-dur">2分51秒</span>
+      </div>
+      <video controls preload="metadata" style="width:100%">
+        <source src="../videos/PE06Ch5.mp4" type="video/mp4">
+        お使いのブラウザは動画再生に対応していません。
+      </video>
+    </section>
+    <section class="video-section">
+      <div class="ch-header">
+        <span class="ch-num">Ch6</span>
+        <span>
+          <span class="ch-title">励磁電流</span>
+          <div class="ch-question">2次側に何もつながないとき、1次側にはどんな電流が流れるか</div>
+        </span>
+        <span class="ch-dur">1分26秒</span>
+      </div>
+      <video controls preload="metadata" style="width:100%">
+        <source src="../videos/PE06Ch6.mp4" type="video/mp4">
+        お使いのブラウザは動画再生に対応していません。
+      </video>
+    </section>
+    <section class="video-section">
+      <div class="ch-header">
+        <span class="ch-num">Ch7</span>
+        <span>
+          <span class="ch-title">励磁電流と負荷電流が流れるメカニズム</span>
+          <div class="ch-question">負荷をつなぐと、1次側の電流はどうなるのか</div>
+        </span>
+        <span class="ch-dur">2分26秒</span>
+      </div>
+      <video controls preload="metadata" style="width:100%">
+        <source src="../videos/PE06Ch7.mp4" type="video/mp4">
+        お使いのブラウザは動画再生に対応していません。
+      </video>
+    </section>
+    <section class="video-section">
+      <div class="ch-header">
+        <span class="ch-num">Ch8</span>
+        <span>
+          <span class="ch-title">励磁電流の計算</span>
+          <div class="ch-question">パルスの電圧をかけると、励磁電流はどんな波形になるか</div>
+        </span>
+        <span class="ch-dur">2分01秒</span>
+      </div>
+      <video controls preload="metadata" style="width:100%">
+        <source src="../videos/PE06Ch8.mp4" type="video/mp4">
+        お使いのブラウザは動画再生に対応していません。
+      </video>
+    </section>
+    <section class="video-section">
+      <div class="ch-header">
+        <span class="ch-num">Ch9</span>
+        <span>
+          <span class="ch-title">励磁電流と負荷電流の計算</span>
+          <div class="ch-question">負荷をつなぐと、1次側の電流はどんな波形になるか</div>
+        </span>
+        <span class="ch-dur">2分22秒</span>
+      </div>
+      <video controls preload="metadata" style="width:100%">
+        <source src="../videos/PE06Ch9.mp4" type="video/mp4">
+        お使いのブラウザは動画再生に対応していません。
+      </video>
+    </section>
+    <section class="video-section">
+      <div class="ch-header">
+        <span class="ch-num">Ch10</span>
+        <span>
+          <span class="ch-title">回路シミュレーションの変圧器の取り扱い</span>
+          <div class="ch-question">回路図では、巻き方の違いをどう表すのか</div>
+        </span>
+        <span class="ch-dur">2分09秒</span>
+      </div>
+      <video controls preload="metadata" style="width:100%">
+        <source src="../videos/PE06Ch10.mp4" type="video/mp4">
+        お使いのブラウザは動画再生に対応していません。
+      </video>
+    </section>
+    <section class="video-section">
+      <div class="ch-header">
+        <span class="ch-num">Ch11</span>
+        <span>
+          <span class="ch-title">スイッチを使った励磁電流と負荷電流</span>
+          <div class="ch-question">電源をスイッチに変えると、オフの時に何が起こるか</div>
+        </span>
+        <span class="ch-dur">2分13秒</span>
+      </div>
+      <video controls preload="metadata" style="width:100%">
+        <source src="../videos/PE06Ch11.mp4" type="video/mp4">
+        お使いのブラウザは動画再生に対応していません。
+      </video>
+    </section>
+    <section class="video-section">
+      <div class="ch-header">
+        <span class="ch-num">Ch12</span>
+        <span>
+          <span class="ch-title">フォワードコンバータ：構成と電流の経路</span>
+          <div class="ch-question">絶縁型の降圧チョッパーは、どう組み立て、電流はどこを流れるか</div>
+        </span>
+        <span class="ch-dur">2分16秒</span>
+      </div>
+      <video controls preload="metadata" style="width:100%">
+        <source src="../videos/PE06Ch12.mp4" type="video/mp4">
+        お使いのブラウザは動画再生に対応していません。
+      </video>
+    </section>
+    <section class="video-section">
+      <div class="ch-header">
+        <span class="ch-num">Ch13</span>
+        <span>
+          <span class="ch-title">フォワードコンバータ：出力電圧と各素子の波形</span>
+          <div class="ch-question">出力の電圧はいくらで、波形はどうなるか</div>
+        </span>
+        <span class="ch-dur">2分24秒</span>
+      </div>
+      <video controls preload="metadata" style="width:100%">
+        <source src="../videos/PE06Ch13.mp4" type="video/mp4">
+        お使いのブラウザは動画再生に対応していません。
+      </video>
+    </section>
+    <section class="video-section">
+      <div class="ch-header">
+        <span class="ch-num">Ch14</span>
+        <span>
+          <span class="ch-title">フライバックコンバータ：構成と電流の経路</span>
+          <div class="ch-question">絶縁型の昇降圧チョッパーは、どう組み立て、電流はどこを流れるか</div>
+        </span>
+        <span class="ch-dur">2分05秒</span>
+      </div>
+      <video controls preload="metadata" style="width:100%">
+        <source src="../videos/PE06Ch14.mp4" type="video/mp4">
+        お使いのブラウザは動画再生に対応していません。
+      </video>
+    </section>
+    <section class="video-section">
+      <div class="ch-header">
+        <span class="ch-num">Ch15</span>
+        <span>
+          <span class="ch-title">フライバックコンバータ：降圧時・昇圧時の波形とまとめ</span>
+          <div class="ch-question">出力の電圧は入力の何倍で、波形はどうなるか</div>
+        </span>
+        <span class="ch-dur">3分11秒</span>
+      </div>
+      <video controls preload="metadata" style="width:100%">
+        <source src="../videos/PE06Ch15.mp4" type="video/mp4">
+        お使いのブラウザは動画再生に対応していません。
+      </video>
+    </section>
+  </main>
+  <footer>パワーエレクトロニクス（2026年度） ｜ 神野 崇馬</footer>
+</body>
+</html>
