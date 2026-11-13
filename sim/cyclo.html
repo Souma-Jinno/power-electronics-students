@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>サイクロコンバータのシミュレーター — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<header>
+  <nav class="hnav"><a href="../index.html">← 科目のページへ戻る</a><a href="index.html">回路を選ぶ（シミュレーターの一覧）</a></nav>
+  <h1>サイクロコンバータのシミュレーター</h1>
+  <div class="subtitle">パワーエレクトロニクス 第13回 交流-交流変換 p38〜39 / 大阪工業大学</div>
+</header>
+<main>
+  <div class="notice">
+    三相のサイリスタブリッジを 2 つ（<b style="color:#e23b3b">正群</b>・<b style="color:#2563eb">負群</b>）逆向きにつなぎ、位相制御角 α を時間とともに変えて、低い周波数の交流を作ります（p38〜39）。
+    負荷の電流が正のときは正群、負のときは負群が流し、切り替えのときは両方を止める<b>休止期間</b>を入れます。
+    回路図の<b>線をクリックすると電位</b>（電源の中性点 N が 0 V）、<b>素子をクリックすると電流</b>が出ます。
+  </div>
+
+  <div class="top">
+    <section class="card">
+      <div class="card-h">
+        <span class="ttl">回路</span>
+        <span class="small">素子をクリックしたとき：</span>
+        <span class="seg" id="emode"><button data-m="i" class="on">電流</button><button data-m="v">両端の電圧</button></span>
+      </div>
+      <svg id="sch" viewBox="-110 -135 1250 545" aria-label="サイクロコンバータの回路図"></svg>
+      <div id="state"></div>
+    </section>
+
+    <section class="card params">
+      <div class="card-h"><span class="ttl">回路の値</span></div>
+      <div class="card-b" id="params"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-h">
+      <span class="ttl">波形</span>
+      <span class="seg" id="win">
+        <button data-w="all">起動から最後まで</button><button data-w="first">起動直後</button><button data-w="last" class="on">定常状態</button>
+      </span>
+    </div>
+    <div class="ctl">
+      <button id="play">▶ 再生</button>
+      <label>速さ <select id="speed"><option value="0.1">×0.1</option><option value="0.25">×0.25</option><option value="0.5">×0.5</option><option value="1" selected>×1</option><option value="2">×2</option></select></label>
+      <label id="nper">出力の周期の数 <select id="nP"><option>1</option><option selected>2</option><option>3</option></select></label>
+      <label>グラフ <select id="lay"><option value="vi">電圧と電流の2段</option><option value="each">1本ずつ別の段</option></select></label>
+    </div>
+    <div class="scrubrow"><input type="range" id="scrub" min="0" max="10000" value="0" aria-label="時刻"><span class="tc" id="tc"></span></div>
+    <div id="legend"></div>
+    <div id="plotwrap"><canvas id="plot"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">定常状態の値と、授業の式の比較</span><span class="small" id="msub"></span></div>
+    <div class="card-b" style="overflow-x:auto"><table class="m" id="metrics"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">このシミュレーターの前提</span></div>
+    <div class="card-b">
+      <ul class="notes">
+        <li>電源は三相（線間電圧の振幅 <span class="eq">V<sub>0</sub></span>、周波数 <span class="eq">f<sub>i</sub></span>）。1 つのブリッジは <a href="bridge6.html">三相サイリスタブリッジ</a> と同じで、平均の出力電圧は <span class="eq">(3/π)V<sub>0</sub> cos α</span>（p37）です。</li>
+        <li>出力電圧の目標を <span class="eq">v<sub>o</sub><sup>*</sup> = r (3/π)V<sub>0</sub> sin(2π f<sub>o</sub> t)</span> とし（r は 0〜1）、正群は <span class="eq">cos α = v<sub>o</sub><sup>*</sup> / {(3/π)V<sub>0</sub>}</span> となる α で点弧します（目標が刻々と変わるので、α も刻々と変わる。p39「α によってオンするタイミングが変わっている」）。負群は向きが逆なので <span class="eq">cos α = −v<sub>o</sub><sup>*</sup> / {(3/π)V<sub>0</sub>}</span>。</li>
+        <li>正群は負荷の電流が正のときだけ、負群は負のときだけ流せます。コイルがあると電流は電圧より遅れるので、目標の電圧が負になった後もしばらくは正群が流し続けます（α &gt; 90° で、電力を電源に戻す向き）。</li>
+        <li>群の切り替え：流している群の電流が 0 になり、目標の電圧の符号が反対になっていたら、休止期間 <span class="eq">t<sub>d</sub></span> だけ両方の群を止めてから、もう一方の群に切り替えます（循環電流なし方式。両方を同時にオンすると、電源が 2 つのブリッジを通して短絡するため）。</li>
+        <li>p39 の「入力周波数の約 1/3 以下」の目安：出力の 1 周期の中に、入力の 60° ごとの切り替えが十分な回数ないと、出力の波形が崩れます。<span class="eq">f<sub>o</sub></span> を上げて確かめられます。</li>
+        <li>サイリスタは理想（ゲート信号で順方向ならオン、電流 0 でオフ）、電源のインダクタンスは 0（転流は一瞬）。計算は 4 次のルンゲ・クッタ法（入力の 1 周期を 720 分割）で、点弧の時刻・電流が 0 になる時刻は二分法で求めています。</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<footer>パワーエレクトロニクス ｜ 神野 崇馬 ｜ 試作版</footer>
+<div id="tip"></div>
+
+<script src="common.js"></script>
+<script>
+// ==SIM-BEGIN==
+/** 区間 Ⅰ〜Ⅵ で流れる組 [相 x, 相 y]（正群は x → 負荷 → y、負群は負荷の向きが逆）。相 0 = u, 1 = v, 2 = w */
+const CY_PAIRS = [[2, 1], [0, 1], [0, 2], [1, 2], [1, 0], [2, 0]];
+function cyPhase(V0, th, j) { return V0 / Math.sqrt(3) * Math.sin(th - Math.PI / 6 - j * 2 * Math.PI / 3); }
+/** 離散状態 s = 100 G + 10 B + c。G：1 正群 / 2 負群、B：1 休止期間中、c：0 オフ / 1〜6 区間 c−1 の組がオン */
+function cyDecode(s) { return {G: Math.floor(s / 100), B: Math.floor(s / 10) % 10, c: s % 10}; }
+/**
+ * サイクロコンバータ（三相 → 単相、循環電流なし）。p = {V0, fi, fo, r, R, L, td}
+ * 状態変数は負荷の電流 i（正群なら ≥ 0、負群なら ≤ 0）。
+ */
+function cycloModel(p) {
+  const wi = 2 * Math.PI * p.fi, wo = 2 * Math.PI * p.fo, V0 = p.V0, R = p.R, L = p.L, td = p.td;
+  const T = 1 / p.fo;
+  const vpair = (t, c) => { const [x, y] = CY_PAIRS[c - 1]; return cyPhase(V0, wi * t, x) - cyPhase(V0, wi * t, y); };
+  const m = (t) => Math.max(-1, Math.min(1, p.r * Math.sin(wo * t)));
+  const alpha = (t, G) => Math.acos(G === 1 ? m(t) : -m(t));
+  let nNext = 0, tBlankEnd = 0;
+  // 次に点弧する組の番号：θ − nπ/3 が α になる時刻（n は整数、増えていく）
+  const resetN = (t, G) => { nNext = Math.floor((wi * t - alpha(t, G)) / (Math.PI / 3)) + 1; };
+  const firePair = (t, x, s) => {
+    const {G, c} = cyDecode(s), q = (((nNext % 6) + 6) % 6) + 1;
+    nNext++;
+    if (c && Math.abs(x[0]) > 1e-9 * V0 / R) return G * 100 + q; // 流れている：転流
+    x[0] = 0;
+    // 止まっている：目標の符号が反対なら、休止期間に入って群を切り替える
+    if ((G === 1 && m(t) < 0) || (G === 2 && m(t) > 0)) { tBlankEnd = t + td; return G * 100 + 10; }
+    return vpair(t, q) > 1e-9 * V0 ? G * 100 + q : G * 100;
+  };
+  const periods = Math.max(3, Math.min(60, Math.ceil(8 * (L / R) * p.fo) + 3));
+  return {
+    T, periods, h: 1 / (p.fi * 720), x0: [0], s0: 100,
+    init() { nNext = 0; tBlankEnd = 0; resetN(0, 1); },
+    f: (t, x, s) => {
+      const {G, c} = cyDecode(s);
+      if (!c) return [0];
+      const vo = G === 1 ? vpair(t, c) : -vpair(t, c);
+      return [(vo - R * x[0]) / L];
+    },
+    guards: (t, x, s) => {
+      const {G, B, c} = cyDecode(s);
+      if (B) return [0, 0, tBlankEnd - t];
+      return [alpha(t, G) - (wi * t - nNext * Math.PI / 3), c ? (G === 1 ? x[0] : -x[0]) : 0, 0];
+    },
+    onGuard: (t, x, s, idx) => {
+      let {G, B, c} = cyDecode(s);
+      if (idx.includes(2)) { // 休止期間の終わり：もう一方の群へ
+        G = 3 - G; resetN(t, G);
+        // いまの区間の α はもう過ぎているので、その組をすぐ点弧（順方向なら）
+        nNext--;
+        const q = (((nNext % 6) + 6) % 6) + 1, ph = wi * t - nNext * Math.PI / 3;
+        nNext++;
+        x[0] = 0;
+        return ph <= Math.PI && vpair(t, q) > 1e-9 * V0 ? G * 100 + q : G * 100;
+      }
+      if (idx.includes(1)) { // 電流が 0：オフ。目標の符号が反対なら休止期間へ
+        x[0] = 0; c = 0;
+        if ((G === 1 && m(t) < 0) || (G === 2 && m(t) > 0)) { tBlankEnd = t + td; s = G * 100 + 10; if (idx.includes(0)) resetN(t, G); return s; }
+        s = G * 100;
+      }
+      if (idx.includes(0)) return firePair(t, x, s);
+      return s;
+    },
+    vpair, m,
+  };
+}
+function simulateCyclo(p) {
+  const M = cycloModel(p);
+  M.init();
+  const S = simEv(M);
+  S.p = Object.assign({}, p);
+  return S;
+}
+function cyI(S, k) { return S.x[0][k]; }
+/** 負荷の電圧（どの組もオフなら電流 0 なので 0） */
+function cyVo(S, k) {
+  const {G, c} = cyDecode(S.s[k]);
+  if (!c) return 0;
+  const p = S.p, [x, y] = CY_PAIRS[c - 1], th = 2 * Math.PI * p.fi * S.t[k];
+  const v = cyPhase(p.V0, th, x) - cyPhase(p.V0, th, y);
+  return G === 1 ? v : -v;
+}
+function cyRef(S, k) { const p = S.p; return p.r * 3 / Math.PI * p.V0 * Math.sin(2 * Math.PI * p.fo * S.t[k]); }
+function cyIph(S, k, j) {
+  const {G, c} = cyDecode(S.s[k]);
+  if (!c) return 0;
+  const [x, y] = CY_PAIRS[c - 1], i = S.x[0][k];
+  // 正群：相 x から出て相 y に戻る（i ≥ 0）。負群：相 x から出て負荷を逆向きに流れ、相 y に戻る（−i ≥ 0）
+  const a = G === 1 ? i : -i;
+  return x === j ? a : y === j ? -a : 0;
+}
+function cycloMetrics(S) {
+  const p = S.p, T = S.T;
+  const Vo = acStats(S, cyVo, T, p.fo), I = acStats(S, cyI, T, p.fo), Iu = acStats(S, (S, k) => cyIph(S, k, 0), T, p.fi);
+  const P = acStats(S, (S, k) => p.R * cyI(S, k) ** 2, T, 0).avg;
+  let blank = 0, n = S.t.length;
+  for (let k = Vo.k0 + 1; k < n; k++) if (cyDecode(S.s[k - 1]).B) blank += S.t[k] - S.t[k - 1];
+  const thdV = Math.sqrt(Math.max(0, Vo.rms ** 2 - (Vo.c1 / Math.SQRT2) ** 2)) / (Vo.c1 / Math.SQRT2);
+  return {Vo, I, Iu, P, blank: blank / T, thdV, pf: P / (Math.sqrt(3) * p.V0 / Math.SQRT2 * Iu.rms)};
+}
+// ==SIM-END==
+</script>
+<script>
+(() => {
+'use strict';
+const XLP = [380, 470, 560], XLN = [680, 770, 860], YP = [60, 130, 200], YT = -60, YB = 340, XO = 1000, XS = 70, XN = 0;
+const YTT = -5, YBT = 280;
+const PH = ['u', 'v', 'w'], PCOL = [COL.orange, COL.green, '#e040c8'];
+const TN = [[1, 4], [3, 6], [5, 2]];
+const CP = '#e23b3b', CN = COL.blue;
+const TH = (S, k) => 2 * Math.PI * S.p.fi * S.t[k];
+const vph = (S, k, j) => cyPhase(S.p.V0, TH(S, k), j);
+const rails = (S, k) => { // [上の線, 下の線] の電位
+  const {G, c} = cyDecode(S.s[k]);
+  if (!c) return [0, 0];
+  const [x, y] = CY_PAIRS[c - 1];
+  return G === 1 ? [vph(S, k, x), vph(S, k, y)] : [vph(S, k, y), vph(S, k, x)];
+};
+// 群 g（1 正 / 2 負）の、脚 j の上（pos 0）・下（pos 1）のサイリスタがオンか
+const tOn = (S, k, g, j, pos) => {
+  const {G, c} = cyDecode(S.s[k]);
+  if (!c || G !== g) return false;
+  const [x, y] = CY_PAIRS[c - 1];
+  return g === 1 ? (pos === 0 ? x === j : y === j) : (pos === 1 ? x === j : y === j);
+};
+const r3 = (x) => String(+x.toPrecision(3));
+let thy = {};
+
+const probes = {
+  'n:N': {b: 'GND', s: '', color: COL.sub, q: 'V', what: '電源の中性点 N（0 V）', f: () => 0},
+  'n:P': {b: 'v', s: 'a', color: COL.blue, q: 'V', what: '負荷の上の端の電位（どれもオフのときは 0 と表示）', f: (S, k) => rails(S, k)[0]},
+  'n:Q': {b: 'v', s: 'b', color: COL.sub, q: 'V', what: '負荷の下の端の電位（どれもオフのときは 0 と表示）', f: (S, k) => rails(S, k)[1]},
+  'n:m': {b: 'v', s: 'm', color: COL.teal, q: 'V', what: 'R と L の間の電位', f: (S, k) => rails(S, k)[0] - S.p.R * cyI(S, k)},
+  'i:R': {b: 'i', s: 'o', color: COL.ir, q: 'I', what: '負荷の電流（下向きが正）', f: cyI},
+  'v:R': {b: 'v', s: 'R', color: COL.green, q: 'V', what: '抵抗の両端の電圧（上が＋）', f: (S, k) => S.p.R * cyI(S, k)},
+  'i:L': {b: 'i', s: 'o', color: COL.ir, q: 'I', what: '負荷の電流（下向きが正）', f: cyI},
+  'v:L': {b: 'v', s: 'L', color: COL.teal, q: 'V', what: 'コイルの両端の電圧（上が＋）', f: (S, k) => cyVo(S, k) - S.p.R * cyI(S, k)},
+  'v:out': {b: 'v', s: 'o', color: COL.blue, q: 'V', what: '出力電圧（負荷の両端、上が＋）', f: cyVo},
+  'x:ref': {b: 'v', s: 'o*', color: COL.ink, q: 'V', what: '出力電圧の目標 r(3/π)V0 sin(2πfo t)', f: cyRef},
+  'x:uv': {b: 'V', s: 'uv', up: true, color: COL.orange, q: 'V', what: '線間電圧 Vuv', f: (S, k) => vph(S, k, 0) - vph(S, k, 1)},
+  'x:vw': {b: 'V', s: 'vw', up: true, color: COL.green, q: 'V', what: '線間電圧 Vvw', f: (S, k) => vph(S, k, 1) - vph(S, k, 2)},
+  'x:wu': {b: 'V', s: 'wu', up: true, color: '#e040c8', q: 'V', what: '線間電圧 Vwu', f: (S, k) => vph(S, k, 2) - vph(S, k, 0)},
+};
+PH.forEach((nm, j) => {
+  probes['n:' + nm] = {b: 'v', s: nm, up: true, color: PCOL[j], q: 'V', what: `相 ${nm} の線の電位（相電圧）`, f: (S, k) => vph(S, k, j)};
+  probes['i:S' + nm] = {b: 'i', s: nm, up: true, color: PCOL[j], q: 'I', what: `相 ${nm} の電流（電源から右へ出る向きが正）`, f: (S, k) => cyIph(S, k, j)};
+  probes['v:S' + nm] = {b: 'v', s: nm, up: true, color: PCOL[j], q: 'V', what: `相 ${nm} の電源の電圧（右が＋）`, f: (S, k) => vph(S, k, j)};
+  [[1, 'P', CP], [2, 'N', CN]].forEach(([g, gn, col]) => [0, 1].forEach(pos => {
+    const key = `T${gn}${TN[j][pos]}`;
+    // 電流は「アノード → カソード」が正。電圧も アノードが＋
+    probes['i:' + key] = {b: 'i', s: gn + TN[j][pos], color: col, q: 'I', what: `${g === 1 ? '正群' : '負群'}のサイリスタ ${gn}${TN[j][pos]} の電流（アノード → カソードが正）`, f: (S, k) => tOn(S, k, g, j, pos) ? Math.abs(cyI(S, k)) : 0};
+    probes['v:' + key] = {b: 'v', s: gn + TN[j][pos], color: col, q: 'V', what: `${gn}${TN[j][pos]} の両端の電圧（アノードが＋）`, f: (S, k) => {
+      const [a, b] = rails(S, k), v = vph(S, k, j);
+      if (g === 1) return pos === 0 ? v - a : b - v;
+      return pos === 0 ? a - v : v - b;
+    }};
+  }));
+});
+
+SimApp({
+  pdef: [
+    {k: 'V0', b: 'V', s: '0', up: true, title: '入力の線間電圧の振幅', min: 10, max: 400, step: 1, log: false, unit: 'V', def: 141},
+    {k: 'fi', b: 'f', s: 'i', title: '入力の周波数', min: 10, max: 100, step: 1, log: false, unit: 'Hz', def: 50},
+    {k: 'fo', b: 'f', s: 'o', title: '出力の周波数', min: 1, max: 50, step: 0.5, log: false, unit: 'Hz', def: 15},
+    {k: 'r', b: 'r', s: '', title: '出力電圧の振幅の割合（(3/π)V0 に対して）', min: 0, max: 1, step: 0.01, log: false, unit: '', def: 1, fmt: r3},
+    {k: 'R', b: 'R', s: '', min: 1, max: 100, log: true, unit: 'Ω', def: 10},
+    {k: 'L', b: 'L', s: '', min: 1e-3, max: 300e-3, log: true, unit: 'H', def: 10e-3},
+    {k: 'td', b: 't', s: 'd', title: '休止期間', min: 0.1e-3, max: 5e-3, log: true, unit: 's', def: 1e-3},
+  ],
+  presets: [
+    {name: 'p39 の図に近い（50 Hz → 15 Hz）', v: {V0: 141, fi: 50, fo: 15, r: 1, R: 10, L: 10e-3, td: 1e-3}},
+    {name: 'コイルが大きい（電流が遅れる）', v: {V0: 141, fi: 50, fo: 15, r: 1, R: 10, L: 100e-3, td: 1e-3}},
+    {name: '振幅を半分（r = 0.5）', v: {V0: 141, fi: 50, fo: 15, r: 0.5, R: 10, L: 10e-3, td: 1e-3}},
+    {name: '低い周波数（5 Hz）', v: {V0: 141, fi: 50, fo: 5, r: 1, R: 10, L: 30e-3, td: 1e-3}},
+    {name: '高すぎる周波数（40 Hz）', v: {V0: 141, fi: 50, fo: 40, r: 1, R: 10, L: 10e-3, td: 1e-3}},
+  ],
+  simulate: (P) => simulateCyclo({V0: P.V0, fi: P.fi, fo: P.fo, r: P.r, R: P.R, L: P.L, td: P.td}),
+  metrics: cycloMetrics,
+  initWin: 'last',
+  gatePane: gateRowsPane([
+    {label: '正群', color: CP, on: (S, k) => { const d = cyDecode(S.s[k]); return d.G === 1 && d.c > 0; }},
+    {label: '負群', color: CN, on: (S, k) => { const d = cyDecode(S.s[k]); return d.G === 2 && d.c > 0; }},
+    {label: '休止', color: COL.sub, on: (S, k) => cyDecode(S.s[k]).B === 1},
+  ]),
+  probes,
+  defaultProbes: ['v:out', 'x:ref', 'i:R'],
+  extraButtons: [{key: 'x:ref', label: '目標 v<sub>o</sub><sup>*</sup>'}, {key: 'x:uv', label: 'V<sub>uv</sub>'}, {key: 'x:vw', label: 'V<sub>vw</sub>'}, {key: 'x:wu', label: 'V<sub>wu</sub>'}],
+  build(K) {
+    const {W, el, gWire} = K;
+    const nodeW = {N: [[[XN, YP[0]], [XN, YP[2]]]], P: [[[XLP[0], YT], [XO, YT], [XO, 0]]], Q: [[[XLP[0], YB], [XO, YB], [XO, 250]]], m: [[[XO, 90], [XO, 140]]]};
+    const ALL = [...XLP, ...XLN];
+    PH.forEach((nm, j) => {
+      const y = YP[j];
+      W([[XN, y], [XS - 28, y]]);
+      nodeW[nm] = [[[XS + 28, y], [XLN[j], y]]];
+      [XLP[j], XLN[j]].forEach(x => {
+        nodeW.P.push([[x, YT], [x, YTT - 30]]);
+        nodeW.Q.push([[x, YB], [x, YBT + 30]]);
+        nodeW[nm].push([[x, YTT + 30], [x, YBT - 30]]);
+      });
+    });
+    for (const nn in nodeW) nodeW[nn].forEach(p => W(p));
+    PH.forEach((nm, j) => ALL.forEach(x => { if (x < XLN[j] && x !== XLP[j]) K.hop(x, YP[j]); }));
+    PH.forEach((nm, j) => {
+      K.acsrc(XS, YP[j], 26);
+      K.text(XS + 60, YP[j] - 10, nm, PCOL[j], 24);
+      // 正群：上向き（ジャンクション → 上の線、下の線 → ジャンクション）。負群：下向き
+      thy['P' + TN[j][0]] = K.thyristor([XLP[j], YTT + 30], [XLP[j], YTT - 30], 18, -1);
+      thy['P' + TN[j][1]] = K.thyristor([XLP[j], YBT + 30], [XLP[j], YBT - 30], 18, -1);
+      thy['N' + TN[j][0]] = K.thyristor([XLN[j], YTT - 30], [XLN[j], YTT + 30], 18, 1);
+      thy['N' + TN[j][1]] = K.thyristor([XLN[j], YBT - 30], [XLN[j], YBT + 30], 18, 1);
+      K.text(XLP[j] + 24, YTT + 8, String(TN[j][0]), CP, 18, 'start'); K.text(XLP[j] + 24, YBT + 8, String(TN[j][1]), CP, 18, 'start');
+      K.text(XLN[j] + 24, YTT + 8, String(TN[j][0]), CN, 18, 'start'); K.text(XLN[j] + 24, YBT + 8, String(TN[j][1]), CN, 18, 'start');
+      K.dot(XLP[j], YP[j]); K.dot(XLN[j], YP[j]);
+      K.dot(XLP[j], YT); K.dot(XLP[j], YB); K.dot(XLN[j], YT); K.dot(XLN[j], YB);
+    });
+    K.dot(XN, YP[1]);
+    K.text(XN - 14, YP[1] + 8, 'N', COL.ink, 24, 'end');
+    K.box(XLP[0] - 36, YT - 30, XLP[2] - XLP[0] + 80, YB - YT + 60, CP);
+    K.box(XLN[0] - 36, YT - 30, XLN[2] - XLN[0] + 80, YB - YT + 60, CN);
+    K.text((XLP[0] + XLP[2]) / 2 + 4, YB + 56, '正群ブリッジ', CP, 22);
+    K.text((XLN[0] + XLN[2]) / 2 + 4, YB + 56, '負群ブリッジ', CN, 22);
+    K.res(XO, 45);
+    K.name(XO + 26, 55, 'R', 'start');
+    K.coil([XO, 140], [XO, 250], 4, 1);
+    K.name(XO + 30, 215, 'L', 'start');
+    const hits = [['e:R', [XO - 22, 0, 44, 90]], ['e:L', [XO - 24, 142, 48, 106]]];
+    const arrows = {
+      'i:R': [[XO - 40, 15], [XO - 40, 75], 'L'], 'v:R': [[XO + 80, 85], [XO + 80, 5], 'R'],
+      'i:L': [[XO - 40, 160], [XO - 40, 230], 'L'], 'v:L': [[XO + 80, 245], [XO + 80, 145], 'R'],
+      'v:out': [[XO + 80, YB - 20], [XO + 80, YT + 20], 'R'],
+    };
+    PH.forEach((nm, j) => {
+      hits.push(['e:S' + nm, [XS - 30, YP[j] - 30, 60, 60]]);
+      arrows['i:S' + nm] = [[XS + 40, YP[j] + 20], [XS + 110, YP[j] + 20], 'B'];
+      arrows['v:S' + nm] = [[XS + 30, YP[j] - 40], [XS - 30, YP[j] - 40], 'T'];
+      [['P', XLP[j], -1], ['N', XLN[j], 1]].forEach(([gn, x, dir]) => [[0, YTT], [1, YBT]].forEach(([pos, y]) => {
+        const key = `T${gn}${TN[j][pos]}`;
+        hits.push(['e:' + key, [x - 24, y - 28, 48, 56]]);
+        arrows['i:' + key] = [[x - 32, y - dir * 26], [x - 32, y + dir * 26], 'L'];
+        arrows['v:' + key] = [[x - 32, y - dir * 30], [x - 32, y + dir * 30], 'L'];
+      }));
+    });
+    const loops = {};
+    CY_PAIRS.forEach(([x, y], r) => {
+      loops['P' + r] = [[XN, YP[x]], [XLP[x], YP[x]], [XLP[x], YT], [XO, YT], [XO, YB], [XLP[y], YB], [XLP[y], YP[y]], [XN, YP[y]]];
+      loops['N' + r] = [[XN, YP[x]], [XLN[x], YP[x]], [XLN[x], YB], [XO, YB], [XO, YT], [XLN[y], YT], [XLN[y], YP[y]], [XN, YP[y]]];
+    });
+    return {nodeW, hits, arrows, loops, sw: {},
+      nodeTag: {N: [XN, YP[0], -14, -10, 'end'], P: [XO - 50, YT, 0, -14], Q: [XO - 50, YB, 0, 40], m: [XO, 115, 28, 8, 'start'],
+        u: [XS + 140, YP[0], 0, -12], v: [XS + 140, YP[1], 0, -12], w: [XS + 140, YP[2], 0, -12]}};
+  },
+  state(S, k, MET) {
+    const {G, B, c} = cyDecode(S.s[k]), p = S.p;
+    for (const key in thy) {
+      const g = key[0] === 'P' ? 1 : 2, nn = +key.slice(1), j = TN.findIndex(t => t.includes(nn)), pos = TN[j].indexOf(nn);
+      thy[key].set(tOn(S, k, g, j, pos));
+    }
+    const i = cyI(S, k), fr = Math.abs(i) / Math.max(1e-12, Math.max(MET.I.max, -MET.I.min));
+    const ref = cyRef(S, k), mm = Math.max(-1, Math.min(1, ref / (3 / Math.PI * p.V0)));
+    const aP = Math.acos(mm) * 180 / Math.PI;
+    let html = `目標 <span class="eq">v<sub>o</sub><sup>*</sup></span> = ${fmtSI(ref, 'V', 3)}（正群なら α = ${aP.toFixed(0)}°、負群なら α = ${(180 - aP).toFixed(0)}°）：`;
+    if (B) html += `<span class="dcm">休止期間</span>：電流が 0 になったので、両方の群を止めて、${G === 1 ? '負群' : '正群'}に切り替えるのを待っている。`;
+    else if (c) {
+      const [x, y] = CY_PAIRS[c - 1];
+      html += G === 1 ? `<span class="sw-on" style="color:${CP}">正群</span>の組 ${PH[x]}→${PH[y]} がオン（負荷の電流は正、出力電圧 = <span class="eq">V<sub>${PH[x]}${PH[y]}</sub></span>）`
+        : `<span class="sw-on" style="color:${CN}">負群</span>の組がオン（負荷の電流は負、出力電圧 = <span class="eq">−V<sub>${PH[x]}${PH[y]}</sub></span>）`;
+      if ((G === 1 && ref < 0) || (G === 2 && ref > 0)) html += '。<b>目標の電圧と電流の向きが逆：α &gt; 90° で、負荷（コイル）から電源へ電力を戻している</b>';
+      html += '。';
+    } else html += `${G === 1 ? '正群' : '負群'}を使う向きだが、どの組も流れていない（電流が途切れている）。`;
+    return {loops: c ? [[(G === 1 ? 'P' : 'N') + (c - 1), fr]] : [], html};
+  },
+  metricsHtml(S, m) {
+    const p = S.p, Vt = p.r * 3 / Math.PI * p.V0, Z = Math.hypot(p.R, 2 * Math.PI * p.fo * p.L);
+    let rows = `<tr><th>量</th><th>シミュレーション</th><th>授業の式</th><th>式の値</th><th>差</th></tr>`;
+    // 式からずれたとき、式の前提が崩れている理由が分かれば灰色の「目安」と理由を出す（前提どおりなら今までどおりの判定）
+    const phi = Math.atan(2 * Math.PI * p.fo * p.L / p.R) * 180 / Math.PI;
+    const why = p.fo > p.fi / 3 + 1e-9 ? '出力の周波数が入力の 1/3 を超えている（p39 の目安）'
+      : phi > 45 ? `電流の遅れ（φ = ${phi.toFixed(0)}°）が大きいので、群を切り替える休止期間（電圧 0）が目標の電圧の大きい時刻に来て、基本波が小さくなる` : '';
+    const mark = (a, b) => Math.abs(a - b) > 0.05 * Math.abs(b) && why ? `<span style="color:var(--sub);font-weight:700">目安</span><span class="small">（${why}）</span>` : okMark(a, b, 0.05);
+    rows += `<tr><td>出力電圧の基本波（${r3(p.fo)} Hz）の振幅</td><td class="num">${fmtSI(m.Vo.c1, 'V', 4)}</td><td class="eq">r (3/π)V<sub>0</sub></td><td class="num">${fmtSI(Vt, 'V', 4)}</td><td>${pctDiff(m.Vo.c1, Vt)} ${mark(m.Vo.c1, Vt)}</td></tr>`;
+    rows += `<tr><td>負荷電流の基本波の振幅</td><td class="num">${fmtSI(m.I.c1, 'A', 4)}</td><td class="eq">r (3/π)V<sub>0</sub> / √(R² + (2πf<sub>o</sub>L)²)</td><td class="num">${fmtSI(Vt / Z, 'A', 4)}</td><td>${pctDiff(m.I.c1, Vt / Z)} ${mark(m.I.c1, Vt / Z)}</td></tr>`;
+    // 目標が 0（r = 0）だと基本波がほぼ 0 なので、THD は決まらない
+    const thdTxt = !(m.Vo.c1 > 1e-6 * p.V0) || !isFinite(m.thdV) ? '—（基本波が 0 なので決まらない）' : (m.thdV * 100).toFixed(0) + ' %';
+    rows += `<tr><td>出力電圧の実効値</td><td class="num">${fmtSI(m.Vo.rms, 'V', 4)}</td><td colspan="3">基本波だけなら ${fmtSI(m.Vo.c1 / Math.SQRT2, 'V', 4)}。出力電圧の THD = ${thdTxt}（入力の山がのこぎりの歯のように残る）</td></tr>`;
+    rows += `<tr><td>負荷電流の実効値</td><td class="num">${fmtSI(m.I.rms, 'A', 4)}</td><td colspan="3">電力 <span class="eq">P = R I<sub>rms</sub>²</span> = ${fmtSI(m.P, 'W', 4)}</td></tr>`;
+    rows += `<tr><td>休止期間の割合</td><td class="num">${(m.blank * 100).toFixed(1)} %</td><td colspan="3">出力の 1 周期あたり 2 回の切り替え × <span class="eq">t<sub>d</sub></span> = ${(2 * p.td * p.fo * 100).toFixed(1)} %（＋電流が 0 になってから切り替えまでの時間）</td></tr>`;
+    rows += `<tr><td>入力の力率 <span class="eq">PF</span></td><td class="num">${m.pf.toFixed(3)}</td><td colspan="3"><span class="eq">P / (√3 V<sub>LL,rms</sub> I<sub>u,rms</sub>)</span>。α が大きい時間が長いので、入力の力率は悪い</td></tr>`;
+    const warn = p.fo > p.fi / 3 + 1e-9 ? ` <span class="ng">f<sub>o</sub> が入力の 1/3（${r3(p.fi / 3)} Hz）を超えています</span>` : '';
+    return {rows, sub: `出力の最後の 1 周期で計算（出力の ${S.periods} 周期を計算）。${warn}`};
+  },
+});
+})();
+</script>
+</body>
+</html>

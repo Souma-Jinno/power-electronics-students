@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>第4回 演習問題 — パワーエレクトロニクス</title>
+  <style>
+
+    :root {
+      --accent: #1a73e8;
+      --accent-light: #e8f0fe;
+      --text: #202124;
+      --text-secondary: #5f6368;
+      --surface: #ffffff;
+      --bg: #f8f9fa;
+      --border: #dadce0;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
+      --shadow-hover: 0 4px 12px rgba(26,115,232,0.18);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Sans', 'Noto Sans JP', 'Meiryo', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    a { color: inherit; text-decoration: none; }
+    header {
+      background: var(--accent);
+      color: #fff;
+      padding: 18px 20px 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+    }
+    header .subtitle {
+      font-size: 0.78rem;
+      opacity: 0.85;
+      margin-top: 2px;
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+    footer {
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      padding: 20px 16px;
+      border-top: 1px solid var(--border);
+      margin-top: 24px;
+    }
+
+    header h1 { font-size: 1.05rem; font-weight: 700; line-height: 1.4; }
+    header .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.8rem;
+      opacity: 0.88;
+      margin-bottom: 8px;
+    }
+    header .back-link:hover { opacity: 1; }
+    .lesson-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .lesson-num {
+      font-size: 0.8rem;
+      color: var(--accent);
+      font-weight: 700;
+      border: 1.5px solid var(--accent);
+      border-radius: 6px;
+      padding: 2px 10px;
+    }
+    .cat-badge {
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 20px;
+      background: #d8f5f6;
+      color: #0d7377;
+    }
+    .ch-count {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+    }
+    .video-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+    .ch-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px 10px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .ch-num {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--accent-light);
+      padding: 2px 9px;
+      border-radius: 5px;
+      white-space: nowrap;
+    }
+    .ch-title {
+      font-size: 0.93rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    video {
+      display: block;
+      background: #000;
+    }
+    .render-note {
+      padding: 20px 16px;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+    .back-bottom {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      padding: 10px 20px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      transition: opacity 0.15s;
+    }
+    .back-bottom:hover { opacity: 0.88; }
+  </style>
+  <script>
+    window.MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+  <style>
+    .notice {
+      background: var(--accent-light); border-left: 4px solid var(--accent);
+      border-radius: 8px; padding: 12px 16px; margin: 16px 0 24px;
+      font-size: 0.86rem; color: var(--text);
+    }
+    .notice ul, .aims ul { margin: 6px 0 0; padding-left: 1.2em; }
+    .notice li, .aims li { margin: 3px 0; }
+    /* 理解度の箱。提出についての青枠と並ぶので、こちらは枠線だけにして
+       区別をつける（2026-09-25）。 */
+    .aims {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px 18px; margin: 0 0 28px;
+      font-size: 0.86rem; color: var(--text-secondary);
+    }
+    .aims > p { margin: 0 0 4px; color: var(--text); font-weight: 600; }
+    .aims h3 { font-size: 0.88rem; margin: 14px 0 2px; color: var(--text); }
+    .aims h3:first-of-type { margin-top: 10px; }
+    .q { margin: 32px 0; }
+    .q h2 { font-size: 1.05rem; margin-bottom: 8px; }
+    .q .lead { margin: 0 0 14px; }
+    .q figure { margin: 0 0 14px; text-align: center; }
+    .q figure img { max-width: 100%; height: auto; }
+    .q ol { padding-left: 1.4em; }
+    .q ol li { margin: 10px 0; }
+  </style>
+  <style>
+    /* 小問の番号は (1)(2)… で出す */
+    ol, .q ol { list-style: none; counter-reset: sub; padding-left: 2.2em; }
+    ol > li { counter-increment: sub; position: relative; }
+    ol > li::before { content: "(" counter(sub) ")"; position: absolute; left: -2.2em; }
+    .q h3 { font-size: 0.95rem; margin: 24px 0 8px; }
+    .q .eq { margin: 4px 0 14px; overflow-x: auto; }
+    .q ul { padding-left: 1.4em; }
+    .q ul > li { margin: 12px 0; }
+    .q li > .lead:last-child { margin-bottom: 0; }
+    /* 元の図は 1000〜1900px あり、幅いっぱいだと大きすぎるので抑える */
+    .q figure img { max-width: min(100%, 600px); }
+  </style>
+<script>
+if (!/github\.io$/.test(location.hostname)) document.addEventListener("DOMContentLoaded", () => {
+  const b = document.createElement("div");
+  b.textContent = "確認用（Mac mini の作業中の版）。学生に見えるのは git push した後です";
+  b.style.cssText = "background:#fff3cd;color:#664d03;border-bottom:1px solid #e0c36a;padding:6px 12px;font-size:14px;text-align:center";
+  document.body.prepend(b);
+});
+</script>
+</head>
+<body>
+  <header>
+    <a class="back-link" href="../index.html">← 科目のページへ戻る</a>
+    <h1>第4回 演習問題</h1>
+    <div class="subtitle">LCR回路の復習 / パワーエレクトロニクス / 大阪工業大学</div>
+  </header>
+  <main>
+    <div class="lesson-meta">
+      <span class="lesson-num">第4回</span>
+      <span class="cat-badge">演習問題</span>
+      <span class="ch-count">全4問</span>
+    </div>
+    <div class="notice">
+      <strong>提出について</strong>
+      <ul><li>解答用紙は各自で準備すること。コピー用紙でも構いません。</li><li>解答用紙の左上に第何回目の授業の演習問題かを記入し、右上には自分の学生番号と名前を記入する。</li><li>解答用紙を写真で撮って、Google Classroom の演習問題の該当先に提出する。</li></ul>
+    </div>
+    <div class="aims">
+      <p>この演習問題は、下記の理解度を確認することを目的としています。</p>
+    <h3>問題1：スイッチング電圧をかけたコイルの定常状態</h3>
+    <ul><li>KVL と枝構成式 $v_L = L\,di_L/dt$ から、オンとオフの区間でコイルにかかる電圧を求められるか。</li><li>「1周期で電流が元に戻る」という定常状態の条件から、出力電圧 $V_1 = DV_0$ を導けるか。</li><li>コイル電流の振動の大きさを式で表し、$L$ やスイッチング周波数との関係を説明できるか。</li></ul>
+    <h3>問題2：スイッチング電流を流したコンデンサの定常状態</h3>
+    <ul><li>KCL と枝構成式 $i_C = C\,dv_C/dt$ から、コンデンサに流れる電流を区間ごとに求められるか。</li><li>定常状態の条件から $I_1 = DI_0$ と電圧の振動の大きさを導けるか。</li><li>コイルとコンデンサの式が、電圧と電流、$L$ と $C$ を入れ替えた形になっていることを説明できるか。</li></ul>
+    <h3>問題3：RLC直列回路のインピーダンスと共振</h3>
+    <ul><li>RLC 直列回路のインピーダンスを角周波数 $\omega$ で表せるか。</li><li>共振周波数を求め、その前後でコイルとコンデンサのどちらが効いているかを判断できるか。</li><li>共振しているとき、コイルとコンデンサの間でエネルギーがやり取りされていることを計算で確かめられるか。</li></ul>
+    <h3>問題4：つないではいけない組み合わせ</h3>
+    <ul><li>枝構成式を使って、コイルに電流源、コンデンサに電圧源を直接つなぐと何が起こるかを説明できるか。</li><li>コイルを電流源、コンデンサを電圧源とみなす考え方を説明できるか。</li></ul>
+    </div>
+    <section class="q">
+      <h2>問題１：スイッチング電圧をかけたコイルの定常状態</h2>
+      <p class="lead">下図のように、方形波の電圧源$v_{in}(t)$、インダクタンス$L$のコイル、直流電圧$V_{1}$（負荷を電圧源とみなしたもの）を直列に接続した。$v_{in}(t)$は、周期$T$のうち$0\leq t\lt DT$で$V_{0}$、$DT\leq t\lt T$で$0$になる（$D$はデューティ比）。$V_{0}=12\,[\mathrm{V}]$、スイッチング周波数$10\,[\mathrm{kHz}]$、$D=0.25$、$L=1\,[\mathrm{mH}]$とする。以下の問いに答えよ。</p>
+      <figure><img src="img/pe04_q1_circuit.png" alt="方形波電圧源 v_in、コイル L、直流電圧 V1 の直列回路。右に v_in(t) の方形波（高さ V0、0〜DT がオン、周期 T）"></figure>
+      <ol>
+        <li>$0\leq t\lt DT$と$DT\leq t\lt T$のそれぞれについて、コイルにかかる電圧$v_{L}$を$V_{0}$、$V_{1}$を用いて表せ。</li>
+        <li>コイルの電流$i_{L}(t)$が増え続けも減り続けもしない（1周期で元の値に戻る）状態を定常状態という。定常状態になるための$V_{1}$を$D$と$V_{0}$で表し、その値を求めよ。</li>
+        <li>定常状態における$v_{L}(t)$と$i_{L}(t)$の波形を、$0\leq t\leq 2T$の範囲で描け。さらに、電流の振動の大きさ$I_{\rm max}-I_{\rm min}$を$D$、$T$、$V_{0}$、$L$で表し、その値を求めよ。</li>
+        <li>電流の振動の大きさを半分にするには、$L$を何$[\mathrm{mH}]$にすれば良いか。また、$L$を変えずにスイッチング周波数で調整するなら何$[\mathrm{kHz}]$にすれば良いか。</li>
+        <li>$V_{0}$、$T$、$L$を変えずに、$V_{1}=DV_{0}$を保ったまま$D$を変える。電流の振動の大きさが最大になる$D$とその値を求めよ。</li>
+      </ol>
+    </section>
+    <section class="q">
+      <h2>問題２：スイッチング電流を流したコンデンサの定常状態</h2>
+      <p class="lead">下図のように、方形波の電流源$i_{in}(t)$、静電容量$C$のコンデンサ、直流電流$I_{1}$（負荷を電流源とみなしたもの）を並列に接続した。$i_{in}(t)$は、周期$T$のうち$0\leq t\lt DT$で$I_{0}$、$DT\leq t\lt T$で$0$になる。$I_{0}=2\,[\mathrm{A}]$、スイッチング周波数$10\,[\mathrm{kHz}]$、$D=0.4$、$C=100\,[\mu\mathrm{F}]$とする。以下の問いに答えよ。</p>
+      <figure><img src="img/pe04_q2_circuit.png" alt="方形波電流源 i_in、コンデンサ C、直流電流源 I1 の並列回路。右に i_in(t) の方形波（高さ I0、0〜DT がオン、周期 T）"></figure>
+      <ol>
+        <li>$0\leq t\lt DT$と$DT\leq t\lt T$のそれぞれについて、コンデンサに流れる電流$i_{C}$を$I_{0}$、$I_{1}$を用いて表せ。</li>
+        <li>コンデンサの電圧$v_{C}(t)$が定常状態になるための$I_{1}$を$D$と$I_{0}$で表し、その値を求めよ。</li>
+        <li>定常状態における電圧の振動の大きさ$v_{\rm max}-v_{\rm min}$を$D$、$T$、$I_{0}$、$C$で表し、その値を求めよ。また、振動の大きさを$0.12\,[\mathrm{V}]$にするには、$C$を何$[\mu\mathrm{F}]$にすれば良いか。</li>
+        <li>問題１で求めた式と比べると、どの量とどの量を入れ替えると同じ形になっているか答えよ。</li>
+      </ol>
+    </section>
+    <section class="q">
+      <h2>問題３：RLC直列回路のインピーダンスと共振</h2>
+      <p class="lead">下図の RLC 直列回路について考える。$L=1\,[\mathrm{mH}]$、$C=10\,[\mu\mathrm{F}]$、$R=1\,[\Omega]$とし、電源は角周波数$\omega$（周波数$f$、$\omega=2\pi f$）の正弦波電圧源とする。以下の問いに答えよ。</p>
+      <figure><img src="img/pe04_q3_rlc.png" alt="正弦波電圧源 v(t) に L、C、R を直列に接続した回路。L・C・R の部分のインピーダンスが Z"></figure>
+      <ol>
+        <li>インピーダンス$Z$を$\omega$、$L$、$C$、$R$を用いて表せ。</li>
+        <li>$|Z|$が最小になる周波数（共振周波数）$f_{0}$を求めよ。また、そのときの$|Z|$を求めよ。</li>
+        <li>$f=100\,[\mathrm{Hz}]$と$f=10\,[\mathrm{kHz}]$のそれぞれについて、$\omega L$、$1/(\omega C)$、$|Z|$を求めよ。また、それぞれの周波数で、回路はコイルとコンデンサのどちらに近い振る舞いをするか答えよ。</li>
+        <li>共振周波数$f_{0}$で、振幅$1\,[\mathrm{V}]$の正弦波電圧をかけた。電流の振幅と、コンデンサにかかる電圧の振幅を求めよ。さらに、コイルに蓄えられるエネルギー$\frac{1}{2}Li^{2}$とコンデンサに蓄えられるエネルギー$\frac{1}{2}Cv_{C}^{2}$の最大値をそれぞれ求め、共振のときにエネルギーがどのように出入りしているか説明せよ。</li>
+      </ol>
+    </section>
+    <section class="q">
+      <h2>問題４：つないではいけない組み合わせ</h2>
+      <p class="lead">下図の(a)〜(d)の回路で、$v_{in}(t)$は$0$と$V_{0}$を繰り返す方形波の電圧源、$i_{in}(t)$は$0$と$I_{0}$を繰り返す方形波の電流源である。以下の問いに答えよ。</p>
+      <figure><img src="img/pe04_q4_connect.png" alt="(a) 方形波電圧源とコンデンサ、(b) 方形波電流源とコイル、(c) 方形波電流源・コイル・抵抗の直列、(d) 方形波電流源・コンデンサ・抵抗の並列"></figure>
+      <ol>
+        <li>(a)〜(d)のうち、接続してはいけないものをすべて選べ。</li>
+        <li>(1)で選んだそれぞれについて、電源が切り替わる瞬間に何が起こるかを、枝構成式を用いて説明せよ。</li>
+        <li>コイルとコンデンサは、それぞれ電流源と電圧源のどちらに近い素子とみなせるか。理由とともに答えよ。</li>
+      </ol>
+    </section>
+  </main>
+  <footer>パワーエレクトロニクス（2026年度） ｜ 神野 崇馬</footer>
+</body>
+</html>

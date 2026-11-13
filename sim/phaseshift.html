@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>位相シフト制御のシミュレーター — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<header>
+  <nav class="hnav"><a href="../index.html">← 科目のページへ戻る</a><a href="index.html">回路を選ぶ（シミュレーターの一覧）</a></nav>
+  <h1>フルブリッジの位相シフト制御（パルス幅制御）のシミュレーター</h1>
+  <div class="subtitle">パワーエレクトロニクス 第12回 直流-交流変換（２） p16〜20 / 大阪工業大学</div>
+</header>
+<main>
+  <div class="notice">
+    フルブリッジの右のレグ（S<sub>3</sub>・S<sub>4</sub>）の切り替えを、左のレグ（S<sub>1</sub>・S<sub>2</sub>）より <span class="eq">Δt</span> だけ早めます（p17）。
+    S<sub>1</sub>・S<sub>3</sub> が両方オン（区間 III）や S<sub>2</sub>・S<sub>4</sub> が両方オン（区間 IV）の間は <span class="eq">v<sub>R</sub> = 0</span> になり、<b>基本波の振幅が小さく</b>なります（p18・19）。
+    <b>Δt/T</b> を動かして、<b>基本波</b>（グラフの <span class="eq">v<sub>1</sub></span>）の振幅が <span class="eq">4E/π</span> から小さくなる様子を見てください。
+    回路図の<b>線をクリックすると電位</b>（電源の − の線を 0 V とする）、<b>素子をクリックすると電流</b>（矢印の向きが正）が出ます。
+  </div>
+
+  <div class="top">
+    <section class="card">
+      <div class="card-h">
+        <span class="ttl">回路</span>
+        <span class="small">素子をクリックしたとき：</span>
+        <span class="seg" id="emode"><button data-m="i" class="on">電流</button><button data-m="v">両端の電圧</button></span>
+      </div>
+      <svg id="sch" viewBox="-130 -70 880 470" aria-label="フルブリッジの回路図"></svg>
+      <div id="state"></div>
+    </section>
+
+    <section class="card params">
+      <div class="card-h"><span class="ttl">回路の値</span></div>
+      <div class="card-b" id="params"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-h">
+      <span class="ttl">波形</span>
+      <span class="seg" id="win">
+        <button data-w="all">起動から最後まで</button><button data-w="first">起動直後</button><button data-w="last" class="on">定常状態</button>
+      </span>
+    </div>
+    <div class="ctl">
+      <button id="play">▶ 再生</button>
+      <label>速さ <select id="speed"><option value="0.1">×0.1</option><option value="0.25">×0.25</option><option value="0.5">×0.5</option><option value="1" selected>×1</option><option value="2">×2</option></select></label>
+      <label id="nper">周期の数 <select id="nP"><option>1</option><option selected>2</option><option>3</option><option>5</option></select></label>
+      <label>グラフ <select id="lay"><option value="vi">電圧と電流の2段</option><option value="each">1本ずつ別の段</option></select></label>
+    </div>
+    <div class="scrubrow"><input type="range" id="scrub" min="0" max="10000" value="0" aria-label="時刻"><span class="tc" id="tc"></span></div>
+    <div id="legend"></div>
+    <div id="plotwrap"><canvas id="plot"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">定常状態の値と、授業の式の比較</span><span class="small" id="msub"></span></div>
+    <div class="card-b" style="overflow-x:auto"><table class="m" id="metrics"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">このシミュレーターの前提</span></div>
+    <div class="card-b">
+      <ul class="notes">
+        <li>スイッチは理想（オンで抵抗 0、オフで電流 0、切り替えは一瞬）。電源 <span class="eq">E</span> は理想の直流電圧源です。</li>
+        <li>ゲート信号（p17）：S<sub>1</sub> は 0〜<span class="eq">T</span>/2 でオン、S<sub>2</sub> はその反対。S<sub>3</sub> は <span class="eq">T</span>/2 − Δt 〜 <span class="eq">T</span> − Δt でオン、S<sub>4</sub> はその反対。同じレグの上と下が同時にオンになることはありません（デッドタイムは考えない）。</li>
+        <li>その結果、<span class="eq">v<sub>R</sub></span> は 0〜<span class="eq">T</span>/2 − Δt で <span class="eq">E</span>（区間 I）、<span class="eq">T</span>/2 − Δt〜<span class="eq">T</span>/2 で 0（区間 III）、<span class="eq">T</span>/2〜<span class="eq">T</span> − Δt で −<span class="eq">E</span>（区間 II）、<span class="eq">T</span> − Δt〜<span class="eq">T</span> で 0（区間 IV）です（p19 の図）。</li>
+        <li>基本波の振幅は、最後の 1 周期の <span class="eq">v<sub>R</sub></span> から <span class="eq">A<sub>1</sub> = (2/T)∫v<sub>R</sub> cos ωt dt</span>、<span class="eq">B<sub>1</sub> = (2/T)∫v<sub>R</sub> sin ωt dt</span>（p13）を数値で計算し、<span class="eq">√(A<sub>1</sub>² + B<sub>1</sub>²)</span> としました。式 <span class="eq">(4E/π) cos(πΔt/T)</span> は、p19 の <span class="eq">b<sub>n</sub></span>（演習問題）と同じ考え方で <span class="eq">A<sub>1</sub></span> と <span class="eq">B<sub>1</sub></span> を求めると出てきます。<span class="eq">Δt</span> &gt; 0 では波形が左右にずれるので、<span class="eq">A<sub>1</sub></span> は 0 になりません（振幅だけを比べています）。</li>
+        <li>スライドの負荷は抵抗だけですが、「R + L」にもできます。そのときは、p20 の回路のようにスイッチに逆並列のダイオードがあるとして、0 の区間（III・IV）では電流がスイッチとダイオードを回って流れ続けます（<span class="eq">v<sub>R</sub></span> は負荷の電流の向きによらず決まる）。</li>
+        <li>計算は 4 次のルンゲ・クッタ法（R + L のとき）。抵抗だけのときは <span class="eq">i<sub>R</sub> = v<sub>R</sub>/R</span> です。</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<footer>パワーエレクトロニクス ｜ 神野 崇馬 ｜ 試作版</footer>
+<div id="tip"></div>
+
+<script src="common.js"></script>
+<script>
+// ==SIM-BEGIN==
+/**
+ * 最後の span 秒の f(S, k) のフーリエ係数（n 次、基本周波数 f0）。点の間を直線でつないだ波形を厳密に積分する
+ * （区分的に一定の電圧も、指数関数の電流も、高い次数まで正しく出る）。時刻は最後の span の始まりから測る。
+ * 戻り値 {A, B, amp}：A = (2/L)∫y cos nωt dt、B = (2/L)∫y sin nωt dt、amp = √(A² + B²)
+ */
+function fourierLin(S, f, span, f0, n) {
+  const N = S.t.length, tEnd = S.t[N - 1], ts = tEnd - span, w = 2 * Math.PI * f0 * n;
+  let k0 = 0;
+  while (k0 < N && S.t[k0] < ts - 1e-12 * span) k0++;
+  let re = 0, im = 0, y0 = f(S, k0);
+  for (let k = k0 + 1; k < N; k++) {
+    const y1 = f(S, k), t0 = S.t[k - 1] - ts, t1 = S.t[k] - ts, dt = t1 - t0;
+    if (dt > 0) {
+      const c0 = Math.cos(w * t0), s0 = Math.sin(w * t0), c1 = Math.cos(w * t1), s1 = Math.sin(w * t1);
+      if (w * dt < 1e-4) { re += (y0 * c0 + y1 * c1) / 2 * dt; im += (y0 * s0 + y1 * s1) / 2 * dt; } // ごく短い区間は台形（桁落ちを避ける）
+      else {
+        const sl = (y1 - y0) / dt;
+        re += y0 * (s1 - s0) / w + sl * (dt * s1 / w + (c1 - c0) / (w * w));
+        im += -y0 * (c1 - c0) / w + sl * (-dt * c1 / w + (s1 - s0) / (w * w));
+      }
+    }
+    y0 = y1;
+  }
+  const L = tEnd - S.t[k0], A = 2 * re / L, B = 2 * im / L;
+  return {A, B, amp: Math.hypot(A, B)};
+}
+/** 位相シフトのゲート：s = b1 + 2·b3（b1：S1 オン（S2 オフ）、b3：S3 オン（S4 オフ））。u = t/T の小数部 */
+function psGate(p, t) {
+  const u = t * p.f - Math.floor(t * p.f + 1e-12);
+  const b1 = u < 0.5 ? 1 : 0, b3 = (u >= 0.5 - p.dt - 1e-12 && u < 1 - p.dt - 1e-12) ? 1 : 0;
+  return b1 + 2 * b3;
+}
+/** 負荷の電圧 vR（左の中点 − 右の中点） */
+function psV(p, s) { return p.E * ((s & 1) - (s >> 1)); }
+/**
+ * フルブリッジの位相シフト制御。p = {E, f, dt（Δt/T）, R, L}。L = 0 なら抵抗だけ（状態変数なし）、L > 0 なら状態変数 [i]
+ */
+function phaseShiftModel(p) {
+  const T = 1 / p.f, rl = p.L > 0, tau = rl ? p.L / p.R : 0;
+  const periods = rl ? Math.min(400, Math.max(4, Math.ceil(8 * tau / T) + 2)) : 3;
+  return {
+    T, periods, h: rl ? Math.min(T / 400, tau / 10) : T / 400, x0: rl ? [0] : [], s0: psGate(p, 0),
+    f: (t, x, s) => rl ? [(psV(p, s) - p.R * x[0]) / p.L] : [],
+    breaks: (t0, t1) => {
+      const r = [];
+      for (const u of [0, 0.5 - p.dt, 0.5, 1 - p.dt]) { const b = t0 + u * T; if (!r.some(q => Math.abs(q - b) < 1e-12 * T)) r.push(b); }
+      return r.filter(b => b >= t0 && b < t1).sort((a, b) => a - b);
+    },
+    onBreak: (t) => psGate(p, t + 1e-9 * T),
+  };
+}
+function simulatePhaseShift(p) { const S = simEv(phaseShiftModel(p)); S.p = Object.assign({}, p); return S; }
+const psVR = (S, k) => psV(S.p, S.s[k]);
+const psI = (S, k) => S.p.L > 0 ? S.x[0][k] : psVR(S, k) / S.p.R;
+function phaseShiftMetrics(S) {
+  const p = S.p, T = S.T;
+  const V1 = fourierLin(S, psVR, T, p.f, 1), I1 = fourierLin(S, psI, T, p.f, 1);
+  const V = acStats(S, psVR, T, 0), I = acStats(S, psI, T, 0), absV = acStats(S, (S, k) => Math.abs(psVR(S, k)), T, 0);
+  const P = acStats(S, (S, k) => p.R * psI(S, k) ** 2, T, 0).avg;
+  // 0 の区間の長さ（最後の 1 周期）
+  const N = S.t.length, t0 = S.t[N - 1] - T;
+  let zero = 0;
+  for (let k = 1; k < N; k++) if (S.t[k - 1] >= t0 - 1e-12 * T && psVR(S, k - 1) === 0 && psVR(S, k) === 0) zero += S.t[k] - S.t[k - 1];
+  const m = {V1, I1, V, I, absV, P, zero};
+  S.MET = m;
+  return m;
+}
+// ==SIM-END==
+</script>
+<script>
+(() => {
+'use strict';
+// 回路図の座標：電源 x = 0、左のレグ XL、右のレグ XR、逆並列ダイオードは各レグの右 DX
+const XL = 200, XR = 600, DX = 48, YT = 0, YB = 340, YM = 170, XRs = 345, XLc0 = 430, XLc1 = 530;
+const yS = [[40, 110], [230, 300]], yD = [[24, 126], [214, 316]];
+const CA = COL.fuchsia, CB = COL.violet;
+const r3 = (x) => String(+x.toPrecision(3));
+let loadSel = 'R', gL = null, gLw = null, sw = {};
+const b1 = (S, k) => S.s[k] & 1, b3 = (S, k) => S.s[k] >> 1;
+const va = (S, k) => b1(S, k) ? S.p.E : 0, vb = (S, k) => b3(S, k) ? S.p.E : 0;
+const thAmp = (p) => 4 * p.E / Math.PI * Math.cos(Math.PI * p.dt);
+const fund = (S, k) => { const m = S.MET; if (!m) return 0; const w = 2 * Math.PI * S.p.f, t = S.t[k]; return m.V1.A * Math.cos(w * t) + m.V1.B * Math.sin(w * t); };
+const ROM = ['I', 'II', 'III', 'IV'];
+const region = (S, k) => { const s = S.s[k]; return s === 1 ? 0 : s === 2 ? 1 : s === 3 ? 2 : 3; };
+const fracT = (x) => { const c = [[0, '0'], [1 / 8, 'T/8'], [1 / 6, 'T/6'], [1 / 4, 'T/4'], [1 / 3, 'T/3'], [1 / 2, 'T/2']].find(q => Math.abs(q[0] - x) < 1e-4); return x.toFixed(3) + (c ? `（${c[1]}）` : ''); };
+
+SimApp({
+  pdef: [
+    {k: 'E', b: 'E', s: '', title: '直流電源の電圧', min: 10, max: 400, step: 1, log: false, unit: 'V', def: 100},
+    {k: 'f', b: 'f', s: '', title: '出力の周波数（1/T）', min: 1, max: 2000, log: true, unit: 'Hz', def: 50},
+    {k: 'dt', b: 'Δt/T', s: '', html: '<span style="font-style:normal">Δ</span>t/T', title: '右のレグを早める時間 Δt（周期 T に対する割合）', min: 0, max: 0.5, step: 1 / 240, log: false, unit: '', def: 1 / 6, fmt: fracT},
+    {k: 'R', b: 'R', s: '', min: 1, max: 200, log: true, unit: 'Ω', def: 10},
+    {k: 'L', b: 'L', s: '', min: 0.1e-3, max: 1, log: true, unit: 'H', def: 20e-3},
+  ],
+  extraParams(el, app) {
+    const d = document.createElement('div');
+    d.className = 'crow';
+    const opts = [['R', '抵抗だけ（p16〜18）'], ['RL', 'R + L']];
+    d.innerHTML = `<span style="min-width:4.6em">負荷</span><span class="seg">${opts.map(([v, t]) => `<button data-v="${v}">${t}</button>`).join('')}</span>`;
+    const bs = d.querySelectorAll('button');
+    const show = () => {
+      bs.forEach(b => b.classList.toggle('on', b.dataset.v === loadSel));
+      app.sliders.L.row.style.display = loadSel === 'R' ? 'none' : '';
+    };
+    bs.forEach(b => b.onclick = () => { loadSel = b.dataset.v; show(); app.schedule(); });
+    el.appendChild(d);
+    app.showLoad = show;
+    show();
+  },
+  presets: [
+    {name: 'Δt = 0：方形波（p16）', v: {E: 100, f: 50, dt: 0, R: 10}, apply: (a) => { loadSel = 'R'; a.showLoad(); }},
+    {name: 'Δt = T/6（p17・18 の図）', v: {E: 100, f: 50, dt: 1 / 6, R: 10}, apply: (a) => { loadSel = 'R'; a.showLoad(); }},
+    {name: 'Δt = T/4', v: {E: 100, f: 50, dt: 1 / 4, R: 10}, apply: (a) => { loadSel = 'R'; a.showLoad(); }},
+    {name: 'Δt = T/3：基本波が半分', v: {E: 100, f: 50, dt: 1 / 3, R: 10}, apply: (a) => { loadSel = 'R'; a.showLoad(); }},
+    {name: 'R + L 負荷・Δt = T/6（p20 の回路）', v: {E: 100, f: 50, dt: 1 / 6, R: 10, L: 20e-3}, apply: (a) => { loadSel = 'RL'; a.showLoad(); }},
+  ],
+  simulate: (P) => simulatePhaseShift({E: P.E, f: P.f, dt: P.dt, R: P.R, L: loadSel === 'R' ? 0 : P.L}),
+  metrics: phaseShiftMetrics,
+  initWin: 'last',
+  gatePane: gateRowsPane([
+    {label: 'S₁', color: CA, on: (S, k) => b1(S, k) === 1},
+    {label: 'S₂', color: CB, on: (S, k) => b1(S, k) === 0},
+    {label: 'S₃', color: CB, on: (S, k) => b3(S, k) === 1},
+    {label: 'S₄', color: CA, on: (S, k) => b3(S, k) === 0},
+    {label: 'vR = 0', color: COL.orange, on: (S, k) => b1(S, k) === b3(S, k)},
+  ]),
+  probes: {
+    'n:gnd': {b: 'GND', s: '', color: COL.sub, q: 'V', what: '電源の − の線（0 V）', f: () => 0},
+    'n:P': {b: 'v', s: 'P', color: COL.blue, q: 'V', what: '電源の ＋ の線の電位（= E）', f: (S) => S.p.E},
+    'n:a': {b: 'v', s: 'a', color: CA, q: 'V', what: '左のレグの中点の電位（0 か E）', f: va},
+    'n:b': {b: 'v', s: 'b', color: CB, q: 'V', what: '右のレグの中点の電位（0 か E）', f: vb},
+    'n:m': {b: 'v', s: 'm', color: COL.teal, q: 'V', what: 'R と L の間の電位', f: (S, k) => va(S, k) - S.p.R * psI(S, k)},
+    'i:E': {b: 'i', s: 'E', color: COL.iin, q: 'I', what: '電源の電流（＋ の端子から出る向きが正）', f: (S, k) => (b1(S, k) ? psI(S, k) : 0) - (b3(S, k) ? psI(S, k) : 0)},
+    'v:E': {b: 'E', s: '', color: COL.blue, q: 'V', what: '電源の電圧（上が＋）', f: (S) => S.p.E},
+    'i:S1': {b: 'i', s: 'S1', color: CA, q: 'I', what: 'S₁（と逆並列ダイオード）の電流（下向きが正。負ならダイオード）', f: (S, k) => b1(S, k) ? psI(S, k) : 0},
+    'v:S1': {b: 'v', s: 'S1', color: CA, q: 'V', what: 'S₁ の両端の電圧（上が＋）', f: (S, k) => S.p.E - va(S, k)},
+    'i:S2': {b: 'i', s: 'S2', color: CB, q: 'I', what: 'S₂（と逆並列ダイオード）の電流（下向きが正。負ならダイオード）', f: (S, k) => b1(S, k) ? 0 : -psI(S, k)},
+    'v:S2': {b: 'v', s: 'S2', color: CB, q: 'V', what: 'S₂ の両端の電圧（上が＋）', f: va},
+    'i:S3': {b: 'i', s: 'S3', color: CB, q: 'I', what: 'S₃（と逆並列ダイオード）の電流（下向きが正。負ならダイオード）', f: (S, k) => b3(S, k) ? -psI(S, k) : 0},
+    'v:S3': {b: 'v', s: 'S3', color: CB, q: 'V', what: 'S₃ の両端の電圧（上が＋）', f: (S, k) => S.p.E - vb(S, k)},
+    'i:S4': {b: 'i', s: 'S4', color: CA, q: 'I', what: 'S₄（と逆並列ダイオード）の電流（下向きが正。負ならダイオード）', f: (S, k) => b3(S, k) ? 0 : psI(S, k)},
+    'v:S4': {b: 'v', s: 'S4', color: CA, q: 'V', what: 'S₄ の両端の電圧（上が＋）', f: vb},
+    'i:R': {b: 'i', s: 'R', color: COL.ir, q: 'I', what: '負荷の電流（右向きが正）', f: psI},
+    'v:R': {b: 'Ri', s: 'R', color: COL.green, q: 'V', what: '抵抗の両端の電圧（左が＋）', f: (S, k) => S.p.R * psI(S, k)},
+    'i:L': {b: 'i', s: 'R', color: COL.ir, q: 'I', what: '負荷の電流（右向きが正）', f: psI},
+    'v:L': {b: 'v', s: 'L', color: COL.teal, q: 'V', what: 'コイルの両端の電圧（左が＋）', f: (S, k) => psVR(S, k) - S.p.R * psI(S, k)},
+    'x:vR': {b: 'v', s: 'R', color: COL.orange, q: 'V', what: '負荷の電圧（左の中点 − 右の中点。矢じりの左が＋）', f: psVR},
+    'x:v1': {b: 'v', s: '1', up: true, color: COL.blue, q: 'V', what: 'vR の基本波（最後の 1 周期の A₁・B₁ から）', f: fund},
+  },
+  defaultProbes: ['x:vR', 'x:v1', 'i:R'],
+  extraButtons: [{key: 'x:vR', label: '負荷の電圧 v<sub>R</sub>'}, {key: 'x:v1', label: '基本波 v<sub>1</sub>'}],
+  refLines: [{keys: ['x:v1'], val: (S) => thAmp(S.p), label: '(4E/π)cos(πΔt/T)', color: COL.blue}],
+  build(K) {
+    const {W} = K;
+    const xdL = XL + DX, xdR = XR + DX;
+    const nodeW = {
+      P: [[[0, YM - 9], [0, YT], [XR, YT], [XR, yS[0][0]]], [[XL, YT], [XL, yS[0][0]]], [[XL, yD[0][0]], [xdL, yD[0][0]]], [[XR, yD[0][0]], [xdR, yD[0][0]]]],
+      a: [[[XL, yS[0][1]], [XL, yS[1][0]]], [[XL, YM], [XRs - 45, YM]], [[XL, yD[0][1]], [xdL, yD[0][1]]], [[XL, yD[1][0]], [xdL, yD[1][0]]]],
+      m: [[[XRs + 45, YM], [XLc0, YM]]],
+      b: [[[XLc1, YM], [XR, YM]], [[XR, yS[0][1]], [XR, yS[1][0]]], [[XR, yD[0][1]], [xdR, yD[0][1]]], [[XR, yD[1][0]], [xdR, yD[1][0]]]],
+      gnd: [[[0, YM + 9], [0, YB], [XR, YB], [XR, yS[1][1]]], [[XL, YB], [XL, yS[1][1]]], [[XL, yD[1][1]], [xdL, yD[1][1]]], [[XR, yD[1][1]], [xdR, yD[1][1]]]],
+    };
+    for (const nn in nodeW) nodeW[nn].forEach(p => W(p));
+    K.battery(0, YM);
+    K.name(-40, YM + 12, 'E', 'end');
+    // スイッチ（開くと刃が左へ）と逆並列ダイオード（右、カソードが上）
+    sw.S1 = K.switch([XL, yS[0][0]], [XL, yS[0][1]], -1); sw.S2 = K.switch([XL, yS[1][0]], [XL, yS[1][1]], -1);
+    sw.S3 = K.switch([XR, yS[0][0]], [XR, yS[0][1]], -1); sw.S4 = K.switch([XR, yS[1][0]], [XR, yS[1][1]], -1);
+    for (const x of [xdL, xdR]) for (const [y0, y1] of yD) K.diode([x, y1], [x, y0], 15);
+    K.name(XL - 34, 85, 'S', 'end', 28, '1'); K.name(XL - 34, 275, 'S', 'end', 28, '2');
+    K.name(XR - 34, 85, 'S', 'end', 28, '3'); K.name(XR - 34, 275, 'S', 'end', 28, '4');
+    K.resH(XRs, YM, 90);
+    K.name(XRs, YM - 24, 'R', 'middle', 28);
+    gL = K.coil([XLc0, YM], [XLc1, YM], 4, 1);
+    gLw = W([[XLc0, YM], [XLc1, YM]]);
+    gL.nm = K.name((XLc0 + XLc1) / 2, YM - 26, 'L', 'middle', 28);
+    [[XL, YT], [XL, YB], [XL, YM], [XR, YM], [XL, yD[0][0]], [XL, yD[0][1]], [XL, yD[1][0]], [XL, yD[1][1]],
+      [XR, yD[0][0]], [XR, yD[0][1]], [XR, yD[1][0]], [XR, yD[1][1]]].forEach(([x, y]) => K.dot(x, y));
+    K.box(XL - 70, -30, DX + 120, YB + 60, CA); K.box(XR - 70, -30, DX + 120, YB + 60, CB);
+    K.text(XL + DX / 2 - 10, YB + 52, '左のレグ', CA, 20); K.text(XR + DX / 2 - 10, YB + 52, '右のレグ', CB, 20);
+    const hS = (x, y0) => [x - 30, y0 - 10, DX + 46, 90];
+    return {
+      nodeW,
+      hits: [['e:E', [-34, YM - 26, 68, 52]], ['e:S1', hS(XL, yS[0][0])], ['e:S2', hS(XL, yS[1][0])], ['e:S3', hS(XR, yS[0][0])], ['e:S4', hS(XR, yS[1][0])],
+        ['e:R', [XRs - 46, YM - 15, 92, 30]], ['e:L', [XLc0 + 2, YM - 22, XLc1 - XLc0 - 4, 30]]],
+      arrows: {
+        'i:E': [[34, YM + 30], [34, YM - 30], 'R'], 'v:E': [[-80, YM + 40], [-80, YM - 40], 'L'],
+        'i:S1': [[XL + 80, 50], [XL + 80, 100], 'R'], 'v:S1': [[XL + 80, 110], [XL + 80, 40], 'R'],
+        'i:S2': [[XL + 80, 240], [XL + 80, 290], 'R'], 'v:S2': [[XL + 80, 300], [XL + 80, 230], 'R'],
+        'i:S3': [[XR + 80, 50], [XR + 80, 100], 'R'], 'v:S3': [[XR + 80, 110], [XR + 80, 40], 'R'],
+        'i:S4': [[XR + 80, 240], [XR + 80, 290], 'R'], 'v:S4': [[XR + 80, 300], [XR + 80, 230], 'R'],
+        'i:R': [[XRs - 30, YM - 60], [XRs + 30, YM - 60], 'T'], 'v:R': [[XRs + 40, YM + 32], [XRs - 40, YM + 32], 'B'],
+        'i:L': [[XLc0 + 20, YM - 92], [XLc1 - 20, YM - 92], 'T'], // i:R（YM − 60）と高さをずらす 'v:L': [[XLc1 - 10, YM + 32], [XLc0 + 10, YM + 32], 'B'],
+        'x:vR': [[XR - 50, YM + 78], [XL + 70, YM + 78], 'B'],
+      },
+      nodeTag: {gnd: [(XL + XR) / 2, YB, 0, 34], P: [(XL + XR) / 2, YT, 0, -14], a: [XL + 70, YM, 0, -14], b: [XR - 40, YM, 0, -14], m: [(XRs + 45 + XLc0) / 2, YM, 0, 40]},
+      loops: {
+        p14: [[0, YM], [0, YT], [XL, YT], [XL, YM], [XR, YM], [XR, YB], [0, YB]],
+        p14r: [[XR, YB], [XR, yD[1][1]], [xdR, yD[1][1]], [xdR, yD[1][0]], [XR, yD[1][0]], [XR, YM], [XL, YM], [XL, yD[0][1]], [xdL, yD[0][1]], [xdL, yD[0][0]], [XL, yD[0][0]], [XL, YT], [0, YT], [0, YB]],
+        p23: [[0, YM], [0, YT], [XR, YT], [XR, YM], [XL, YM], [XL, YB], [0, YB]],
+        p23r: [[XL, YB], [XL, yD[1][1]], [xdL, yD[1][1]], [xdL, yD[1][0]], [XL, yD[1][0]], [XL, YM], [XR, YM], [XR, yD[0][1]], [xdR, yD[0][1]], [xdR, yD[0][0]], [XR, yD[0][0]], [XR, YT], [0, YT], [0, YB]],
+        zt: [[XL, YT], [XL, YM], [XR, YM], [XR, yD[0][1]], [xdR, yD[0][1]], [xdR, yD[0][0]], [XR, yD[0][0]], [XR, YT]],
+        ztr: [[XR, YT], [XR, YM], [XL, YM], [XL, yD[0][1]], [xdL, yD[0][1]], [xdL, yD[0][0]], [XL, yD[0][0]], [XL, YT]],
+        zb: [[XL, YM], [XR, YM], [XR, YB], [XL, YB], [XL, yD[1][1]], [xdL, yD[1][1]], [xdL, yD[1][0]], [XL, yD[1][0]]],
+        zbr: [[XR, YM], [XL, YM], [XL, YB], [XR, YB], [XR, yD[1][1]], [xdR, yD[1][1]], [xdR, yD[1][0]], [XR, yD[1][0]]],
+      },
+      sw,
+    };
+  },
+  onRun(S, app) {
+    const rl = S.p.L > 0;
+    gL.style.display = rl ? '' : 'none'; gL.nm.style.display = rl ? '' : 'none'; gLw.style.display = rl ? 'none' : '';
+    app.hitEl['e:L'].style.display = rl ? '' : 'none';
+  },
+  state(S, k, MET) {
+    const p = S.p, s = S.s[k], i = psI(S, k), rg = region(S, k);
+    const fr = Math.abs(i) / Math.max(1e-12, MET.I.max, -MET.I.min), pos = i > 1e-9 * p.E / p.R, neg = i < -1e-9 * p.E / p.R;
+    const names = ['S₁・S₄', 'S₂・S₃', 'S₁・S₃', 'S₂・S₄'][rg];
+    let html = `区間 ${ROM[rg]}：<span class="sw-on"${rg % 2 ? ` style="color:${CB}"` : ''}>${names} オン</span>　<span class="eq">v<sub>R</sub></span> = ${['<span class="eq">E</span>', '−<span class="eq">E</span>', '0', '0'][rg]}。`;
+    const loops = [];
+    if (rg === 0) {
+      if (pos) { loops.push(['p14', fr]); html += '電源 → S₁ → 負荷（右向き）→ S₄ → 電源。'; }
+      else if (neg) { loops.push(['p14r', fr]); html += '電流が左向きなので、S₄・S₁ の逆並列ダイオードを通って電源に戻っている。'; }
+    } else if (rg === 1) {
+      if (neg) { loops.push(['p23', fr]); html += '電源 → S₃ → 負荷（左向き）→ S₂ → 電源。'; }
+      else if (pos) { loops.push(['p23r', fr]); html += '電流が右向きなので、S₂・S₃ の逆並列ダイオードを通って電源に戻っている。'; }
+    } else if (rg === 2) {
+      if (pos) { loops.push(['zt', fr]); html += '上の 2 つで回っている：S₁ → 負荷（右向き）→ S₃ のダイオード → S₁。電源には流れない。'; }
+      else if (neg) { loops.push(['ztr', fr]); html += '上の 2 つで回っている：S₃ → 負荷（左向き）→ S₁ のダイオード → S₃。電源には流れない。'; }
+      else html += '両方の中点が <span class="eq">E</span> なので、負荷に電流は流れない。';
+    } else {
+      if (pos) { loops.push(['zb', fr]); html += '下の 2 つで回っている：負荷（右向き）→ S₄ → S₂ のダイオード → 負荷。電源には流れない。'; }
+      else if (neg) { loops.push(['zbr', fr]); html += '下の 2 つで回っている：負荷（左向き）→ S₂ → S₄ のダイオード → 負荷。電源には流れない。'; }
+      else html += '両方の中点が 0 V なので、負荷に電流は流れない。';
+    }
+    return {sw: {S1: !!(s & 1), S2: !(s & 1), S3: !!(s >> 1), S4: !(s >> 1)}, loops, html};
+  },
+  metricsHtml(S, m) {
+    const p = S.p, T = S.T, rl = p.L > 0, Z = Math.hypot(p.R, 2 * Math.PI * p.f * p.L);
+    const row = (nm, sim, eq, val, unit, tol = 0.01, note = '') => `<tr><td>${nm}</td><td class="num">${fmtSI(sim, unit, 4)}</td><td class="eq">${eq}</td><td class="num">${fmtSI(val, unit, 4)}</td><td>${pctDiff(sim, val)} ${okMark(sim, val, tol)}${note}</td></tr>`;
+    let rows = `<tr><th>量</th><th>シミュレーション</th><th>授業の式</th><th>式の値</th><th>差</th></tr>`;
+    const a = thAmp(p);
+    if (p.dt < 1e-9) {
+      const sc = 4 * p.E / Math.PI;
+      rows += `<tr><td><span class="eq">v<sub>R</sub></span> の cos ωt の成分 <span class="eq">A<sub>1</sub></span>（p14）</td><td class="num">${fmtSI(m.V1.A, 'V', 3)}</td><td class="eq">0</td><td class="num">0 V</td><td>${Math.abs(m.V1.A) <= 0.01 * sc ? '<span class="ok">一致</span>' : '<span class="ng">ずれる</span>'}</td></tr>`;
+      rows += row('<span class="eq">v<sub>R</sub></span> の sin ωt の成分 <span class="eq">B<sub>1</sub></span>（p15）', m.V1.B, '4E/π', sc, 'V');
+    }
+    if (a > 1e-6 * p.E) rows += row('<span class="eq">v<sub>R</sub></span> の基本波の振幅 <span class="eq">√(A<sub>1</sub>² + B<sub>1</sub>²)</span>', m.V1.amp, '(4E/π) cos(πΔt/T)', a, 'V');
+    else rows += `<tr><td><span class="eq">v<sub>R</sub></span> の基本波の振幅</td><td class="num">${fmtSI(m.V1.amp, 'V', 3)}</td><td class="eq">(4E/π) cos(πΔt/T)</td><td class="num">0 V</td><td>${m.V1.amp <= 0.01 * p.E ? '<span class="ok">一致</span>' : '<span class="ng">ずれる</span>'}（Δt = T/2 では両方のレグが同じなので、ずっと 0）</td></tr>`;
+    rows += row('1 周期のうち <span class="eq">v<sub>R</sub> = 0</span> の時間（区間 III + IV）', m.zero, '2Δt', 2 * p.dt * T, 's', 0.01);
+    if (1 - 2 * p.dt > 1e-6) rows += row('<span class="eq">|v<sub>R</sub>|</span> の平均（p18「振幅の平均値が小さくなった」）', m.absV.avg, 'E(1 − 2Δt/T)', p.E * (1 - 2 * p.dt), 'V');
+    if (a > 1e-6 * p.E) rows += row('負荷の電流の基本波の振幅', m.I1.amp, rl ? '(4E/π) cos(πΔt/T) / √(R² + (ωL)²)' : '(4E/π) cos(πΔt/T) / R', a / (rl ? Z : p.R), 'A');
+    if (!rl && 1 - 2 * p.dt > 1e-6) rows += row('負荷の電力の平均 <span class="eq">P</span>', m.P, 'E²(1 − 2Δt/T) / R', p.E * p.E * (1 - 2 * p.dt) / p.R, 'W');
+    else rows += `<tr><td>負荷の電力の平均 <span class="eq">P</span></td><td class="num">${fmtSI(m.P, 'W', 4)}</td><td colspan="3"></td></tr>`;
+    rows += `<tr><td><span class="eq">v<sub>R</sub></span> の実効値</td><td class="num">${fmtSI(m.V.rms, 'V', 4)}</td><td colspan="3">基本波の実効値は ${fmtSI(m.V1.amp / Math.SQRT2, 'V', 4)}（残りは高調波）</td></tr>`;
+    const sub = `最後の 1 周期で計算（${S.periods} 周期を計算）。` + (rl && 8 * p.L / p.R > S.periods * T ? ' <span class="ng">L/R が周期より非常に長いので、まだ定常状態に達していません（直流分が残っている）</span>' : '');
+    return {rows, sub};
+  },
+});
+})();
+</script>
+</body>
+</html>

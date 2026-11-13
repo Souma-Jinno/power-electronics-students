@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>スイッチング波形の高調波のシミュレーター — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="common.css">
+<style>
+#spec { display: block; width: 100%; touch-action: manipulation; }
+#speclegend { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 0 14px 10px; font-size: 0.8rem; }
+#speclegend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+</style>
+</head>
+<body>
+<header>
+  <nav class="hnav"><a href="../index.html">← 科目のページへ戻る</a><a href="index.html">回路を選ぶ（シミュレーターの一覧）</a></nav>
+  <h1>スイッチング波形（台形波）の高調波のシミュレーター</h1>
+  <div class="subtitle">パワーエレクトロニクス 第14回 電力変換で生じる電磁ノイズ p14〜16 / 大阪工業大学</div>
+</header>
+<main>
+  <div class="notice">
+    スイッチ S<sub>1</sub>・S<sub>2</sub> を切り替えて作る電圧 <span class="eq">v<sub>sw</sub></span> は、立ち上がり時間 <span class="eq">τ<sub>r</sub></span> のある<b>台形波</b>です（p14）。
+    これをフーリエ級数に分けると、基本周波数 <span class="eq">1/T</span> の整数倍の<b>高調波</b>（ノイズの原因）が並びます。下の<b>スペクトル</b>（振幅を dB で、周波数を対数で）では、
+    振幅は <span class="eq">1/(πτ)</span> を過ぎると <b>−20 dB/decade</b>、<span class="eq">1/(πτ<sub>r</sub>)</span> を過ぎると <b>−40 dB/decade</b> で小さくなります。
+    <b>周期 T を短く</b>すると（p15）、<b>立ち上がり時間 τ<sub>r</sub> を短く</b>すると（p16）、高い周波数の成分が大きくなります。例のボタンを続けて押すと、前の結果が重なって比べられます。
+    波形の「第 N 次までの和」で、高調波を足していくと台形波に近づく様子も見られます。
+  </div>
+
+  <div class="top">
+    <section class="card">
+      <div class="card-h">
+        <span class="ttl">回路</span>
+        <span class="small">線をクリックすると電位、スイッチをクリックすると両端の電圧</span>
+      </div>
+      <svg id="sch" viewBox="-130 -60 720 440" aria-label="スイッチのレグの回路図"></svg>
+      <div id="state"></div>
+    </section>
+
+    <section class="card params">
+      <div class="card-h"><span class="ttl">回路の値</span></div>
+      <div class="card-b" id="params"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-h"><span class="ttl">高調波のスペクトル（p15・16）</span><span class="small" id="specsub"></span></div>
+    <div class="card-b" style="padding-bottom:4px"><canvas id="spec" aria-label="高調波の振幅のスペクトル"></canvas></div>
+    <div id="speclegend"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h">
+      <span class="ttl">波形</span>
+      <span class="seg" id="win">
+        <button data-w="all" class="on">全体</button><button data-w="first">はじめ</button><button data-w="last">おわり</button>
+      </span>
+      <span class="small" id="winsub"></span>
+    </div>
+    <div class="ctl">
+      <button id="play">▶ 再生</button>
+      <label>速さ <select id="speed"><option value="0.25">×0.25</option><option value="0.5">×0.5</option><option value="1" selected>×1</option><option value="2">×2</option></select></label>
+      <label id="nper">周期の数 <select id="nP"><option selected>1</option><option>2</option></select></label>
+      <label>グラフ <select id="lay"><option value="vi">重ねて1段</option><option value="each">1本ずつ別の段</option></select></label>
+    </div>
+    <div class="scrubrow"><input type="range" id="scrub" min="0" max="10000" value="0" aria-label="時刻"><span class="tc" id="tc"></span></div>
+    <div id="legend"></div>
+    <div id="plotwrap"><canvas id="plot"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">シミュレーションと授業の式（p14）の比較</span><span class="small" id="msub"></span></div>
+    <div class="card-b" style="overflow-x:auto"><table class="m" id="metrics"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">このシミュレーターの前提</span></div>
+    <div class="card-b">
+      <ul class="notes">
+        <li><span class="eq">v<sub>sw</sub></span> は p14 の台形波です：周期 <span class="eq">T</span>、高さ <span class="eq">A</span>、立ち上がり時間 <span class="eq">τ<sub>r</sub></span> と立ち下がり時間 <span class="eq">τ<sub>f</sub></span> は同じ（<span class="eq">τ<sub>r</sub> = τ<sub>f</sub></span>）で直線。パルス幅 <span class="eq">τ = DT</span> は、立ち上がりの中点から立ち下がりの中点までの時間です（p14 の図の点線の高さ）。<span class="eq">t</span> = 0 が立ち上がりの始まりです。</li>
+        <li>スイッチ S<sub>1</sub>・S<sub>2</sub> は、切り替えに <span class="eq">τ<sub>r</sub></span> かかり、その間 <span class="eq">v<sub>sw</sub></span> が直線で変わるものとしています（実際のスイッチの切り替えの形は直線ではありません）。負荷はつないでいません。</li>
+        <li>スペクトルの点（シミュレーション）は、波形の 1 周期を数値で積分したフーリエ係数 <span class="eq">c<sub>n</sub> = (1/T)∫v<sub>sw</sub>(t) e<sup>−jnω<sub>0</sub>t</sup> dt</span> の大きさ <span class="eq">|c<sub>n</sub>|</span> です（波形の折れ点の間は直線なので、区間ごとに厳密に積分しています）。太い線は p14 の式の上側の包絡線（<span class="eq">sin</span> を 1 とした直線）で、<span class="eq">1/(πτ)</span> と <span class="eq">1/(πτ<sub>r</sub>)</span> で折れます。</li>
+        <li>dB は <span class="eq">20 log<sub>10</sub>(|c<sub>n</sub>| / 1 V)</span>（p17〜19：電圧なので 20 倍、基準は 1 V）。<span class="eq">|c<sub>n</sub>|</span> は複素フーリエ係数の大きさで、その周波数の正弦波の振幅は <span class="eq">2|c<sub>n</sub>|</span> です（スライドの図と同じく <span class="eq">|c<sub>n</sub>|</span> を描いています。<span class="eq">A</span> = 1 V、<span class="eq">D</span> = 0.5 で基本波が約 −10 dB）。</li>
+        <li><span class="eq">D</span> = 0.5 では偶数次の高調波は 0 になる（点が出ない）ので、点は奇数次だけです。<span class="eq">sin</span> が 0 になる周波数では点が下に落ちます（p15・16 の図の谷）。</li>
+        <li>p16 の図の縦の破線は、<span class="eq">1/(πτ<sub>r</sub>)</span>（3.2 kHz・31.8 kHz・318 kHz）より少し右に描かれています。このページでは式どおりの位置に描いています。</li>
+        <li>点が多すぎないように、スペクトルは 2 万次まで（または <span class="eq">1/(πτ<sub>r</sub>)</span> の 30 倍の周波数まで）計算しています。<span class="eq">τ<sub>r</sub></span> は <span class="eq">DT</span> と <span class="eq">(1 − D)T</span> より長くできないので、長すぎるときは短くしています。</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<footer>パワーエレクトロニクス ｜ 神野 崇馬 ｜ 試作版</footer>
+<div id="tip"></div>
+
+<script src="common.js"></script>
+<script>
+// ==SIM-BEGIN==
+/**
+ * 台形波 v_sw（p14）。p = {A, D, T, tr}。1 周期の折れ点 [[t, v], ...]（t = 0 で立ち上がりの始まり）
+ */
+function hmCorners(p) {
+  const tau = p.D * p.T;
+  return [[0, 0], [p.tr, p.A], [tau, p.A], [tau + p.tr, 0], [p.T, 0]];
+}
+/** 時刻 t の v_sw と区間の種類（0 立ち上がり / 1 A / 2 立ち下がり / 3 0） */
+function hmU(p, t) {
+  const T = p.T, tau = p.D * T, x = t - Math.floor(t / T) * T;
+  if (x < p.tr) return [p.A * x / p.tr, 0];
+  if (x < tau) return [p.A, 1];
+  if (x < tau + p.tr) return [p.A * (1 - (x - tau) / p.tr), 2];
+  return [0, 3];
+}
+/**
+ * 折れ点の列（直線でつないだ 1 周期の波形）の n 次のフーリエ係数を、区間ごとに厳密に積分する。
+ * 戻り値 {ac, bs}：ac = ∫v cos(nω0 t) dt、bs = ∫v sin(nω0 t) dt（0〜T）。c_n = (ac − j·bs)/T
+ */
+function fourierPWL(pts, T, n) {
+  const w = 2 * Math.PI * n / T;
+  let re = 0, im = 0;
+  for (let k = 1; k < pts.length; k++) {
+    const t0 = pts[k - 1][0], t1 = pts[k][0], y0 = pts[k - 1][1], y1 = pts[k][1], dt = t1 - t0;
+    if (dt <= 0) continue;
+    if (w * dt < 1e-4) {
+      const c0 = Math.cos(w * t0), s0 = Math.sin(w * t0), c1 = Math.cos(w * t1), s1 = Math.sin(w * t1);
+      re += (y0 * c0 + y1 * c1) / 2 * dt; im += (y0 * s0 + y1 * s1) / 2 * dt;
+    } else {
+      const c0 = Math.cos(w * t0), s0 = Math.sin(w * t0), c1 = Math.cos(w * t1), s1 = Math.sin(w * t1), sl = (y1 - y0) / dt;
+      re += y0 * (s1 - s0) / w + sl * (dt * s1 / w + (c1 - c0) / (w * w));
+      im += -y0 * (c1 - c0) / w + sl * (-dt * c1 / w + (s1 - s0) / (w * w));
+    }
+  }
+  return {ac: re, bs: im};
+}
+/** p14 の式：|c_n| = A(τ/T)|sin(½nω0τ)/(½nω0τ)|·|sin(½nω0τr)/(½nω0τr)| */
+function hmSinc(x) { return Math.abs(x) < 1e-12 ? 1 : Math.sin(x) / x; }
+function hmCnTh(p, n) {
+  const w0 = 2 * Math.PI / p.T, tau = p.D * p.T;
+  return Math.abs(p.A * tau / p.T * hmSinc(0.5 * n * w0 * tau) * hmSinc(0.5 * n * w0 * p.tr));
+}
+/** スペクトル：1〜nMax 次の |c_n|（数値の積分）と、いくつかの比較の値 */
+function harmonicSpectrum(p) {
+  const pts = hmCorners(p), T = p.T;
+  const nMax = Math.min(20000, Math.max(100, Math.ceil(30 / (Math.PI * p.tr) * T)));
+  const ac = new Float64Array(nMax + 1), bs = new Float64Array(nMax + 1), mag = new Float64Array(nMax + 1);
+  for (let n = 0; n <= nMax; n++) { const r = fourierPWL(pts, T, n); ac[n] = r.ac; bs[n] = r.bs; mag[n] = Math.hypot(r.ac, r.bs) / T; }
+  return {nMax, ac, bs, mag, pts};
+}
+/** 比較に使う次数：−20 dB/decade の区間の中ほど（nMid）と、1/(πτr) の 3 倍のあたりの山（nHi） */
+function hmPickN(p) {
+  const T = p.T, tau = p.D * T, fa = 1 / (Math.PI * tau), fb = 1 / (Math.PI * p.tr);
+  let nMid = null, nHi = null;
+  if (fb / Math.max(fa, 1 / T) > 10) {
+    const n0 = Math.max(2, Math.round(Math.sqrt(Math.max(fa, 1 / T) * fb) * T));
+    let best = -1;
+    for (let n = n0; n <= n0 + Math.ceil(1 / Math.min(p.D, 1 - p.D)) + 2; n++) { const v = hmCnTh(p, n) * n; if (v > best) { best = v; nMid = n; } }
+  }
+  const n0 = Math.max(2, Math.round(3 * fb * T)), wd = Math.min(4000, Math.ceil(T / p.tr) + Math.ceil(1 / Math.min(p.D, 1 - p.D)) + 2);
+  let best = -1;
+  for (let n = n0; n <= n0 + wd; n++) { const v = hmCnTh(p, n); if (v > best) { best = v; nHi = n; } }
+  return {nMid, nHi};
+}
+/** 時間波形（表示用）：mode 'per' は 2 周期、'zoom' は立ち上がりの 0〜5τr */
+function simulateHarm(p0, mode, Nsum) {
+  const trMax = Math.min(p0.D, 1 - p0.D) * p0.T;
+  const p = Object.assign({}, p0, {tr: Math.min(p0.tr, trMax)});
+  const spec = harmonicSpectrum(p);
+  const T = p.T, tau = p.D * T;
+  let ts = [];
+  if (mode === 'zoom') {
+    const span = Math.min(5 * p.tr, T);
+    for (let k = 0; k <= 800; k++) ts.push(span * k / 800);
+    for (const c of [p.tr, tau, tau + p.tr]) if (c < span) ts.push(c);
+  } else {
+    const np = 2, M = 2000;
+    for (let q = 0; q < np; q++) {
+      for (let k = 0; k < M; k++) ts.push(q * T + T * k / M);
+      for (const c of [p.tr, tau, tau + p.tr]) ts.push(q * T + c);
+    }
+    ts.push(np * T);
+  }
+  ts = Float64Array.from(new Set(ts)).sort();
+  const n = ts.length, u = new Float64Array(n), ph = new Uint8Array(n), sum = new Float64Array(n), h1 = new Float64Array(n);
+  const w0 = 2 * Math.PI / T, N = Math.min(Nsum, spec.nMax);
+  for (let k = 0; k < n; k++) {
+    const r = hmU(p, ts[k]);
+    u[k] = r[0]; ph[k] = r[1];
+    // 端の点（t = T など）は、次の周期の始まりではなく前の周期の終わり（0 V）として描く
+    if (k === n - 1 && mode !== 'zoom') { u[k] = 0; ph[k] = 3; }
+    const c0 = spec.ac[0] / T;
+    h1[k] = c0 + 2 / T * (spec.ac[1] * Math.cos(w0 * ts[k]) + spec.bs[1] * Math.sin(w0 * ts[k]));
+    let s = c0;
+    for (let m = 1; m <= N; m++) s += 2 / T * (spec.ac[m] * Math.cos(m * w0 * ts[k]) + spec.bs[m] * Math.sin(m * w0 * ts[k]));
+    sum[k] = s;
+  }
+  return {t: ts, u, ph, sum, h1, spec, p, mode, N, T: mode === 'zoom' ? p.tr : T, trClamped: p0.tr > trMax};
+}
+// ==SIM-END==
+</script>
+<script>
+(() => {
+'use strict';
+const XL = 260, YT = 0, YB = 340, YM = 170, XO = 470;
+let mode = 'per', Nsum = 11, overlay = true, commitPending = true;
+const modeBtns = [], sw = {};
+const fmtP = (unit, sig = 3) => (x) => {
+  if (!isFinite(x)) return '—';
+  const pf = [[1e6, 'M'], [1e3, 'k'], [1, ''], [1e-3, 'm'], [1e-6, 'μ'], [1e-9, 'n'], [1e-12, 'p']];
+  let q = pf[pf.length - 1]; for (const r of pf) if (Math.abs(x) >= r[0] * 0.99995) { q = r; break; }
+  return (x / q[0]).toPrecision(sig).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '') + ' ' + q[1] + unit;
+};
+const dB = (x) => 20 * Math.log10(Math.max(x, 1e-30));
+const winSub = document.getElementById('winsub');
+
+// ---------------- スペクトル ----------------
+const specCv = document.getElementById('spec'), specLeg = document.getElementById('speclegend');
+const SCOL = [COL.blue, COL.orange, COL.green, COL.fuchsia];
+let cur = null, base = null, ghosts = [];
+const keyOf = (p) => [p.A, p.D, p.T, p.tr].join(',');
+const labelOf = (p) => `T = ${fmtP('s')(p.T)}、τr = ${fmtP('s')(p.tr)}${p.D !== 0.5 ? `、D = ${p.D}` : ''}${p.A !== 1 ? `、A = ${fmtP('V')(p.A)}` : ''}`;
+function specEntry(S) { return {p: S.p, mag: S.spec.mag, nMax: S.spec.nMax, key: keyOf(S.p)}; }
+function onNewSpectrum(S) {
+  const e = specEntry(S);
+  if (!overlay) { ghosts = []; base = e; cur = e; commitPending = false; drawSpectrum(); return; }
+  if (commitPending) {
+    if (base && base.key !== e.key) { ghosts = ghosts.filter(g => g.key !== base.key && g.key !== e.key); ghosts.push(base); while (ghosts.length > 2) ghosts.shift(); }
+    base = e; commitPending = false;
+  }
+  cur = e;
+  drawSpectrum();
+}
+function drawSpectrum() {
+  if (!cur) return;
+  const list = [...ghosts.filter(g => g.key !== cur.key)];
+  if (overlay && base && base.key !== cur.key && !list.some(g => g.key === base.key)) list.push(base);
+  list.push(cur);
+  const W = specCv.parentElement.clientWidth - 28, phone = W < 560, H = phone ? 300 : 380;
+  const dpr = window.devicePixelRatio || 1;
+  specCv.width = Math.round(W * dpr); specCv.height = Math.round(H * dpr); specCv.style.height = H + 'px';
+  const c = specCv.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.fillStyle = '#fff'; c.fillRect(0, 0, W, H);
+  const ML = phone ? 40 : 52, MR = 10, MT = 10, MB = 40, gw = W - ML - MR, gh = H - MT - MB;
+  let fLo = Infinity, fHi = 0, top = -Infinity;
+  for (const e of list) { fLo = Math.min(fLo, 1 / e.p.T); fHi = Math.max(fHi, e.nMax / e.p.T); top = Math.max(top, dB(e.mag[1])); }
+  const d0 = Math.floor(Math.log10(fLo) + 1e-9), d1 = Math.max(d0 + 2, Math.ceil(Math.log10(fHi) - 1e-9));
+  const yTop = Math.ceil((top + 4) / 20) * 20, yBot = yTop - 100;
+  const X = (f) => ML + (Math.log10(f) - d0) / (d1 - d0) * gw, Y = (v) => MT + (yTop - v) / (yTop - yBot) * gh;
+  // 目盛り
+  c.font = '11px Menlo, monospace'; c.fillStyle = COL.sub; c.lineWidth = 1;
+  for (let d = d0; d <= d1; d++) {
+    for (let m = 1; m < 10; m++) {
+      const f = m * 10 ** d; if (f > 10 ** d1 * 1.0001) break;
+      const x = X(f); c.strokeStyle = m === 1 ? '#d5dbe2' : '#f1f4f7'; c.beginPath(); c.moveTo(x, MT); c.lineTo(x, MT + gh); c.stroke();
+    }
+    c.textAlign = 'center';
+    const lbl = d >= 6 ? `${10 ** (d - 6)}M` : d >= 3 ? `${10 ** (d - 3)}k` : `${10 ** d}`;
+    c.textAlign = d === d1 ? 'right' : d === d0 ? 'left' : 'center';
+    c.fillText(lbl, X(10 ** d) + (d === d1 ? 2 : d === d0 ? -2 : 0), MT + gh + 14);
+  }
+  c.textAlign = 'center'; c.fillText('周波数 f [Hz]', ML + gw / 2, MT + gh + 32);
+  c.textAlign = 'right';
+  for (let v = yBot; v <= yTop + 1e-9; v += 20) { const y = Y(v); c.strokeStyle = '#e5e9ee'; c.beginPath(); c.moveTo(ML, y); c.lineTo(ML + gw, y); c.stroke(); c.fillText(String(v), ML - 4, y + 4); }
+  c.save(); c.translate(11, MT + gh / 2); c.rotate(-Math.PI / 2); c.textAlign = 'center'; c.font = '11px sans-serif'; c.fillText('振幅 |cₙ| [dB]', 0, 0); c.restore();
+  c.strokeStyle = '#b8c2cc'; c.strokeRect(ML + 0.5, MT + 0.5, gw - 1, gh - 1);
+  c.save(); c.beginPath(); c.rect(ML, MT, gw, gh); c.clip();
+  // 包絡線（p14 の式で sin を 1 とした直線）と、折れ点の破線
+  list.forEach((e, idx) => {
+    const col = e === cur ? SCOL[0] : SCOL[1 + idx % 3];
+    e.col = col;
+    const p = e.p, tau = p.D * p.T, fa = 1 / (Math.PI * tau), fb = 1 / (Math.PI * p.tr);
+    const env = (f) => p.A * p.D * Math.min(1, fa / f) * Math.min(1, fb / f);
+    c.strokeStyle = col; c.globalAlpha = 0.22; c.lineWidth = 9; c.lineCap = 'round';
+    c.beginPath();
+    for (let q = 0; q <= 200; q++) { const f = 10 ** (Math.log10(1 / p.T) + q / 200 * (Math.log10(e.nMax / p.T) - Math.log10(1 / p.T))); const x = X(f), y = Y(dB(env(f))); if (q === 0) c.moveTo(x, y); else c.lineTo(x, y); }
+    c.stroke(); c.globalAlpha = 1;
+    c.setLineDash([6, 5]); c.lineWidth = 1.6; c.strokeStyle = col;
+    c.beginPath(); c.moveTo(X(fb), MT); c.lineTo(X(fb), MT + gh); c.stroke();
+    c.setLineDash([]);
+  });
+  // 点（シミュレーション）
+  list.forEach((e) => {
+    c.fillStyle = e.col;
+    const r = e === cur ? 2.4 : 2;
+    for (let n = 1; n <= e.nMax; n++) {
+      const v = dB(e.mag[n]); if (v < yBot - 5) continue;
+      const x = X(n / e.p.T), y = Y(v);
+      c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
+    }
+  });
+  c.restore();
+  // 傾きの札（今の結果）
+  const p = cur.p, tau = p.D * p.T, fa = Math.max(1 / (Math.PI * tau), 1 / p.T), fb = 1 / (Math.PI * p.tr);
+  const env = (f) => p.A * p.D * Math.min(1, 1 / (Math.PI * tau) / f) * Math.min(1, fb / f);
+  c.font = `italic 13px ${SERIF}`; c.textAlign = 'left';
+  const tag = (f, txt) => { const x = X(f), y = Y(dB(env(f))) - 12; if (x < ML + 4 || x > ML + gw - 80 || y < MT + 12 || y > MT + gh) return; c.fillStyle = 'rgba(255,255,255,0.85)'; const w = c.measureText(txt).width; c.fillRect(x - 2, y - 12, w + 4, 16); c.fillStyle = COL.ink; c.fillText(txt, x, y); };
+  if (fb / fa > 4) tag(Math.sqrt(fa * fb), '−20 dB/decade');
+  tag(fb * 3, '−40 dB/decade');
+  { const x = X(fb); if (x > ML && x < ML + gw - 50) { c.fillStyle = cur.col; c.font = `italic 13px ${SERIF}`; c.textAlign = 'left'; c.fillText('1/(πτr)', x + 4, MT + 14); } }
+  specLeg.innerHTML = list.map(e => `<span><span class="dot" style="background:${e.col}"></span>${labelOf(e.p)}${e === cur ? '（今の値）' : ''}</span>`).join('');
+  document.getElementById('specsub').innerHTML = `折れ点 1/(πτ) = ${fmtP('Hz')(1 / (Math.PI * tau))}、1/(πτ<sub>r</sub>) = ${fmtP('Hz')(fb)}（破線）`;
+}
+window.addEventListener('resize', drawSpectrum);
+
+const NSEL = [1, 3, 5, 11, 21, 51, 201];
+const app = SimApp({
+  pdef: [
+    {k: 'A', b: 'A', s: '', title: '台形波の高さ', min: 0.1, max: 100, log: true, unit: 'V', def: 1, fmt: fmtP('V')},
+    {k: 'D', b: 'D', s: '', title: 'デューティ比（τ = DT）', min: 0.05, max: 0.95, step: 0.01, log: false, unit: '', def: 0.5},
+    {k: 'T', b: 'T', s: '', title: 'スイッチング周期', min: 1e-6, max: 10e-3, log: true, unit: 's', def: 1e-3, fmt: fmtP('s')},
+    {k: 'tr', b: 'τ', s: 'r', title: '立ち上がり時間（= 立ち下がり時間）', min: 1e-9, max: 1e-3, log: true, unit: 's', def: 0.1e-6, fmt: fmtP('s')},
+  ],
+  extraParams(el, a) {
+    const d = document.createElement('div');
+    d.className = 'crow'; d.style.flexWrap = 'wrap';
+    d.innerHTML = `<span style="min-width:4.6em">波形</span><span class="seg"><button data-v="per">2 周期</button><button data-v="zoom">立ち上がりの拡大</button></span>`;
+    d.querySelectorAll('button').forEach(b => { modeBtns.push(b); b.onclick = () => setMode(b.dataset.v, a); });
+    el.insertBefore(d, el.firstChild);
+    const d2 = document.createElement('div');
+    d2.className = 'crow';
+    d2.innerHTML = `<label>足し合わせる次数 <span class="eq">N</span> <select id="nsum">${NSEL.map(n => `<option${n === Nsum ? ' selected' : ''}>${n}</option>`).join('')}</select></label>`;
+    el.appendChild(d2);
+    d2.querySelector('select').onchange = (e) => { Nsum = +e.target.value; if (!a.probes.has('x:sum')) a.toggleProbe('x:sum'); a.schedule(); };
+    const d3 = document.createElement('div');
+    d3.className = 'crow';
+    d3.innerHTML = `<label><input type="checkbox" id="ovl" checked> 前の結果をスペクトルに重ねる（最大 3 本）</label>`;
+    el.appendChild(d3);
+    d3.querySelector('input').onchange = (e) => { overlay = e.target.checked; if (!overlay) { ghosts = []; base = cur; } drawSpectrum(); };
+    // スライダーを離したとき（change）に、その前の結果を「重ねる」側に入れる
+    for (const k in a.sliders) a.sliders[k].inp.addEventListener('change', () => { commitPending = true; a.schedule(); });
+    showMode();
+  },
+  presets: [
+    {name: 'p15：T = 1 ms', v: {A: 1, D: 0.5, T: 1e-3, tr: 0.1e-6}, apply: () => { commitPending = true; }},
+    {name: 'p15：T = 0.1 ms', v: {A: 1, D: 0.5, T: 0.1e-3, tr: 0.1e-6}, apply: () => { commitPending = true; }},
+    {name: 'p15：T = 0.01 ms', v: {A: 1, D: 0.5, T: 0.01e-3, tr: 0.1e-6}, apply: () => { commitPending = true; }},
+    {name: 'p16：τᵣ = 0.1 ms', v: {A: 1, D: 0.5, T: 1e-3, tr: 0.1e-3}, apply: () => { commitPending = true; }},
+    {name: 'p16：τᵣ = 0.01 ms', v: {A: 1, D: 0.5, T: 1e-3, tr: 0.01e-3}, apply: () => { commitPending = true; }},
+    {name: 'p16：τᵣ = 0.001 ms', v: {A: 1, D: 0.5, T: 1e-3, tr: 0.001e-3}, apply: () => { commitPending = true; }},
+  ],
+  simulate: (P) => simulateHarm({A: P.A, D: P.D, T: P.T, tr: P.tr}, mode, Nsum),
+  metrics: (S) => ({}),
+  gatePane: gateRowsPane([
+    {label: 'S₁', color: COL.fuchsia, on: (S, k) => S.ph[k] === 1},
+    {label: 'S₂', color: COL.violet, on: (S, k) => S.ph[k] === 3},
+  ]),
+  probes: {
+    'n:P':   {b: 'A', s: '', color: COL.blue, q: 'V', what: '電源の＋の線の電位（= A）', f: (S) => S.p.A},
+    'n:sw':  {b: 'v', s: 'sw', color: COL.ink, q: 'V', what: 'レグの中点（スイッチの出力）の電位 v_sw', f: (S, k) => S.u[k]},
+    'n:gnd': {b: 'GND', s: '', color: COL.sub, q: 'V', what: '基準の節点（0 V）', f: () => 0},
+    'v:A':   {b: 'A', s: '', color: COL.blue, q: 'V', what: '電源の電圧（上が＋）', f: (S) => S.p.A},
+    'v:S1':  {b: 'v', s: 'S1', color: COL.fuchsia, q: 'V', what: 'S₁ の両端の電圧（上が＋）', f: (S, k) => S.p.A - S.u[k]},
+    'v:S2':  {b: 'v', s: 'S2', color: COL.violet, q: 'V', what: 'S₂ の両端の電圧（上が＋）', f: (S, k) => S.u[k]},
+    'x:h1':  {b: 'v', s: '1', up: true, color: COL.teal, q: 'V', what: '直流分＋基本波 c₀ + 2|c₁|cos(ω₀t + ∠c₁)', f: (S, k) => S.h1[k]},
+    'x:sum': {b: 'v', get s() { return String(Nsum); }, color: COL.orange, q: 'V', get what() { return `第 ${Nsum} 次までの高調波の和（フーリエ級数の部分和。次数 N は「足し合わせる次数」で選ぶ）`; }, f: (S, k) => S.sum[k]}, // 記号の添字は実際の次数（v₁₁ など）
+  },
+  defaultProbes: ['n:sw', 'x:sum'],
+  extraButtons: [{key: 'x:h1', label: '直流分＋基本波'}, {key: 'x:sum', label: '第 N 次までの和'}],
+  refLines: [{keys: ['n:sw', 'x:sum', 'x:h1'], val: (S) => S.p.A * S.p.D, label: '平均 c₀ = Aτ/T', color: COL.sub}],
+  build(K) {
+    const {el, W, gWire} = K;
+    const yS = [[40, 120], [220, 300]];
+    const nodeW = {
+      P: [[[0, YM - 9], [0, YT], [XL, YT], [XL, yS[0][0]]]],
+      sw: [[[XL, yS[0][1]], [XL, yS[1][0]]], [[XL, YM], [XO - 6, YM]]],
+      gnd: [[[0, YM + 9], [0, YB], [XL, YB], [XL, yS[1][1]]], [[0, YB], [0, YB + 16]]],
+    };
+    for (const n in nodeW) nodeW[n].forEach(pp => W(pp));
+    K.battery(0, YM);
+    K.name(-40, YM + 12, 'A', 'end');
+    el('line', {x1: -16, y1: YB + 16, x2: 16, y2: YB + 16}, gWire);
+    el('line', {x1: -10, y1: YB + 22, x2: 10, y2: YB + 22}, gWire);
+    el('line', {x1: -4, y1: YB + 28, x2: 4, y2: YB + 28}, gWire);
+    sw.S1 = K.switch([XL, yS[0][0]], [XL, yS[0][1]], -1);
+    sw.S2 = K.switch([XL, yS[1][0]], [XL, yS[1][1]], -1);
+    K.name(XL - 34, 92, 'S', 'end', 30, '1'); K.name(XL - 34, 272, 'S', 'end', 30, '2');
+    K.dot(XL, YM);
+    el('circle', {cx: XO, cy: YM, r: 6, fill: '#fff'}, gWire);
+    K.text(XO + 14, YM + 6, '負荷へ', COL.sub, 18, 'start');
+    K.box(XL - 80, 20, 150, 300, COL.fuchsia);
+    K.text(XL + 80, 312, 'スイッチのレグ', COL.fuchsia, 18, 'start');
+    // 台形波の小さな絵
+    W([[XO - 110, YM + 70], [XO - 90, YM + 70], [XO - 80, YM + 40], [XO - 40, YM + 40], [XO - 30, YM + 70], [XO + 10, YM + 70]], gWire, {stroke: COL.sub, 'stroke-width': 2});
+    K.text(XO - 50, YM + 98, 'v_sw の形', COL.sub, 16);
+    return {
+      nodeW,
+      hits: [['e:A', [-34, YM - 26, 68, 52]], ['e:S1', [XL - 30, yS[0][0] - 6, 60, yS[0][1] - yS[0][0] + 12]], ['e:S2', [XL - 30, yS[1][0] - 6, 60, yS[1][1] - yS[1][0] + 12]]],
+      arrows: {
+        'v:A': [[-80, YM + 44], [-80, YM - 44], 'L'],
+        'v:S1': [[XL + 44, yS[0][1]], [XL + 44, yS[0][0]], 'R'],
+        'v:S2': [[XL + 44, yS[1][1]], [XL + 44, yS[1][0]], 'R'],
+      },
+      nodeTag: {P: [XL / 2, YT, 0, -14], sw: [XO - 60, YM, 0, -16], gnd: [XL / 2, YB, 0, 36]},
+      loops: {},
+      sw,
+    };
+  },
+  onRun(S) {
+    onNewSpectrum(S);
+    document.getElementById('win').style.display = S.mode === 'zoom' ? 'none' : '';
+    document.getElementById('nper').style.display = S.mode === 'zoom' ? 'none' : '';
+    winSub.textContent = S.mode === 'zoom' ? `立ち上がりの始まりを t = 0 として 0〜${fmtP('s')(5 * S.p.tr)}` : `t = 0 が立ち上がりの始まり。第 ${S.N} 次までの和は「足し合わせる次数 N」で変える`;
+  },
+  state(S, k) {
+    const ph = S.ph[k];
+    const html = [
+      `<span class="sw-on">S₁ オンへ切り替え中</span>（S₂ はオフへ）：<span class="eq">v<sub>sw</sub></span> が <span class="eq">τ<sub>r</sub></span> の間に 0 → <span class="eq">A</span>。`,
+      `<span class="sw-on">S₁ オン・S₂ オフ</span>：<span class="eq">v<sub>sw</sub> = A</span>。`,
+      `<span class="sw-off">S₂ オンへ切り替え中</span>（S₁ はオフへ）：<span class="eq">v<sub>sw</sub></span> が <span class="eq">τ<sub>f</sub> = τ<sub>r</sub></span> の間に <span class="eq">A</span> → 0。`,
+      `<span class="sw-off">S₁ オフ・S₂ オン</span>：<span class="eq">v<sub>sw</sub></span> = 0。`][ph];
+    return {sw: {S1: ph <= 1, S2: ph >= 2}, html};
+  },
+  metricsHtml(S) {
+    const p = S.p, sp = S.spec, T = p.T, w0 = 2 * Math.PI / T;
+    const {nMid, nHi} = hmPickN(p);
+    const cnNum = (n) => n <= sp.nMax ? sp.mag[n] : Math.hypot(...Object.values(fourierPWL(sp.pts, T, n))) / T;
+    const fv = (x) => `${fmtP('V', 4)(x)}（${dB(x).toFixed(2)} dB）`;
+    let rows = `<tr><th>量</th><th>シミュレーション</th><th>授業の式（p14）</th><th>式の値</th><th>差</th></tr>`;
+    const c0 = sp.ac[0] / T;
+    rows += `<tr><td>直流分（平均）<span class="eq">c<sub>0</sub></span></td><td class="num">${fmtP('V', 4)(c0)}</td><td class="eq">c<sub>0</sub> = Aτ/T</td><td class="num">${fmtP('V', 4)(p.A * p.D)}</td><td>${pctDiff(c0, p.A * p.D)} ${okMark(c0, p.A * p.D, 0.02)}</td></tr>`;
+    const nl = [1];
+    for (let n = 2; n <= 9 && nl.length < 2; n++) if (hmCnTh(p, n) > 1e-6 * hmCnTh(p, 1)) nl.push(n);
+    const what = (n) => n === 1 ? '基本波' : n === nMid ? '−20 dB/decade の区間' : n === nHi ? '−40 dB/decade の区間の山' : '低い次数';
+    if (nMid) nl.push(nMid);
+    nl.push(nHi);
+    for (const n of nl) {
+      const a = cnNum(n), b = hmCnTh(p, n);
+      rows += `<tr><td>${n} 次（${fmtP('Hz')(n / T)}、${what(n)}）の <span class="eq">|c<sub>${n}</sub>|</span></td><td class="num">${fv(a)}</td><td class="eq">A(τ/T)|sinc(½nω<sub>0</sub>τ)|·|sinc(½nω<sub>0</sub>τ<sub>r</sub>)|</td><td class="num">${fv(b)}</td><td>${pctDiff(a, b)} ${okMark(a, b, 0.02)}</td></tr>`;
+    }
+    // 立ち上がり時間で小さくなる量（同じ τ の矩形波との比）
+    const tau = p.D * T, rect = [[0, 0], [p.tr / 2, 0], [p.tr / 2, p.A], [p.tr / 2 + tau, p.A], [p.tr / 2 + tau, 0], [T, 0]];
+    const rr = cnNum(nHi) / (Math.hypot(...Object.values(fourierPWL(rect, T, nHi))) / T), rth = Math.abs(hmSinc(0.5 * nHi * w0 * p.tr));
+    rows += `<tr><td>${nHi} 次で、立ち上がり時間 0 の矩形波（同じ τ）に対する大きさ</td><td class="num">${rr.toPrecision(4)}（${dB(rr).toFixed(2)} dB）</td><td class="eq">|sin(½nω<sub>0</sub>τ<sub>r</sub>)/(½nω<sub>0</sub>τ<sub>r</sub>)|</td><td class="num">${rth.toPrecision(4)}（${dB(rth).toFixed(2)} dB）</td><td>${pctDiff(rr, rth)} ${okMark(rr, rth, 0.02)}</td></tr>`;
+    const sub = `sinc(x) = sin(x)/x、ω<sub>0</sub> = 2π/T。1 周期の波形を数値で積分したフーリエ係数と比べています。` + (S.trClamped ? ` <span class="ng">τ<sub>r</sub> が長すぎるので ${fmtP('s')(p.tr)} にしています</span>` : '');
+    return {rows, sub};
+  },
+});
+
+function showMode() { modeBtns.forEach(b => b.classList.toggle('on', b.dataset.v === mode)); }
+function setMode(m, a) {
+  mode = m; showMode();
+  document.querySelector('#win button[data-w="all"]').click();
+  a.schedule();
+}
+})();
+</script>
+</body>
+</html>

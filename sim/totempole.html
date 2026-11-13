@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>トーテムポール形 PFC のシミュレーター — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  .ctlsel { flex-wrap: wrap; gap: 4px !important; }
+  .ctlsel button { font: inherit; font-size: 0.78rem; border: 1px solid var(--border); background: #fff; border-radius: 8px; padding: 2px 8px; cursor: pointer; color: var(--text-secondary); white-space: nowrap; }
+  .ctlsel button.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  table.m tr.cmp td { background: #f7f8fa; }
+  table.m tr.cur td { font-weight: 700; }
+</style>
+</head>
+<body>
+<header>
+  <nav class="hnav"><a href="../index.html">← 科目のページへ戻る</a><a href="index.html">回路を選ぶ（シミュレーターの一覧）</a></nav>
+  <h1>トーテムポール・ブリッジレス PFC のシミュレーター</h1>
+  <div class="subtitle">パワーエレクトロニクス 第10回 交流-直流変換（２） p47〜48 / 大阪工業大学</div>
+</header>
+<main>
+  <div class="notice">
+    ダイオードブリッジを使わず、<b>高速の脚（Q<sub>1</sub>・Q<sub>2</sub>、ブースト用スイッチ）</b>と<b>低速の脚（Q<sub>3</sub>・Q<sub>4</sub>、整流用スイッチ）</b>で力率改善をする回路です（p47〜48）。
+    <b>期間 I（v<sub>S</sub> &gt; 0）では Q<sub>4</sub> がオンのまま、Q<sub>2</sub> がスイッチング、Q<sub>1</sub> が同期整流</b>。<b>期間 II（v<sub>S</sub> &lt; 0）では Q<sub>3</sub> がオンのまま、Q<sub>1</sub> がスイッチング、Q<sub>2</sub> が同期整流</b>と、動く素子が入れ替わります（グラフのいちばん上の段がゲート信号）。
+    回路図の<b>線をクリック</b>すると電位（直流側の − の線が 0 V）、<b>素子をクリック</b>すると電流が出ます。スイッチングを見るには「定常状態」で「交流の周期の数」を 1/50 などにして拡大してください。
+  </div>
+
+  <div class="top">
+    <section class="card">
+      <div class="card-h">
+        <span class="ttl">回路</span>
+        <span class="small">素子をクリックしたとき：</span>
+        <span class="seg" id="emode"><button data-m="i" class="on">電流</button><button data-m="v">両端の電圧</button></span>
+      </div>
+      <svg id="sch" viewBox="-130 -100 1040 520" aria-label="トーテムポール形 PFC の回路図"></svg>
+      <div id="state"></div>
+    </section>
+
+    <section class="card params">
+      <div class="card-h"><span class="ttl">回路の値</span></div>
+      <div class="card-b" id="params"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-h">
+      <span class="ttl">波形</span>
+      <span class="seg" id="win">
+        <button data-w="all">起動から最後まで</button><button data-w="first">起動直後</button><button data-w="last" class="on">定常状態</button>
+      </span>
+    </div>
+    <div class="ctl">
+      <button id="play">▶ 再生</button>
+      <label>速さ <select id="speed"><option value="0.02">×0.02</option><option value="0.1">×0.1</option><option value="0.25">×0.25</option><option value="0.5">×0.5</option><option value="1" selected>×1</option><option value="2">×2</option><option value="4">×4</option></select></label>
+      <label id="nper">交流の周期の数 <select id="nP"><option value="0.02">1/50（拡大）</option><option value="0.1">1/10</option><option value="0.5">1/2</option><option value="1" selected>1</option><option value="2">2</option><option value="5">5</option></select></label>
+      <label>グラフ <select id="lay"><option value="vi">電圧と電流の2段</option><option value="each">1本ずつ別の段</option></select></label>
+    </div>
+    <div class="scrubrow"><input type="range" id="scrub" min="0" max="10000" value="0" aria-label="時刻"><span class="tc" id="tc"></span></div>
+    <div id="legend"></div>
+    <div id="plotwrap"><canvas id="plot"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">定常状態の値と、授業の式の比較</span><span class="small" id="msub"></span></div>
+    <div class="card-b" style="overflow-x:auto"><table class="m" id="metrics"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">このシミュレーターの前提</span></div>
+    <div class="card-b">
+      <ul class="notes">
+        <li>電源は <span class="eq">v<sub>S</sub> = V<sub>0</sub> sin ωt</span>。MOSFET は理想のスイッチ（オンで 0 Ω）で、コイル・コンデンサ・抵抗も理想です。コイルの電流 <span class="eq">i<sub>L</sub></span>（右向きが正）は、そのまま電源の電流 <span class="eq">i<sub>S</sub></span> です（ブリッジがない）。</li>
+        <li>期間 I：Q<sub>4</sub> がオンで、電源の下の端子が直流の − の線につながる。Q<sub>2</sub> オンで <span class="eq">L di<sub>L</sub>/dt = v<sub>S</sub></span>（増える）、Q<sub>2</sub> オフで電流は Q<sub>1</sub> を通って C・R へ、<span class="eq">L di<sub>L</sub>/dt = v<sub>S</sub> − v<sub>C</sub></span>（減る）。期間 II はその逆で、Q<sub>3</sub> がオン、Q<sub>1</sub> がブースト用、Q<sub>2</sub> が同期整流、<span class="eq">L di<sub>L</sub>/dt = v<sub>S</sub></span> または <span class="eq">v<sub>S</sub> + v<sub>C</sub></span>。どちらの期間も、電流が通る半導体は 2 個です（p47 の利点②）。</li>
+        <li><span class="eq">|i<sub>L</sub>|</span> と <span class="eq">|v<sub>S</sub>|</span> で書くと、昇圧形 PFC（ブリッジ＋昇圧チョッパー、<a href="pfc.html" style="color:var(--accent)">pfc.html</a>）とまったく同じ式になります。制御（平均電流制御・ヒステリシス制御）も同じ模式で、目標 <span class="eq">i<sub>ref</sub> = I<sub>pk</sub> sin ωt</span>、<span class="eq">I<sub>pk</sub> = 2V<sub>o</sub>*²/(R V<sub>0</sub>)</span> です。</li>
+        <li>同期整流の素子は、電流が 0 になったらオフする（ダイオードと同じ動き）としています。ゼロクロスでの低速の脚の切り替えは、電流が 0 のときに行われる（理想）とします。デッドタイム・寄生容量・逆回復は考えません（p47 の欠点②の問題は出てこない）。</li>
+        <li>導通損失の見積もり（p45・p47）：電流が通る半導体 1 個あたり 1 V の電圧降下として、<span class="eq">（個数）× 1 V × (|i<sub>S</sub>| の平均)</span> を入力の電力と比べました。正弦波の電流なら、トーテムポール形（2 個）は <span class="eq">8V<sub>F</sub>/(πV<sub>0</sub>)</span>、昇圧形（ブリッジ 2 個＋Q か D<sub>b</sub> の 1 個、合わせて 3 個）は <span class="eq">12V<sub>F</sub>/(πV<sub>0</sub>)</span>。実際の MOSFET（SiC・GaN）はオン抵抗による損失なので、この比較は「通る個数」の比較です。</li>
+        <li>t = 0 でコンデンサは <span class="eq">V<sub>0</sub></span> まで充電されているとし、<span class="eq">v<sub>S</sub></span> の山の近くで終わります（拡大すると山のスイッチングが見える）。オンの割合 D と振れ幅 ΔI<sub>L</sub> は、山をはさむ 2 スイッチング周期で測り、昇圧チョッパーの式（<span class="eq">f<sub>sw</sub></span> が電源の周波数よりずっと高く、1 周期の間 <span class="eq">|v<sub>S</sub>|</span> がほぼ一定とみなせるときの式）と比べています。入力フィルタは入れていないので、電源の電流にはスイッチングのリプルがそのまま含まれます。</li>
+        <li>計算は 4 次のルンゲ・クッタ法で、スイッチの切り替わりと電流が 0 になる時刻は二分法で求めています。</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<footer>パワーエレクトロニクス ｜ 神野 崇馬 ｜ 試作版</footer>
+<div id="tip"></div>
+
+<script src="common.js"></script>
+<script>
+// ==SIM-BEGIN==
+// トーテムポール形 PFC は、u = |i_L| と |v_S| で書くと昇圧形 PFC と同じ式になるので、昇圧形の計算（pfcModel）をそのまま使う。
+// 下の tp*** が、トーテムポールの素子ごとの電流（i_L = sign(v_S)·u）。
+/**
+ * 昇圧形（ブースト形）PFC：ダイオードブリッジ → コイル L → スイッチ Q（下）とダイオード D_b（右）→ C と R。
+ * p = {ctl, V0, f, Vo（出力の電圧の目標 V_o*）, R, C, L, fsw（スイッチングの周波数）, hb（ヒステリシスの幅）}
+ *   ctl：'avg' 平均電流制御（周波数一定）/ 'hys' ヒステリシス制御 / 'off' 制御なし（Q はオフのまま＝コイルつきのキャパシタインプット形）
+ * 状態変数 x = [u, v_C]。u はコイルの電流（ブリッジの出力側に流れる向き、≥ 0。電源の電流は i_S = sign(v_S)·u）。
+ * 離散状態 s：bit0 = Q のゲート（1 オン）、bit1 = 電流が止まっている（u = 0 で、ブリッジも D_b も流れない）。
+ * 目標の電流 i_ref = I_pk |sin ωt|。I_pk = 2 V_o*² / (R V0)（入力の電力 V0 I_pk / 2 = 出力の電力 V_o*² / R から決める）。
+ * t = 0 で u = 0、v_C = V0（電源の山まで充電されている）。トーテムポール形も、u と |v_S| で書くと同じ式になる。
+ */
+function pfcModel(p) {
+  const T = 1 / p.f, w = 2 * Math.PI * p.f, V0 = p.V0, Ts = 1 / p.fsw, L = p.L, R = p.R, C = p.C;
+  const vin = (t) => Math.abs(V0 * Math.sin(w * t));
+  const Ipk = 2 * p.Vo * p.Vo / (R * V0);
+  const iref = (t) => Ipk * Math.abs(Math.sin(w * t));
+  const ON = 1, BLK = 2;
+  let tOff = 0;   // 平均電流制御：この周期で Q をオフにする時刻
+  // 定常状態まで：コンデンサのエネルギーの時定数 RC/2 の 5 倍 + 4 周期（6〜60 周期）。最後は v_S の山（+ 1/4 周期）で終わる
+  const nLine = Math.max(6, Math.min(60, Math.ceil(5 * R * C / 2 * p.f) + 4));
+  // 平均電流制御は、山の 1 周期あと（測る 2 周期の真ん中が山）で終わる
+  const tEnd = (nLine + 0.25) * T + (p.ctl === 'avg' ? Ts : 0);
+  const chunk = p.ctl === 'avg' ? Ts : p.ctl === 'hys' ? Ts : T / 200;
+  const M = {
+    T: chunk, periods: Math.round(tEnd / chunk), x0: [0, V0], s0: BLK, Ipk, iref, vin, tLine: T, nLine,
+    h: p.ctl === 'avg' ? Ts / 8 : p.ctl === 'hys' ? Math.min(T / 3000, Ts / 4) : T / 2000,
+    f: (t, x, s) => {
+      if (s & BLK) return [0, -x[1] / (R * C)];
+      if (s & ON) return [vin(t) / L, -x[1] / (R * C)];
+      return [(vin(t) - x[1]) / L, (x[0] - x[1] / R) / C];
+    },
+  };
+  const g = [];
+  if (p.ctl === 'avg') {
+    M.breaks = (t0) => [t0];
+    M.onBreak = (t, x, s) => {
+      // 周期の終わりの電流が「目標 − リプルの半分」になるオン時間（電流が連続のとき）。こうすると周期の平均 ≈ 目標
+      const vi = vin(t + Ts / 2), vC = Math.max(x[1], vi + 1e-9), u0 = x[0];
+      const D0 = Math.min(1, Math.max(0, 1 - vi / vC));
+      const tgt = iref(t + Ts) - vi * D0 * Ts / L / 2;
+      let ton;
+      if (tgt > 0) ton = (L * (tgt - u0) + (vC - vi) * Ts) / vC;
+      else if (u0 <= 1e-12) {
+        // 電流が 0 から始まる（不連続）とき：三角の面積で平均が目標になるオン時間
+        const a = vi / L, b = (vC - vi) / L, ir = iref(t + Ts / 2);
+        ton = a > 0 && ir > 0 ? Math.sqrt(2 * Ts * ir / (a * (1 + a / b))) : 0;
+      } else ton = 0;
+      ton = Math.min(Ts, Math.max(0, ton));
+      tOff = t + ton;
+      if (ton <= 0) return s & ~ON;
+      return ON;
+    };
+    M.guards = (t, x, s) => (s & ON) ? [tOff - t] : (s & BLK) ? [x[1] - vin(t)] : [x[0]];
+    M.onGuard = (t, x, s) => {
+      if (s & ON) { tOff = Infinity; return x[0] > 0 || vin(t) > 0 ? 0 : BLK; }
+      if (s & BLK) return 0;
+      x[0] = 0;
+      return BLK;
+    };
+  } else if (p.ctl === 'hys') {
+    const hb = p.hb;
+    M.guards = (t, x, s) => {
+      if (s & ON) return [iref(t) + hb / 2 - x[0]];
+      if (s & BLK) return [hb / 2 - iref(t), x[1] - vin(t)];
+      return [x[0] - (iref(t) - hb / 2), x[0]];
+    };
+    M.onGuard = (t, x, s, idx) => {
+      if (s & ON) return 0;
+      if (s & BLK) return idx.includes(0) ? ON : 0;
+      if (idx.includes(0) && iref(t) - hb / 2 > -1e-12) return ON;
+      x[0] = 0;
+      return BLK;
+    };
+  } else {
+    M.guards = (t, x, s) => (s & BLK) ? [x[1] - vin(t)] : [x[0]];
+    M.onGuard = (t, x, s) => { if (s & BLK) return 0; x[0] = 0; return BLK; };
+  }
+  return M;
+}
+function simulatePfc(p) {
+  const M = pfcModel(p), S = simEv(M);
+  S.T = M.tLine; S.Tsw = 1 / p.fsw; S.Ipk = M.Ipk; S.nLine = M.nLine;
+  S.p = Object.assign({}, p);
+  return S;
+}
+function pfcVs(S, k) { return S.p.V0 * Math.sin(2 * Math.PI * S.p.f * S.t[k]); }
+function pfcIref(S, k) { return S.Ipk * Math.abs(Math.sin(2 * Math.PI * S.p.f * S.t[k])); }
+function pfcU(S, k) { return S.x[0][k]; }
+/** 電源の電流（上の端子から出る向きが正） */
+function pfcIs(S, k) { return (pfcVs(S, k) >= 0 ? 1 : -1) * S.x[0][k]; }
+function pfcOn(S, k) { return (S.s[k] & 1) === 1; }
+function pfcBlk(S, k) { return (S.s[k] & 2) === 2; }
+/** D_b（トーテムポールでは同期整流の素子）の電流 */
+function pfcIdb(S, k) { return !pfcOn(S, k) && !pfcBlk(S, k) ? S.x[0][k] : 0; }
+/** 最後の span で、f(S, k) のフーリエ係数（y ≈ Σ c_n sin(nωt + ph_n)、n = 1〜N） */
+function harmonics(S, f, span, f0, N) {
+  const n = S.t.length, tEnd = S.t[n - 1], t0 = tEnd - span, w = 2 * Math.PI * f0;
+  let k0 = 0;
+  while (k0 < n && S.t[k0] < t0 - 1e-12 * span) k0++;
+  const a = new Float64Array(N + 1), b = new Float64Array(N + 1);
+  for (let k = k0 + 1; k < n; k++) {
+    const dt = S.t[k] - S.t[k - 1];
+    if (dt <= 0) continue;
+    const y0 = f(S, k - 1), y1 = f(S, k), ym = (y0 + y1) / 2, ta = S.t[k - 1], tb = S.t[k], tm = (ta + tb) / 2;
+    for (let q = 1; q <= N; q++) {
+      const ca = Math.cos(q * w * ta), cm = Math.cos(q * w * tm), cb = Math.cos(q * w * tb);
+      const sa = Math.sin(q * w * ta), sm = Math.sin(q * w * tm), sb = Math.sin(q * w * tb);
+      a[q] += (y0 * ca + 4 * ym * cm + y1 * cb) / 6 * dt;
+      b[q] += (y0 * sa + 4 * ym * sm + y1 * sb) / 6 * dt;
+    }
+  }
+  const L = tEnd - S.t[k0], c = new Float64Array(N + 1), ph = new Float64Array(N + 1);
+  for (let q = 1; q <= N; q++) { c[q] = 2 * Math.hypot(a[q], b[q]) / L; ph[q] = Math.atan2(a[q], b[q]); }
+  return {c, ph};
+}
+/**
+ * v_S の山（最後の時刻）の近くの、スイッチングのようす。
+ * 平均電流制御：最後の 2 周期（真ん中が v_S の山）のオンの割合 D、コイルの電流の振れ幅 ΔI、その間の |v_S| と v_C の平均。
+ * ヒステリシス制御：最後の T/50 での (i_L − i_ref) の最大 − 最小（= 幅）と、最後の 1 周期のスイッチングの回数。
+ */
+function pfcPeakCycle(S) {
+  const n = S.t.length, tEnd = S.t[n - 1], Ts = S.Tsw, p = S.p;
+  if (p.ctl === 'hys') {
+    let mx = -Infinity, mn = Infinity, cnt = 0;
+    for (let k = n - 1; k > 0 && S.t[k] >= tEnd - S.T; k--) {
+      if (S.t[k] >= tEnd - S.T / 50) { const e = S.x[0][k] - pfcIref(S, k); mx = Math.max(mx, e); mn = Math.min(mn, e); }
+      if ((S.s[k] & 1) && !(S.s[k - 1] & 1)) cnt++;
+    }
+    return {dI: mx - mn, fsAvg: cnt / S.T};
+  }
+  const tA = tEnd - 2 * Ts, tB = tEnd;
+  let on = 0, mx = -Infinity, mn = Infinity, sv = 0, sc = 0, tt = 0;
+  for (let k = 1; k < n; k++) {
+    if (S.t[k] < tA || S.t[k - 1] > tB) continue;
+    const a = Math.max(tA, S.t[k - 1]), b = Math.min(tB, S.t[k]);
+    if (b > a) {
+      if (S.s[k - 1] & 1) on += b - a;
+      sv += (Math.abs(pfcVs(S, k - 1)) + Math.abs(pfcVs(S, k))) / 2 * (b - a);
+      sc += (S.x[1][k - 1] + S.x[1][k]) / 2 * (b - a); tt += b - a;
+    }
+    if (S.t[k] >= tA && S.t[k] <= tB) { mx = Math.max(mx, S.x[0][k]); mn = Math.min(mn, S.x[0][k]); }
+  }
+  return {D: on / (2 * Ts), dI: mx - mn, vinA: sv / tt, vcA: sc / tt};
+}
+function pfcMetrics(S) {
+  const p = S.p, T = S.T;
+  const NH = 40, H = harmonics(S, pfcIs, T, p.f, NH);
+  const I = acStats(S, pfcIs, T, p.f), VC = acStats(S, (S, k) => S.x[1][k], T, 0);
+  const Pin = acStats(S, (S, k) => pfcVs(S, k) * pfcIs(S, k), T, 0).avg;
+  const Pout = acStats(S, (S, k) => S.x[1][k] * S.x[1][k] / p.R, T, 0).avg;
+  const Uabs = acStats(S, pfcU, T, 0).avg;
+  const I1 = H.c[1] / Math.SQRT2, phi1 = H.ph[1];
+  let h40 = 0;
+  for (let q = 2; q <= NH; q++) h40 += H.c[q] * H.c[q] / 2;
+  const Vr = p.V0 / Math.SQRT2;
+  const m = {I, VC, Pin, Pout, Uabs, H, I1, phi1, Vr,
+    thd: Math.sqrt(Math.max(0, I.rms * I.rms - I1 * I1)) / I1,   // 基本波以外すべて（スイッチングのリプルも含む）
+    thd40: Math.sqrt(h40) / I1,                                   // 2〜40 次
+    pf: Pin / (Vr * I.rms), Ipk: S.Ipk};
+  // D_b（トーテムポールでは同期整流の素子）の電流の平均
+  m.Idb = acStats(S, pfcIdb, T, 0).avg;
+  if (p.ctl !== 'off') Object.assign(m, pfcPeakCycle(S));
+  S.met = m;
+  return m;
+}
+/** トーテムポール：期間 I（v_S ≥ 0）か */
+function tpI(S, k) { return pfcVs(S, k) >= 0; }
+function tpFlow(S, k) { return !pfcBlk(S, k) && S.x[0][k] > 0; }
+/** ゲート信号。Q1・Q2 は高速の脚（期間 I は Q2 がブースト用・Q1 が同期整流、期間 II は逆）、Q3・Q4 は低速の脚 */
+function tpGate(S, k, q) {
+  const I = tpI(S, k), on = pfcOn(S, k), sr = !on && tpFlow(S, k);
+  if (q === 1) return I ? sr : on;
+  if (q === 2) return I ? on : sr;
+  if (q === 3) return !I;
+  return I;
+}
+/** 素子の電流（ドレイン → ソース＝下向きが正） */
+function tpIq(S, k, q) {
+  const u = S.x[0][k], I = tpI(S, k), on = pfcOn(S, k), fl = tpFlow(S, k);
+  if (!fl) return 0;
+  if (q === 1) return I ? (on ? 0 : -u) : (on ? u : 0);
+  if (q === 2) return I ? (on ? u : 0) : (on ? 0 : -u);
+  if (q === 3) return I ? 0 : -u;
+  return I ? -u : 0;
+}
+// ==SIM-END==
+</script>
+<script>
+(() => {
+'use strict';
+const YT = 0, YB = 340, YL = 60, Ym1 = 130, Ycr = 200, YMc = 170, XS = 0, XL1 = 90, XL2 = 210, XJ = 260, XQL = 330, XQR = 520, XC = 670, XR = 770;
+const CF1 = COL.fuchsia, CF2 = COL.isw, CS3 = COL.teal, CS4 = COL.green, VF = 1;
+const CTL_NAME = {avg: '平均電流制御', hys: 'ヒステリシス制御'};
+let ctl = 'avg';
+const iL = (S, k) => (tpI(S, k) ? 1 : -1) * S.x[0][k];
+const vb = (S, k) => tpI(S, k) ? 0 : S.x[1][k];
+const vm = (S, k) => {
+  if (!tpFlow(S, k)) return pfcVs(S, k) + vb(S, k);
+  const on = pfcOn(S, k);
+  return tpI(S, k) ? (on ? 0 : S.x[1][k]) : (on ? S.x[1][k] : 0);
+};
+const va = (S, k) => vb(S, k) + pfcVs(S, k);
+const iSR = (S, k) => tpFlow(S, k) && !pfcOn(S, k) ? S.x[0][k] : 0;   // C・R に流れ込む電流
+
+function mosfet(K, x, y1, y2, color, light) {
+  const {el, W, gWire, gPath} = K, yc = (y1 + y2) / 2;
+  const bg = el('circle', {cx: x - 4, cy: yc, r: 42, fill: light, stroke: 'none'}, gPath);
+  W([[x, y1], [x, yc - 18], [x - 14, yc - 18]]);
+  W([[x - 14, yc + 18], [x, yc + 18], [x, y2]]);
+  W([[x - 14, yc], [x, yc], [x, yc + 18]]);
+  [[-27, -10], [-6, 6], [10, 27]].forEach(([a, b]) => el('line', {x1: x - 14, y1: yc + a, x2: x - 14, y2: yc + b}, gWire));
+  el('line', {x1: x - 24, y1: yc - 22, x2: x - 24, y2: yc + 22}, gWire);
+  W([[x - 24, yc + 22], [x - 40, yc + 22]]);
+  el('polygon', {points: `${x - 12},${yc} ${x - 4},${yc - 5} ${x - 4},${yc + 5}`, fill: COL.ink, 'stroke-width': 1}, gWire);
+  W([[x, yc - 18], [x + 22, yc - 18], [x + 22, yc - 9]]); W([[x, yc + 18], [x + 22, yc + 18], [x + 22, yc + 9]]);
+  el('polygon', {points: `${x + 14},${yc + 7} ${x + 30},${yc + 7} ${x + 22},${yc - 7}`, fill: '#fff', 'stroke-width': 2}, gWire);
+  el('line', {x1: x + 14, y1: yc - 8, x2: x + 30, y2: yc - 8, 'stroke-width': 2}, gWire);
+  return {set(on) { bg.setAttribute('fill', on ? color : light); bg.setAttribute('fill-opacity', on ? 0.5 : 1); }};
+}
+const Q = {};
+const QCOL = {1: CF1, 2: CF2, 3: CS3, 4: CS4};
+const qProbes = {};
+[1, 2, 3, 4].forEach(q => {
+  const what = {1: '高速の脚の上', 2: '高速の脚の下', 3: '低速の脚の上', 4: '低速の脚の下'}[q];
+  qProbes['i:Q' + q] = {b: 'i', s: 'Q' + q, color: QCOL[q], q: 'I', what: `Q${'₁₂₃₄'[q - 1]}（${what}）の電流（下向き＝ドレイン → ソースが正。負はソース → ドレイン）`, f: (S, k) => tpIq(S, k, q)};
+  qProbes['v:Q' + q] = {b: 'v', s: 'Q' + q, color: QCOL[q], q: 'V', what: `Q${'₁₂₃₄'[q - 1]} の両端の電圧（上のドレインが＋）`,
+    f: q === 1 ? (S, k) => S.x[1][k] - vm(S, k) : q === 2 ? vm : q === 3 ? (S, k) => S.x[1][k] - vb(S, k) : vb};
+});
+
+SimApp({
+  pdef: [
+    {k: 'V0', b: 'V', s: '0', up: true, title: '電源の電圧の振幅', min: 10, max: 400, step: 1, log: false, unit: 'V', def: 141},
+    {k: 'f', b: 'f', s: '', title: '電源の周波数', min: 10, max: 400, log: true, unit: 'Hz', def: 60},
+    {k: 'Vo', b: 'V', s: 'o*', up: true, title: '出力の電圧の目標', min: 20, max: 800, step: 5, log: false, unit: 'V', def: 200},
+    {k: 'R', b: 'R', s: '', min: 5, max: 2000, log: true, unit: 'Ω', def: 100},
+    {k: 'C', b: 'C', s: '', min: 47e-6, max: 4.7e-3, log: true, unit: 'F', def: 470e-6},
+    {k: 'L', b: 'L', s: '', min: 0.1e-3, max: 20e-3, log: true, unit: 'H', def: 2e-3},
+    {k: 'fsw', b: 'f', s: 'sw', title: 'スイッチングの周波数', min: 2e3, max: 100e3, log: true, unit: 'Hz', def: 20e3},
+    {k: 'hb', b: 'ΔI', s: 'h', up: true, title: 'ヒステリシスの幅', min: 0.1, max: 5, log: true, unit: 'A', def: 1.5},
+  ],
+  extraParams(el, app) {
+    const d = document.createElement('div');
+    d.className = 'crow ctlsel';
+    d.innerHTML = `<span style="min-width:3em">制御</span>` + Object.keys(CTL_NAME).map(c => `<button data-v="${c}">${CTL_NAME[c]}</button>`).join('');
+    const bs = d.querySelectorAll('button');
+    const show = () => {
+      bs.forEach(b => b.classList.toggle('on', b.dataset.v === ctl));
+      app.sliders.fsw.row.style.display = ctl === 'avg' ? '' : 'none';
+      app.sliders.hb.row.style.display = ctl === 'hys' ? '' : 'none';
+    };
+    bs.forEach(b => b.onclick = () => { ctl = b.dataset.v; show(); app.schedule(); });
+    el.insertBefore(d, el.firstChild);
+    app.showCtl = show;
+    show();
+  },
+  presets: [
+    {name: '平均電流制御（AC100 V → 200 V・400 W）', v: {V0: 141, f: 60, Vo: 200, R: 100, C: 470e-6, L: 2e-3, fsw: 20e3}, apply: (a) => { ctl = 'avg'; a.showCtl(); }},
+    {name: 'ヒステリシス制御（幅 1.5 A）', v: {V0: 141, f: 60, Vo: 200, R: 100, C: 470e-6, L: 2e-3, hb: 1.5}, apply: (a) => { ctl = 'hys'; a.showCtl(); }},
+    {name: 'AC200 V → 380 V（平均電流制御・50 kHz）', v: {V0: 283, f: 60, Vo: 380, R: 360, C: 220e-6, L: 1e-3, fsw: 50e3}, apply: (a) => { ctl = 'avg'; a.showCtl(); }},
+    {name: 'スイッチングが見やすい例（5 kHz・L = 5 mH）', v: {V0: 141, f: 60, Vo: 200, R: 100, C: 470e-6, L: 5e-3, fsw: 5e3}, apply: (a) => { ctl = 'avg'; a.showCtl(); }},
+  ],
+  simulate: (P) => simulatePfc({ctl, V0: P.V0, f: P.f, Vo: P.Vo, R: P.R, C: P.C, L: P.L, fsw: P.fsw, hb: P.hb}),
+  metrics: pfcMetrics,
+  initWin: 'last',
+  gatePane: gateRowsPane([1, 2, 3, 4].map(q => ({label: `Q${'₁₂₃₄'[q - 1]}`, color: QCOL[q], on: (S, k) => tpGate(S, k, q)}))),
+  probes: Object.assign({
+    'n:a':   {b: 'v', s: 'a', color: COL.blue, q: 'V', what: '電源の上の端子の電位', f: va},
+    'n:m':   {b: 'v', s: 'm', color: CF1, q: 'V', what: '高速の脚の中点（コイルの右の端）の電位', f: vm},
+    'n:b':   {b: 'v', s: 'b', color: CS3, q: 'V', what: '低速の脚の中点（電源の下の端子）の電位', f: vb},
+    'n:o':   {b: 'v', s: 'o', color: COL.violet, q: 'V', what: '出力の電圧（C と R）', f: (S, k) => S.x[1][k]},
+    'n:gnd': {b: 'GND', s: '', color: COL.sub, q: 'V', what: '直流側の − の線（0 V）', f: () => 0},
+    'i:V':  {b: 'i', s: 'S', color: COL.orange, q: 'I', what: '電源の電流 i_S（上の端子から出る向きが正）', f: iL},
+    'v:V':  {b: 'v', s: 'S', color: COL.blue, q: 'V', what: '電源の電圧 v_S（上が＋）', f: pfcVs},
+    'i:L':  {b: 'i', s: 'L', color: COL.ink, q: 'I', what: 'コイルの電流（右向きが正 = i_S）', f: iL},
+    'v:L':  {b: 'v', s: 'L', color: COL.ink, q: 'V', what: 'コイルの両端の電圧（左が＋）', f: (S, k) => va(S, k) - vm(S, k)},
+    'i:C':  {b: 'i', s: 'C', color: COL.violet, q: 'I', what: 'コンデンサの電流（下向き＝充電が正）', f: (S, k) => iSR(S, k) - S.x[1][k] / S.p.R},
+    'v:C':  {b: 'v', s: 'C', color: COL.violet, q: 'V', what: 'コンデンサの電圧（上が＋）', f: (S, k) => S.x[1][k]},
+    'i:R':  {b: 'i', s: 'R', color: COL.ir, q: 'I', what: '負荷の電流（下向きが正）', f: (S, k) => S.x[1][k] / S.p.R},
+    'v:R':  {b: 'v', s: 'R', color: COL.ir, q: 'V', what: '負荷の電圧（上が＋）', f: (S, k) => S.x[1][k]},
+    'x:iref': {b: 'i', s: 'ref', color: COL.green, q: 'I', what: '目標の電流 i_ref = I_pk sin ωt', f: (S, k) => (tpI(S, k) ? 1 : -1) * pfcIref(S, k)},
+  }, qProbes),
+  defaultProbes: ['v:V', 'n:o', 'i:L', 'x:iref'],
+  extraButtons: [{key: 'x:iref', label: '目標の電流 i<sub>ref</sub>'}],
+  refLines: [{keys: ['n:o', 'v:C', 'v:R'], val: (S) => S.p.Vo, label: 'Vo*', color: COL.violet}],
+  build(K) {
+    const {W, el} = K;
+    const nodeW = {
+      a: [[[XS, 132], [XS, YL], [XL1, YL]]],
+      m: [[[XL2, YL], [XJ, YL], [XJ, Ym1], [XQL, Ym1]], [[XQL, 100], [XQL, 240]]],
+      b: [[[XS, 188], [XS, Ycr], [XQR, Ycr]], [[XQR, 100], [XQR, 240]]],
+      o: [[[XQL, YT], [XR, YT], [XR, YMc - 45]], [[XC, YT], [XC, YMc - 10]]],
+      gnd: [[[XQL, YB], [XR, YB], [XR, YMc + 45]], [[XC, YMc + 10], [XC, YB]]],
+    };
+    for (const n in nodeW) nodeW[n].forEach(p => W(p));
+    K.hop(XQL, Ycr);
+    K.acsrc(XS, 160, 28);
+    Q.vsName = K.name(XS - 42, 170, 'v', 'end', 30, 'S');
+    K.coil([XL1, YL], [XL2, YL], 4, 1); K.name((XL1 + XL2) / 2, YL + 46, 'L');
+    Q[1] = mosfet(K, XQL, YT, 100, '#f0abfc', '#fbeefc'); Q[2] = mosfet(K, XQL, 240, YB, '#f0abfc', '#fbeefc');
+    Q[3] = mosfet(K, XQR, YT, 100, '#86efac', '#ecfdf5'); Q[4] = mosfet(K, XQR, 240, YB, '#86efac', '#ecfdf5');
+    K.name(XQL + 40, 64, 'Q', 'start', 28, '1'); K.name(XQL + 40, 304, 'Q', 'start', 28, '2');
+    K.name(XQR + 40, 64, 'Q', 'start', 28, '3'); K.name(XQR + 40, 304, 'Q', 'start', 28, '4');
+    K.text(XQL, -54, 'ブースト用（高速）', CF1, 19); K.text(XQR + 20, -54, '整流用（低速）', CS3, 19);
+    K.cap(XC, YMc); K.name(XC + 38, YMc + 40, 'C', 'start');
+    K.res(XR, YMc); K.name(XR + 24, YMc + 12, 'R', 'start');
+    [[XQL, Ym1], [XQR, Ycr], [XQR, YT], [XQR, YB], [XC, YT], [XC, YB]].forEach(([x, y]) => K.dot(x, y));
+    K.ground((XC + XR) / 2, YB);
+    const src = [[XS, 160]];
+    return {
+      nodeW,
+      hits: [['e:V', [XS - 30, 130, 60, 60]], ['e:L', [XL1 + 4, YL - 22, XL2 - XL1 - 8, 40]],
+        ['e:Q1', [XQL - 32, 16, 68, 68]], ['e:Q2', [XQL - 32, 256, 68, 68]], ['e:Q3', [XQR - 32, 16, 68, 68]], ['e:Q4', [XQR - 32, 256, 68, 68]],
+        ['e:C', [XC - 36, YMc - 24, 72, 48]], ['e:R', [XR - 22, YMc - 50, 44, 100]]],
+      arrows: {
+        'i:V': [[14, YL - 22], [64, YL - 22], 'T'], 'v:V': [[XS - 74, 204], [XS - 74, 116], 'L'],
+        'i:L': [[XL1 + 10, YL - 24], [XL2 - 10, YL - 24], 'T'], 'v:L': [[XL2 - 6, YL - 54], [XL1 + 6, YL - 54], 'T'],
+        'i:Q1': [[XQL + 50, 22], [XQL + 50, 78], 'R'], 'v:Q1': [[XQL + 86, 92], [XQL + 86, 8], 'R'],
+        'i:Q2': [[XQL + 50, 262], [XQL + 50, 318], 'R'], 'v:Q2': [[XQL + 86, 332], [XQL + 86, 248], 'R'],
+        'i:Q3': [[XQR + 50, 22], [XQR + 50, 78], 'R'], 'v:Q3': [[XQR + 86, 92], [XQR + 86, 8], 'R'],
+        'i:Q4': [[XQR + 50, 262], [XQR + 50, 318], 'R'], 'v:Q4': [[XQR + 86, 332], [XQR + 86, 248], 'R'],
+        'i:C': [[XC - 48, YMc - 30], [XC - 48, YMc + 30], 'L'], 'v:C': [[XC - 48, YMc + 40], [XC - 48, YMc - 40], 'L'],
+        'i:R': [[XR + 64, YMc - 30], [XR + 64, YMc + 30], 'R'], 'v:R': [[XR + 64, YMc + 44], [XR + 64, YMc - 44], 'R'],
+      },
+      nodeTag: {a: [45, YL, 0, -14], m: [XJ, 95, -14, 8, 'end'], b: [XQR - 80, Ycr, 0, 34], o: [(XC + XR) / 2, YT, 0, -14], gnd: [(XC + XR) / 2 + 60, YB, 0, 36]},
+      loops: {
+        Ion: [[XS, 160], [XS, YL], [XJ, YL], [XJ, Ym1], [XQL, Ym1], [XQL, YB], [XQR, YB], [XQR, Ycr], [XS, Ycr]],
+        Ioff: [[XS, 160], [XS, YL], [XJ, YL], [XJ, Ym1], [XQL, Ym1], [XQL, YT], [XC, YT], [XC, YB], [XQR, YB], [XQR, Ycr], [XS, Ycr]],
+        IIon: [[XS, Ycr], [XQR, Ycr], [XQR, YT], [XQL, YT], [XQL, Ym1], [XJ, Ym1], [XJ, YL], [XS, YL]],
+        IIoff: [[XS, Ycr], [XQR, Ycr], [XQR, YT], [XC, YT], [XC, YB], [XQL, YB], [XQL, Ym1], [XJ, Ym1], [XJ, YL], [XS, YL]],
+        cr: [[XC + 16, YT + 16], [XR - 16, YT + 16], [XR - 16, YB - 16], [XC + 16, YB - 16]],
+      },
+      sw: {},
+    };
+  },
+  state(S, k, MET, app) {
+    // 電源の名前 vS は、電圧の矢印（v:V）を出している間は矢印のラベルと重なるので隠す
+    if (Q.vsName && app) Q.vsName.style.display = app.probes.has('v:V') ? 'none' : '';
+    const p = S.p, u = S.x[0][k], I = tpI(S, k), on = pfcOn(S, k), fl = tpFlow(S, k);
+    [1, 2, 3, 4].forEach(q => Q[q].set(tpGate(S, k, q)));
+    const fr = u / Math.max(1e-12, MET.I.max);
+    const loops = [];
+    let html = I ? '<b>期間 I</b>（<span class="eq">v<sub>S</sub></span> &gt; 0）：低速の脚は <b style="color:#2e9e5b">Q₄ オン</b>（電源の下の端子 = − の線）。'
+      : '<b>期間 II</b>（<span class="eq">v<sub>S</sub></span> &lt; 0）：低速の脚は <b style="color:#0d9488">Q₃ オン</b>（電源の下の端子 = + の線）。';
+    if (fl && on) {
+      loops.push([I ? 'Ion' : 'IIon', fr]);
+      html += I ? ' <span class="sw-on">Q₂ オン（ブースト用）</span>：電源の上 → L → Q₂ → Q₄ → 電源の下。L に <span class="eq">v<sub>S</sub></span> がかかり、電流が増える。'
+        : ' <span class="sw-on">Q₁ オン（ブースト用）</span>：電源の下 → Q₃ → Q₁ → L → 電源の上（負の電流）。L に <span class="eq">v<sub>S</sub></span>（負）がかかり、電流の大きさが増える。';
+    } else if (fl) {
+      loops.push([I ? 'Ioff' : 'IIoff', fr]);
+      html += I ? ' <span class="sw-off">Q₂ オフ → Q₁ が同期整流</span>：電源の上 → L → Q₁ → C・R → Q₄ → 電源の下。電流が減る。'
+        : ' <span class="sw-off">Q₁ オフ → Q₂ が同期整流</span>：電源の下 → Q₃ → C・R → Q₂ → L → 電源の上。電流の大きさが減る。';
+      html += '通る半導体は 2 個。';
+    } else html += ' <span class="dcm">コイルの電流が 0</span>（ゼロクロスの近く）。';
+    loops.push(['cr', S.x[1][k] / p.R / Math.max(1e-12, MET.I.max)]);
+    return {loops, html};
+  },
+  metricsHtml(S, m) {
+    const p = S.p;
+    // 昇圧できない（V_o* ≤ V0）：出力の電圧は電源の山 V0 より下げられないので、制御の式はどれも成り立たない → 判定を出さない
+    const noBoost = p.Vo <= p.V0;
+    // 定常に達していない：コンデンサのエネルギーの時定数 RC/2 の 5 倍が、計算の上限（60 周期）を超えるとき
+    const unsettled = Math.ceil(5 * p.R * p.C / 2 * p.f) + 4 > 60;
+    const MY = !noBoost && unsettled ? '<span class="small">（目安：定常に達していない）</span>' : '';
+    const F = (x, unit) => unit === '%' ? x.toFixed(3) + ' %' : unit ? fmtSI(x, unit, 4) : x.toFixed(4);
+    // mark = 'always'：昇圧できないときも判定を出す（力率の式は、どんな電流の形でも成り立つ）
+    const R = (nm, sim, eq, val, unit, tol = 0.01, mark = true, note = '') => `<tr><td>${nm}</td><td class="num">${F(sim, unit)}</td><td class="eq">${eq}</td><td class="num">${isFinite(val) ? F(val, unit) : '—'}</td><td>${isFinite(val) ? pctDiff(sim, val) + ' ' + (mark === 'always' || (mark && !noBoost) ? okMark(sim, val, tol) : '') : ''}${note}</td></tr>`;
+    let rows = `<tr><th>量</th><th>シミュレーション</th><th>授業の式</th><th>式の値</th><th>差</th></tr>`;
+    if (noBoost) rows += `<tr><td colspan="5" style="color:#c0392b;font-weight:700">昇圧形なので、出力の電圧の目標 V<sub>o</sub>* は電源の山 V<sub>0</sub>（いまは ${fmtSI(p.V0, 'V', 3)}）より高くしてください。V<sub>o</sub>* ≤ V<sub>0</sub> では昇圧できず（コンデンサは山で V<sub>0</sub> まで充電されてしまう）、下の式の前提が成り立たないので、一致・ずれるの判定は出していません。</td></tr>`;
+    else if (unsettled) rows += `<tr><td colspan="5" class="small">時定数 RC/2 = ${fmtSI(p.R * p.C / 2, 's', 3)} が長く、計算した ${S.nLine} 周期（${fmtSI(S.nLine * S.T, 's', 3)}）では出力の電圧がまだ変わっている途中です（定常には約 5 × RC/2 必要）。入力と出力の電力・出力の電圧の差は目安です。</td></tr>`;
+    rows += R('力率 <span class="eq">PF = P/(V<sub>rms</sub>I<sub>rms</sub>)</span>', m.pf, 'cos φ<sub>1</sub> / √(1 + THD²)（p42）', Math.cos(m.phi1) / Math.sqrt(1 + m.thd * m.thd), '', 0.01, 'always');
+    rows += `<tr><td>電流の THD（全体）／（2〜40 次）</td><td class="num">${(m.thd * 100).toFixed(1)} %／${(m.thd40 * 100).toFixed(1)} %</td><td colspan="3">全体はスイッチングのリプルを含む。<span class="eq">cos φ<sub>1</sub></span> = ${Math.cos(m.phi1).toFixed(4)}</td></tr>`;
+    rows += R('入力の電力 <span class="eq">P</span>（<span class="eq">p<sub>S</sub></span> の平均）', m.Pin, '出力の電力 v<sub>C</sub>²/R の平均（損失 0）', m.Pout, 'W', 0.01, !unsettled, MY);
+    rows += R('出力の電圧の平均 <span class="eq">v<sub>C</sub></span>', m.VC.avg, `V<sub>o</sub>* = √(R V<sub>0</sub>I<sub>pk</sub>/2)（I<sub>pk</sub> = ${fmtSI(m.Ipk, 'A', 3)}）`, p.Vo, 'V', 0.02, !unsettled, MY);
+    if (p.ctl === 'avg') {
+      rows += R('v<sub>S</sub> の山での Q₂ のオンの割合 <span class="eq">D</span>', m.D, 'D = 1 − |v<sub>S</sub>| / v<sub>C</sub>（昇圧チョッパー）', 1 - m.vinA / m.vcA, '', 0.02);
+      rows += R('v<sub>S</sub> の山でのコイルの電流の振れ幅', m.dI, 'ΔI<sub>L</sub> = |v<sub>S</sub>| D / (L f<sub>sw</sub>)', m.vinA * (1 - m.vinA / m.vcA) / (p.L * p.fsw), 'A', 0.02);
+    } else {
+      rows += R('<span class="eq">|i<sub>L</sub>| − i<sub>ref</sub></span> の振れ幅', m.dI, 'ヒステリシスの幅 ΔI<sub>h</sub>', p.hb, 'A', 0.02);
+    }
+    // 導通損失の見積もり：電流が流れている間、トーテムポールは 2 個、昇圧形は 3 個
+    const base = VF * m.Uabs / m.Pin * 100, th1 = 4 * VF / (Math.PI * p.V0) * 100, mk = p.ctl === 'avg';
+    const note = mk ? '' : '（目安：ゼロクロスの近くで電流が 0 になる分ずれる）';
+    rows += R('導通損失 / 入力の電力：トーテムポール形（2 個、<span class="eq">V<sub>F</sub></span> = 1 V）', 2 * base, '8V<sub>F</sub> / (πV<sub>0</sub>)（正弦波の電流）', 2 * th1, '%', 0.02, mk, note);
+    rows += R('同じ電流で、昇圧形 PFC だったら（3 個）', 3 * base, '12V<sub>F</sub> / (πV<sub>0</sub>)', 3 * th1, '%', 0.02, mk, note);
+    rows += `<tr><th colspan="5" style="padding-top:14px">昇圧形 PFC（p45〜46）との比較（同じ値・同じ制御）</th></tr>`;
+    rows += `<tr class="cmp"><td>回路</td><td>電流が通る半導体</td><td>導通損失の見積もり</td><td>力率・THD（全体）</td><td>素子</td></tr>`;
+    rows += `<tr class="cur"><td>トーテムポール形（表示中）</td><td>2 個（Q₂・Q₄ か Q₁・Q₄／Q₁・Q₃ か Q₂・Q₃）</td><td class="num">${(2 * base).toFixed(2)} %</td><td class="num">${m.pf.toFixed(3)}・${(m.thd * 100).toFixed(1)} %</td><td>MOSFET 4 個・L・C</td></tr>`;
+    rows += `<tr><td>昇圧形 PFC</td><td>3 個（ブリッジ 2 個 ＋ Q か D<sub>b</sub>）</td><td class="num">${(3 * base).toFixed(2)} %</td><td class="num">${m.pf.toFixed(3)}・${(m.thd * 100).toFixed(1)} %（同じ式）</td><td>ダイオード 5 個・MOSFET 1 個・L・C</td></tr>`;
+    rows += `<tr><td colspan="5" class="small">力率・THD は同じ（|i<sub>L</sub>| と |v<sub>S</sub>| の式が同じため）。違いは通る半導体の数（損失）。その代わり、トーテムポール形は同期整流の制御が複雑で、高速スイッチングの問題（寄生成分・耐圧・EMI）があり、ワイドギャップ半導体（SiC・GaN）で実用化された（p47〜48）。</td></tr>`;
+    const sub = `最後の 1 周期で計算（交流の ${S.nLine} 周期 + 1/4 を計算）。制御：${CTL_NAME[p.ctl]}`;
+    return {rows, sub};
+  },
+});
+})();
+</script>
+</body>
+</html>

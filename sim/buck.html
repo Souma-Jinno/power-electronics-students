@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>降圧チョッパーのシミュレーター — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<header>
+  <nav class="hnav"><a href="../index.html">← 科目のページへ戻る</a><a href="index.html">回路を選ぶ（シミュレーターの一覧）</a></nav>
+  <h1>降圧チョッパーのシミュレーター</h1>
+  <div class="subtitle">パワーエレクトロニクス 第5回 直流-直流変換（１）p5〜25 / 大阪工業大学</div>
+</header>
+<main>
+  <div class="notice">
+    回路図の<b>線（節点）をクリック</b>すると、その点の電位（GND を 0 V とする）が下のグラフに出ます。
+    <b>素子をクリック</b>すると、その素子の電流が出ます（矢印の向きが正）。もう一度クリックすると消えます。
+    値を変えると、スイッチを入れた瞬間（t = 0、電流も電圧も 0）から計算し直します。
+  </div>
+
+  <div class="top">
+    <section class="card">
+      <div class="card-h">
+        <span class="ttl">回路</span>
+        <span class="small">素子をクリックしたとき：</span>
+        <span class="seg" id="emode"><button data-m="i" class="on">電流</button><button data-m="v">両端の電圧</button></span>
+      </div>
+      <svg id="sch" viewBox="-120 -112 975 420" aria-label="降圧チョッパーの回路図"></svg>
+      <div id="state"></div>
+    </section>
+
+    <section class="card params">
+      <div class="card-h"><span class="ttl">回路の値</span></div>
+      <div class="card-b" id="params"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-h">
+      <span class="ttl">波形</span>
+      <span class="seg" id="win">
+        <button data-w="all" class="on">起動から最後まで</button><button data-w="first">起動直後</button><button data-w="last">定常状態</button>
+      </span>
+    </div>
+    <div class="ctl">
+      <button id="play">▶ 再生</button>
+      <label>速さ <select id="speed"><option value="0.25">×0.25</option><option value="0.5">×0.5</option><option value="1" selected>×1</option><option value="2">×2</option><option value="4">×4</option></select></label>
+      <label id="nper">周期の数 <select id="nP"><option>2</option><option selected>3</option><option>5</option><option>10</option></select></label>
+      <label>グラフ <select id="lay"><option value="vi">電圧と電流の2段</option><option value="each">1本ずつ別の段</option></select></label>
+    </div>
+    <div class="scrubrow"><input type="range" id="scrub" min="0" max="10000" value="0" aria-label="時刻"><span class="tc" id="tc"></span></div>
+    <div id="legend"></div>
+    <div id="plotwrap"><canvas id="plot"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">定常状態の値と、授業の式の比較</span><span class="small" id="msub"></span></div>
+    <div class="card-b" style="overflow-x:auto"><table class="m" id="metrics"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">このシミュレーターの前提</span></div>
+    <div class="card-b">
+      <ul class="notes">
+        <li>スイッチとダイオードは理想（オンで 0 Ω・オフで電流 0、電圧降下なし）。コイル・コンデンサ・抵抗も理想の素子です。</li>
+        <li>スイッチは電源から右向きにしか電流を流しません。オフの間にコイルの電流が 0 になると、ダイオードも止まって電流 0 のまま（電流不連続モード）になります。</li>
+        <li><span class="eq">v<sub>sw</sub></span> は授業の波形と同じく、スイッチ・ダイオード・コイルがつながる節点の電位です（オンで <span class="eq">V<sub>0</sub></span>、オフで 0 V）。</li>
+        <li>「C をつなぐ」を外すと、第5回の p15 と同じ <span class="eq">L</span>–<span class="eq">R</span> だけの回路になります。</li>
+        <li>計算は 4 次のルンゲ・クッタ法（1 周期を 80〜400 分割）で、コイルの電流が 0 になる時刻は二分法で求めています。</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<footer>パワーエレクトロニクス ｜ 神野 崇馬 ｜ 試作版</footer>
+<div id="tip"></div>
+
+<script>
+// ==SIM-BEGIN==
+/**
+ * 降圧チョッパー（理想スイッチ・理想ダイオード）の過渡解析。t = 0 で iL = 0, vC = 0、スイッチは t = 0 でオン。
+ * p = {V0, D, f, L, C, R, periods?}（SI 単位。C = 0 は「C なし」で vC = R iL）
+ * 戻り値: 時刻ごとの t, g（ゲート 1/0）, vx（スイッチ・ダイオード・L の節点の電位）, iL, iD, vC と、
+ *         周期ごとの vC の平均 perAvg、周期 T、周期の数 periods、打ち切ったか capped
+ */
+function simulateBuck(p) {
+  const V0 = p.V0, D = p.D, f = p.f, L = p.L, R = p.R, C = p.C > 0 ? p.C : 0;
+  const hasC = C > 0, T = 1 / f, ton = D * T, toff = T - ton;
+  let sigma;
+  if (hasC) {
+    const a = 1 / (R * C), b = 1 / (L * C), disc = a * a - 4 * b;
+    sigma = disc >= 0 ? (a - Math.sqrt(disc)) / 2 : a / 2;
+  } else sigma = R / L;
+  if (!p.periods) {
+    // 1 回目：時定数から見積もった長さで計算し、vC の周期平均が最終値の 0.2 % に入る時刻を調べる。
+    // 2 回目：その 1.5 倍 + 6 周期だけ計算する（起動から最後までの図が、ほとんど平らにならないように）
+    const est = Math.max(12, Math.ceil(9 / (sigma * T)) + 6);
+    const s0 = simulateBuck(Object.assign({}, p, {periods: est}));
+    const A = s0.perAvg, fin = A[A.length - 1], tol = Math.max(2e-3 * Math.abs(fin), 1e-5 * V0);
+    let ks = 0;
+    for (let k = 0; k < A.length; k++) if (Math.abs(A[k] - fin) > tol) ks = k + 1;
+    const s = simulateBuck(Object.assign({}, p, {periods: Math.min(s0.periods, Math.max(12, Math.ceil(1.5 * ks) + 6))}));
+    s.capped = s0.capped;
+    s.unstable = s.unstable || s0.unstable;
+    return s;
+  }
+  let periods = Math.max(12, p.periods);
+  // 刻みの上限：いちばん速い変化の速さ rho に対して h·rho ≤ 1（f_sw が低く L・C・R が小さい極端な組み合わせで発散しないように。
+  // ふつうの値では 1 周期 80〜400 分割で足りて、これは効かない）
+  let rho;
+  if (hasC) {
+    const tr = -1 / (R * C), det = 1 / (L * C), disc = tr * tr - 4 * det;
+    rho = Math.max(disc >= 0 ? (Math.abs(tr) + Math.sqrt(disc)) / 2 : Math.sqrt(det), 1 / (R * C));
+  } else rho = R / L;
+  const nMinOn = Math.ceil(ton * rho), nMinOff = Math.ceil(toff * rho), perMin = Math.max(80, nMinOn + nMinOff);
+  const budget = 2.4e6;
+  let capped = false;
+  if (periods * perMin > budget) { periods = Math.max(12, Math.floor(budget / perMin)); capped = true; }
+  const HI = Math.min(12, periods);
+  const M = Math.max(80, Math.min(400, Math.floor(budget / periods)));
+  const MHI = 400;
+  const stride = Math.max(1, Math.ceil(((periods - HI) * Math.max(M, nMinOn + nMinOff)) / 200000));
+
+  let i = 0, v = 0;
+  const tA = [], gA = [], vxA = [], iLA = [], iDA = [], vCA = [];
+  const vcOf = () => (hasC ? v : R * i);
+  const push = (t, g, blocked) => {
+    const vC = vcOf();
+    let vx, id;
+    if (blocked) { vx = vC; id = 0; } else if (g) { vx = V0; id = 0; } else { vx = 0; id = i; }
+    tA.push(t); gA.push(g); vxA.push(vx); iLA.push(i); iDA.push(id); vCA.push(vC);
+  };
+  const der = (ii, vv, u) => {
+    const vC = hasC ? vv : R * ii;
+    return [(u - vC) / L, hasC ? (ii - vv / R) / C : 0];
+  };
+  const rk4 = (ii, vv, u, h) => {
+    const k1 = der(ii, vv, u);
+    const k2 = der(ii + h / 2 * k1[0], vv + h / 2 * k1[1], u);
+    const k3 = der(ii + h / 2 * k2[0], vv + h / 2 * k2[1], u);
+    const k4 = der(ii + h * k3[0], vv + h * k3[1], u);
+    return [ii + h / 6 * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]), vv + h / 6 * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1])];
+  };
+  // 電流 0 で、コイルにかかる向きの電圧も 0 以下なら止まったまま（スイッチもダイオードも逆には流さない）
+  const isBlocked = (u) => i <= 0 && u - (hasC ? v : 0) <= 0;
+  let acc = 0;
+  const segment = (t0, dur, g, n, st) => {
+    const u = g ? V0 : 0, h = dur / n;
+    let blocked = isBlocked(u);
+    push(t0, g, blocked);
+    for (let k = 0; k < n; k++) {
+      const tt = t0 + k * h, vc0 = vcOf();
+      if (blocked) {
+        if (hasC) v *= Math.exp(-h / (R * C));
+        i = 0;
+        if (u - (hasC ? v : 0) > 0) blocked = false;
+      } else {
+        const r = rk4(i, v, u, h);
+        if (r[0] < 0) {
+          let lo = 0, hi = h;
+          for (let it = 0; it < 60; it++) {
+            const m = (lo + hi) / 2;
+            if (rk4(i, v, u, m)[0] > 0) lo = m; else hi = m;
+          }
+          const r1 = rk4(i, v, u, lo);
+          i = 0; v = r1[1];
+          push(tt + lo, g, false);
+          blocked = isBlocked(u);
+          if (blocked) {
+            push(tt + lo, g, true);
+            if (hasC) v *= Math.exp(-(h - lo) / (R * C));
+          } else {
+            const r2 = rk4(i, v, u, h - lo);
+            i = Math.max(0, r2[0]); v = r2[1];
+          }
+        } else { i = r[0]; v = r[1]; }
+      }
+      acc += (vc0 + vcOf()) / 2 * h;
+      if ((k + 1) % st === 0 || k === n - 1) push(tt + h, g, blocked);
+    }
+  };
+  const perAvg = new Float64Array(periods);
+  for (let pn = 0; pn < periods; pn++) {
+    const hi = pn >= periods - HI;
+    const m = hi ? MHI : M, st = hi ? 1 : stride;
+    acc = 0;
+    const t0 = pn * T;
+    segment(t0, ton, 1, Math.max(8, Math.round(m * D), nMinOn), st);
+    segment(t0 + ton, toff, 0, Math.max(8, Math.round(m * (1 - D)), nMinOff), st);
+    perAvg[pn] = acc / T;
+  }
+  let unstable = false;
+  for (let k = 0; k < vCA.length; k++) if (!isFinite(vCA[k]) || !isFinite(iLA[k]) || Math.abs(vCA[k]) > 1e3 * V0) { unstable = true; break; }
+  return {
+    t: Float64Array.from(tA), g: Uint8Array.from(gA), vx: Float64Array.from(vxA),
+    iL: Float64Array.from(iLA), iD: Float64Array.from(iDA), vC: Float64Array.from(vCA),
+    perAvg, T, periods, capped, unstable, p: {V0, D, f, L, C, R},
+  };
+}
+
+/** 最後の 1 周期から定常状態の値を出す */
+function buckMetrics(s) {
+  const n = s.t.length, tEnd = s.t[n - 1], t0 = tEnd - s.T;
+  let k0 = 0;
+  while (k0 < n && s.t[k0] < t0 - 1e-15 * s.T) k0++;
+  let sv = 0, si = 0, iMax = -Infinity, iMin = Infinity, vMax = -Infinity, vMin = Infinity;
+  for (let k = k0; k < n; k++) {
+    if (k > k0) {
+      const h = s.t[k] - s.t[k - 1];
+      sv += (s.vC[k] + s.vC[k - 1]) / 2 * h;
+      si += (s.iL[k] + s.iL[k - 1]) / 2 * h;
+    }
+    iMax = Math.max(iMax, s.iL[k]); iMin = Math.min(iMin, s.iL[k]);
+    vMax = Math.max(vMax, s.vC[k]); vMin = Math.min(vMin, s.vC[k]);
+  }
+  const span = s.t[n - 1] - s.t[k0];
+  const P = s.perAvg, np = P.length, fin = P[np - 1];
+  let ks = -1;
+  const tol = Math.max(0.02 * Math.abs(fin), 1e-4 * s.p.V0);
+  for (let k = 0; k < np; k++) if (Math.abs(P[k] - fin) > tol) ks = k;
+  return {
+    vAvg: sv / span, iAvg: si / span, iMax, iMin, dI: iMax - iMin, vMax, vMin, dV: vMax - vMin,
+    dcm: iMin <= 1e-9 * Math.max(iMax, 1e-15),
+    settle: (ks + 1) * s.T,
+    steady: !s.capped && np > 1 && Math.abs(P[np - 1] - P[np - 2]) <= 2e-3 * Math.max(Math.abs(fin), 1e-6 * s.p.V0),
+  };
+}
+// ==SIM-END==
+</script>
+<script src="common.js"></script>
+<script>
+(() => {
+'use strict';
+let useC = true;
+const H = 240, YM = 120;
+const X = {B: 0, S1: 105, S2: 195, J: 290, L1: 360, L2: 490, C: 600, R: 720};
+let capOnly = [];
+
+SimApp({
+  pdef: [
+    {k: 'V0', b: 'V', s: '0', up: true, min: 1, max: 30, step: 0.5, log: false, unit: 'V', def: 10},
+    {k: 'D', b: 'D', s: '', min: 0.05, max: 0.95, step: 0.01, log: false, unit: '', def: 0.5},
+    {k: 'f', b: 'f', s: 'sw', min: 500, max: 100e3, log: true, unit: 'Hz', def: 1e3},
+    {k: 'L', b: 'L', s: '', min: 10e-6, max: 100e-3, log: true, unit: 'H', def: 30e-3},
+    {k: 'C', b: 'C', s: '', min: 1e-6, max: 2200e-6, log: true, unit: 'F', def: 100e-6, before: (pe) => {
+      const cr = document.createElement('div');
+      cr.className = 'crow';
+      cr.innerHTML = `<label><input type="checkbox" id="useC" checked> コンデンサ <span class="eq">C</span> をつなぐ</label>`;
+      pe.appendChild(cr);
+    }},
+    {k: 'R', b: 'R', s: '', min: 1, max: 200, log: true, unit: 'Ω', def: 10},
+  ],
+  extraParams(pe, app) {
+    const useCEl = document.getElementById('useC');
+    const syncC = () => { app.sliders.C.row.style.opacity = useC ? 1 : 0.35; app.sliders.C.inp.disabled = !useC; useCEl.checked = useC; };
+    useCEl.addEventListener('change', () => { useC = useCEl.checked; syncC(); app.schedule(); });
+    app.syncC = syncC;
+    syncC();
+  },
+  presets: [
+    {name: '第5回 p15 の回路（C なし）', v: {V0: 10, D: 0.5, f: 1e3, L: 30e-3, R: 10}, apply: (a) => { useC = false; a.syncC(); }},
+    {name: '同じ回路に C = 100 μF', v: {V0: 10, D: 0.5, f: 1e3, L: 30e-3, C: 100e-6, R: 10}, apply: (a) => { useC = true; a.syncC(); }},
+    {name: '電流不連続モードの例', v: {V0: 12, D: 0.3, f: 20e3, L: 100e-6, C: 100e-6, R: 50}, apply: (a) => { useC = true; a.syncC(); }},
+    {name: '12 V → 5 V（20 kHz）', v: {V0: 12, D: 0.42, f: 20e3, L: 1e-3, C: 47e-6, R: 5}, apply: (a) => { useC = true; a.syncC(); }},
+  ],
+  simulate: (P) => simulateBuck({V0: P.V0, D: P.D, f: P.f, L: P.L, C: useC ? P.C : 0, R: P.R}),
+  metrics: buckMetrics,
+  probes: {
+    'n:in':  {b: 'V', s: '0', up: true, color: COL.blue, q: 'V', what: '電源の＋側の節点の電位', f: (S, k) => S.p.V0},
+    'n:sw':  {b: 'v', s: 'sw', color: COL.fuchsia, q: 'V', what: 'スイッチ・ダイオード・コイルの節点の電位', f: (S, k) => S.vx[k]},
+    'n:out': {b: 'v', s: 'C', color: COL.orange, q: 'V', what: '出力の節点の電位（C と R の電圧）', f: (S, k) => S.vC[k]},
+    'n:gnd': {b: 'GND', s: '', color: COL.sub, q: 'V', what: '基準の節点（0 V）', f: () => 0},
+    'i:V0':  {b: 'i', s: 'in', color: COL.iin, q: 'I', what: '電源から出る電流（上向きが正）', f: (S, k) => S.iL[k] - S.iD[k]},
+    'i:S':   {b: 'i', s: 'S', color: COL.isw, q: 'I', what: 'スイッチの電流（右向きが正）', f: (S, k) => S.iL[k] - S.iD[k]},
+    'i:D':   {b: 'i', s: 'D', color: COL.teal, q: 'I', what: 'ダイオードの電流（上向きが正）', f: (S, k) => S.iD[k]},
+    'i:L':   {b: 'i', s: 'L', color: COL.ink, q: 'I', what: 'コイルの電流（右向きが正）', f: (S, k) => S.iL[k]},
+    'i:C':   {b: 'i', s: 'C', color: COL.violet, q: 'I', what: 'コンデンサの電流（下向き＝充電が正）', f: (S, k) => S.p.C > 0 ? S.iL[k] - S.vC[k] / S.p.R : 0, hidden: (S) => !(S.p.C > 0)},
+    'i:R':   {b: 'i', s: 'R', color: COL.ir, q: 'I', what: '抵抗の電流（下向きが正）', f: (S, k) => S.vC[k] / S.p.R},
+    'v:V0':  {b: 'V', s: '0', up: true, color: COL.blue, q: 'V', what: '電源の電圧（上が＋）', f: (S, k) => S.p.V0},
+    'v:S':   {b: 'v', s: 'S', color: COL.isw, q: 'V', what: 'スイッチの両端の電圧（左が＋）', f: (S, k) => S.p.V0 - S.vx[k]},
+    'v:D':   {b: 'v', s: 'D', color: COL.teal, q: 'V', what: 'ダイオードの両端の電圧（上のカソードが＋）', f: (S, k) => S.vx[k]},
+    'v:L':   {b: 'v', s: 'L', color: COL.ink, q: 'V', what: 'コイルの両端の電圧（左が＋）', f: (S, k) => S.vx[k] - S.vC[k]},
+    'v:C':   {b: 'v', s: 'C', color: COL.orange, q: 'V', what: 'コンデンサの両端の電圧（上が＋）', f: (S, k) => S.vC[k], hidden: (S) => !(S.p.C > 0)},
+    'v:R':   {b: 'v', s: 'R', color: COL.orange, q: 'V', what: '抵抗の両端の電圧（上が＋）', f: (S, k) => S.vC[k]},
+  },
+  defaultProbes: ['n:sw', 'n:out', 'i:D', 'i:L'],
+  refLines: [{keys: ['n:out', 'v:C', 'v:R'], val: (S) => S.p.D * S.p.V0, label: 'DV₀'}],
+  hideWire: (n, idx) => n === 'out' && !useC && idx === 1,
+  build(K) {
+    const {el, W, gWire} = K;
+    const nodeW = {
+      in: [[[X.B, YM - 9], [X.B, 0], [X.S1, 0]]],
+      sw: [[[X.S2, 0], [X.L1, 0]], [[X.J, 0], [X.J, YM - 17]]],
+      out: [[[X.L2, 0], [X.R, 0], [X.R, YM - 45]], [[X.C, 0], [X.C, YM - 10]]],
+      gnd: [[[X.B, YM + 9], [X.B, H], [X.R, H], [X.R, YM + 45]], [[X.J, YM + 17], [X.J, H]], [[X.C, YM + 10], [X.C, H]], [[X.B, H], [X.B, H + 16]]],
+    };
+    const wires = {};
+    for (const n in nodeW) wires[n] = nodeW[n].map(p => W(p));
+    K.battery(X.B, YM);
+    el('line', {x1: -16, y1: H + 16, x2: 16, y2: H + 16}, gWire);
+    el('line', {x1: -10, y1: H + 22, x2: 10, y2: H + 22}, gWire);
+    el('line', {x1: -4, y1: H + 28, x2: 4, y2: H + 28}, gWire);
+    const sw = K.switch([X.S1, 0], [X.S2, 0], 1);
+    K.box(X.S1 - 18, -62, X.S2 - X.S1 + 36, 84, COL.fuchsia);
+    K.text((X.S1 + X.S2) / 2, -70, '制御スイッチ', COL.fuchsia, 20);
+    el('polygon', {points: `${X.J - 18},${YM + 16} ${X.J + 18},${YM + 16} ${X.J},${YM - 16}`, fill: '#fff'}, gWire);
+    el('line', {x1: X.J - 18, y1: YM - 17, x2: X.J + 18, y2: YM - 17}, gWire);
+    K.box(X.J - 32, YM - 46, 64, 92, COL.teal);
+    K.text(X.J + 36, YM + 62, 'ダイオード', COL.teal, 20, 'start');
+    K.coil([X.L1, 0], [X.L2, 0], 4, 1);
+    const capG = el('g', {}, gWire);
+    K.cap(X.C, YM, capG);
+    K.res(X.R, YM);
+    const dots = [[X.J, 0], [X.J, H], [X.C, 0], [X.C, H]].map(([x, y]) => K.dot(x, y));
+    K.name(X.L1 + 65, 44, 'L');
+    const cName = K.name(X.C + 38, YM + 34, 'C', 'start');
+    K.name(X.R - 22, YM + 8, 'R', 'end');
+    capOnly = [capG, cName, dots[2], dots[3], ...wires.out.slice(1), ...wires.gnd.slice(2, 3)];
+    const INS = 26;
+    const box = (x0, x1) => [[x0 + INS, INS], [x1 - INS, INS], [x1 - INS, H - INS], [x0 + INS, H - INS]];
+    return {
+      nodeW,
+      hits: [['e:V0', [-34, YM - 26, 68, 52]], ['e:S', [X.S1 + 8, -50, X.S2 - X.S1 - 16, 64]], ['e:D', [X.J - 26, YM - 34, 52, 68]],
+        ['e:L', [X.L1 + 4, -24, X.L2 - X.L1 - 8, 40]], ['e:C', [X.C - 36, YM - 24, 72, 48]], ['e:R', [X.R - 22, YM - 50, 44, 100]]],
+      arrows: {
+        'i:V0': [[-22, 62], [-22, 14], 'L'], 'i:S': [[122, 24], [178, 24], 'B'], 'i:D': [[X.J - 50, YM + 30], [X.J - 50, YM - 30], 'L'],
+        'i:L': [[X.J + 18, -22], [X.L1 - 8, -22], 'T'], 'i:C': [[X.C - 48, YM - 30], [X.C - 48, YM + 30], 'L'], 'i:R': [[X.R + 34, YM - 30], [X.R + 34, YM + 30], 'R'],
+        'v:V0': [[-62, YM + 44], [-62, YM - 44], 'L'], 'v:S': [[X.S2 - 6, -86], [X.S1 + 6, -86], 'T'], 'v:D': [[X.J - 50, YM + 40], [X.J - 50, YM - 40], 'L'],
+        'v:L': [[X.L2 - 8, -46], [X.L1 + 8, -46], 'T'], 'v:C': [[X.C - 48, YM + 40], [X.C - 48, YM - 40], 'L'], 'v:R': [[X.R + 70, YM + 44], [X.R + 70, YM - 44], 'R'],
+      },
+      nodeTag: {in: [52, 0, 0, -16], sw: [X.J - 38, 0, 0, -16], out: [X.C + 60, 0, 0, -16], gnd: [X.J + 60, H, 0, 40]},
+      loops: {on: box(X.B, X.R), off: box(X.J, X.R), cr: box(X.C, X.R)},
+      sw: {S: sw},
+    };
+  },
+  onRun(S, app) {
+    capOnly.forEach(e => e.style.display = useC ? '' : 'none');
+    app.hitEl['e:C'].style.display = useC ? '' : 'none';
+  },
+  state(S, k, MET) {
+    const g = S.g[k], iL = S.iL[k], vC = S.vC[k];
+    const blocked = iL <= 0 && !(g && S.p.V0 > vC);
+    const ip = (n) => Math.abs(n) / Math.max(1e-15, Math.abs(MET.iMax));
+    if (g && !blocked) return {sw: {S: 1}, loops: [['on', ip(iL)]], html: `<span class="sw-on">スイッチ オン</span>：電源 → スイッチ → コイル → ${useC ? 'C・R' : 'R'} → 電源。コイルに電圧 <span class="eq">V<sub>0</sub> − v<sub>C</sub></span> がかかり、<span class="eq">i<sub>L</sub></span> が増える。`};
+    if (!blocked) return {sw: {S: 0}, loops: [['off', ip(iL)]], html: `<span class="sw-off">スイッチ オフ</span>：コイル → ${useC ? 'C・R' : 'R'} → ダイオード → コイル。コイルの電圧は <span class="eq">−v<sub>C</sub></span> で、<span class="eq">i<sub>L</sub></span> が減る。`};
+    return {sw: {S: g}, loops: useC ? [['cr', ip(vC / S.p.R)]] : [], html: `<span class="dcm">コイルの電流が 0</span>：ダイオードも止まっている（電流不連続）。${useC ? 'C が R に放電して、出力の電圧を支えている。' : ''}`};
+  },
+  metricsHtml(S, m) {
+    // 定常状態に達する前に打ち切ったときは、判定を「ずれる」ではなく「目安」にする
+    // 出力の電圧の揺れが平均の半分を超えるほど大きいとき（f_sw が低く L・C が小さい極端な値）も、式の前提（出力の電圧はほぼ一定）が崩れるので「目安」
+    const bigRip = m.dV > 0.5 * Math.abs(m.vAvg);
+    const mk = (a, b, tol) => !m.steady ? '<span class="small">目安（定常に達していない）</span>' : bigRip && /ずれる/.test(okMark(a, b, tol)) ? '<span class="small">目安（出力の揺れが大きい）</span>' : okMark(a, b, tol);
+    const p = S.p, T = S.T;
+    const dIth = p.D * T * (1 - p.D) * p.V0 / p.L;
+    const dVth = p.C > 0 ? m.dI / (8 * p.C * p.f) : p.R * m.dI;
+    const Kd = 2 * p.L / (p.R * T), Mdcm = 2 / (1 + Math.sqrt(1 + 4 * Kd / (p.D * p.D)));
+    let rows = `<tr><th>量</th><th>シミュレーション</th><th>授業の式</th><th>式の値</th><th>差</th></tr>`;
+    rows += `<tr><td>出力の電圧の平均</td><td class="num">${fmtSI(m.vAvg, 'V', 4)}</td><td class="eq">v<sub>C</sub> = DV<sub>0</sub></td><td class="num">${fmtSI(p.D * p.V0, 'V', 4)}</td><td>${pctDiff(m.vAvg, p.D * p.V0)} ${m.dcm ? '' : mk(m.vAvg, p.D * p.V0, 0.02)}</td></tr>`;
+    rows += `<tr><td>コイルの電流の振れ幅</td><td class="num">${fmtSI(m.dI, 'A', 4)}</td><td class="eq">ΔI = DT(1 − D)V<sub>0</sub> / L</td><td class="num">${fmtSI(dIth, 'A', 4)}</td><td>${m.dcm ? '—' : pctDiff(m.dI, dIth) + ' ' + mk(m.dI, dIth, 0.05)}</td></tr>`;
+    rows += `<tr><td>出力の電圧の振れ幅</td><td class="num">${fmtSI(m.dV, 'V', 3)}</td><td class="eq">${p.C > 0 ? 'ΔI / (8Cf<sub>sw</sub>)' : 'RΔI（C なし）'}</td><td class="num">${fmtSI(dVth, 'V', 3)}</td><td>${m.dcm ? '—' : pctDiff(m.dV, dVth)}</td></tr>`;
+    rows += `<tr><td>コイルの電流の平均</td><td class="num">${fmtSI(m.iAvg, 'A', 4)}</td><td class="eq">v<sub>C</sub> / R</td><td class="num">${fmtSI(m.vAvg / p.R, 'A', 4)}</td><td>${pctDiff(m.iAvg, m.vAvg / p.R)}</td></tr>`;
+    if (m.dcm) rows += `<tr><td colspan="5"><span class="dcm" style="color:#7c3aed;font-weight:700">電流不連続モード</span>：オフの途中でコイルの電流が 0 になっています。<span class="eq">DV<sub>0</sub></span> と <span class="eq">ΔI</span> の式は「電流が 0 にならない」ときの式なので合いません（出力の電圧は <span class="eq">DV<sub>0</sub></span> より高くなる）。参考：不連続モードの式 <span class="eq">v<sub>C</sub> = 2V<sub>0</sub> / (1 + √(1 + 8L/(D<sup>2</sup>RT)))</span> = ${fmtSI(Mdcm * p.V0, 'V', 4)}（差 ${pctDiff(m.vAvg, Mdcm * p.V0)}）</td></tr>`;
+    if (bigRip && m.steady) rows += `<tr><td colspan="5" class="small">出力の電圧の揺れ（${fmtSI(m.dV, 'V', 3)}）が平均の半分を超えています。授業の式は「出力の電圧はほぼ一定（揺れは小さい）」として求めたものなので、合わない行は「目安」としています（<span class="eq">f<sub>sw</sub></span>・<span class="eq">L</span>・<span class="eq">C</span> を大きくすると式に近づきます）。</td></tr>`;
+    const sub = `最後の 1 周期で計算。定常状態まで約 ${fmtSI(m.settle, 's', 2)}（${Math.max(1, Math.round(m.settle / T))} 周期）` +
+      (m.steady ? '' : ` <span class="ng">まだ定常状態に達していません（${S.periods} 周期で打ち切り）</span>`);
+    return {rows, sub};
+  },
+});
+})();
+</script>
+</body>
+</html>

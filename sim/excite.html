@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>変圧器の励磁電流のシミュレーター — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  .seg button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .params .mnote { font-size: 0.76rem; color: var(--text-secondary); margin: 0 0 4px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<header>
+  <nav class="hnav"><a href="../index.html">← 科目のページへ戻る</a><a href="index.html">回路を選ぶ（シミュレーターの一覧）</a></nav>
+  <h1>変圧器の励磁電流のシミュレーター</h1>
+  <div class="subtitle">パワーエレクトロニクス 第6回 直流-直流変換（２）p14〜30 / 大阪工業大学</div>
+</header>
+<main>
+  <div class="notice">
+    変圧器の1次側に電圧 <span class="eq">v<sub>1</sub></span> をかけたときの、励磁電流 <span class="eq">I<sub>m</sub></span>・1次側の電流 <span class="eq">I<sub>1</sub></span>・2次側の電流 <span class="eq">I<sub>2</sub></span> を見ます。
+    「回路の値」の<b>電源</b>で「±パルス（p19〜25）」と「直流＋スイッチ（p29〜30）」、<b>負荷</b>で「なし」と「抵抗 <span class="eq">R</span>」を選べます。
+    回路図の<b>線をクリック</b>するとその点の電位、<b>素子をクリック</b>すると電流（矢印の向きが正）、<b>鉄心（真ん中の2本線）</b>をクリックすると励磁電流 <span class="eq">I<sub>m</sub></span> が下のグラフに出ます。
+  </div>
+
+  <div class="top">
+    <section class="card">
+      <div class="card-h">
+        <span class="ttl">回路</span>
+        <span class="small">素子をクリックしたとき：</span>
+        <span class="seg" id="emode"><button data-m="i" class="on">電流</button><button data-m="v">両端の電圧</button></span>
+      </div>
+      <svg id="sch" viewBox="-150 -110 800 430" aria-label="電源・変圧器・負荷の回路図"></svg>
+      <div id="state"></div>
+    </section>
+
+    <section class="card params">
+      <div class="card-h"><span class="ttl">回路の値</span></div>
+      <div class="card-b" id="params"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-h">
+      <span class="ttl">波形</span>
+      <span class="seg" id="win">
+        <button data-w="all" class="on">起動から最後まで</button><button data-w="first">起動直後</button><button data-w="last">定常状態</button>
+      </span>
+    </div>
+    <div class="ctl">
+      <button id="play">▶ 再生</button>
+      <label>速さ <select id="speed"><option value="0.25">×0.25</option><option value="0.5">×0.5</option><option value="1" selected>×1</option><option value="2">×2</option><option value="4">×4</option></select></label>
+      <label id="nper">周期の数 <select id="nP"><option>2</option><option selected>3</option><option>5</option><option>10</option></select></label>
+      <label>グラフ <select id="lay"><option value="vi">電圧と電流の2段</option><option value="each">1本ずつ別の段</option></select></label>
+    </div>
+    <div class="scrubrow"><input type="range" id="scrub" min="0" max="10000" value="0" aria-label="時刻"><span class="tc" id="tc"></span></div>
+    <div id="legend"></div>
+    <div id="plotwrap"><canvas id="plot"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">最後の周期の値と、授業の式の比較</span><span class="small" id="msub"></span></div>
+    <div class="card-b" style="overflow-x:auto"><table class="m" id="metrics"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">このシミュレーターの前提</span></div>
+    <div class="card-b">
+      <ul class="notes">
+        <li>変圧器は結合係数 1 の結合コイルです（巻線の抵抗・鉄心の損失や飽和なし）。1次の自己インダクタンスを <span class="eq">L</span> とすると、2次は <span class="eq">L<sub>2</sub> = (n<sub>2</sub>/n<sub>1</sub>)<sup>2</sup>L</span>。巻線の電圧は巻数に比例し（<span class="eq">v<sub>2</sub> = (n<sub>2</sub>/n<sub>1</sub>)v<sub>1</sub></span>、○ の側が＋）、電流は <span class="eq">I<sub>1</sub> = I<sub>m</sub> + (n<sub>2</sub>/n<sub>1</sub>)I<sub>2</sub></span>（p18 の <span class="eq">I<sub>1</sub> = I<sub>m</sub> + I<sub>ℓ</sub></span>、<span class="eq">n<sub>1</sub>I<sub>ℓ</sub> = n<sub>2</sub>I<sub>2</sub></span>）、励磁電流は <span class="eq">v<sub>1</sub> = L dI<sub>m</sub>/dt</span> で決まります。</li>
+        <li>±パルス：<span class="eq">v<sub>1</sub></span> は <span class="eq">0 ≤ t &lt; t<sub>on</sub></span> で <span class="eq">+V</span>、<span class="eq">T/2 ≤ t &lt; T/2 + t<sub>on</sub></span> で <span class="eq">−V</span>、ほかは 0 を周期 <span class="eq">T</span> でくり返します（<span class="eq">t<sub>on</sub></span> は <span class="eq">T/2</span> まで）。0 V の間は <span class="eq">v<sub>1</sub> = 0</span> なので <span class="eq">I<sub>m</sub></span> は一定のままです。<span class="eq">t = 0</span> で <span class="eq">I<sub>m</sub> = 0</span>。<span class="eq">I<sub>m</sub></span> は負荷によらず、<span class="eq">v<sub>1</sub></span> だけで決まります。</li>
+        <li>直流＋スイッチ：オンの間は ±パルスの <span class="eq">+V</span> と同じです。オフにすると <span class="eq">I<sub>1</sub> = 0</span> なので、<span class="eq">I<sub>m</sub></span> は全部 2次側に移って <span class="eq">I<sub>2</sub> = −(n<sub>1</sub>/n<sub>2</sub>)I<sub>m</sub></span>（矢印と逆向き）になります。2次側は <span class="eq">L<sub>2</sub></span> と <span class="eq">R</span> の回路なので、<span class="eq">τ = L<sub>2</sub>/R</span> で減っていきます。このとき <span class="eq">v<sub>2</sub> = RI<sub>2</sub> = −(n<sub>1</sub>/n<sub>2</sub>)RI<sub>m</sub></span>、<span class="eq">v<sub>1</sub> = (n<sub>1</sub>/n<sub>2</sub>)v<sub>2</sub> = −(n<sub>1</sub>/n<sub>2</sub>)<sup>2</sup>RI<sub>m</sub></span>、スイッチの両端には <span class="eq">V − v<sub>1</sub> = V + (n<sub>1</sub>/n<sub>2</sub>)<sup>2</sup>RI<sub>m</sub></span> がかかります。</li>
+        <li>直流＋スイッチで負荷がないと、オフで <span class="eq">I<sub>m</sub></span> の行き場がなくなり、電圧が限りなく大きくなります（実際はスイッチが壊れるか、火花が飛ぶ）。なので、この組み合わせは選べないようにしています。</li>
+        <li>スイッチは <span class="eq">0 ≤ t &lt; t<sub>on</sub></span> でオン（<span class="eq">t<sub>on</sub></span> は <span class="eq">0.9T</span> まで）。オフの間（<span class="eq">T − t<sub>on</sub></span>）に <span class="eq">I<sub>m</sub></span> が 0 まで戻りきらないと少しずつ残るので、何周期か回して定常状態にしています。スライド p30 の値では、残りは <span class="eq">e<sup>−9/2</sup></span> ≈ 1 % です。</li>
+        <li>電源・スイッチ・抵抗は理想の素子です。計算は区間ごとの式（傾きが一定の直線と、指数関数）で求めています。</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<footer>パワーエレクトロニクス ｜ 神野 崇馬 ｜ 試作版</footer>
+<div id="tip"></div>
+
+<script>
+// ==SIM-BEGIN==
+/**
+ * 変圧器（結合係数 1、1次 L・2次 (n2/n1)² L）の励磁電流。区間ごとの式で求める。
+ * p = {src: 'pulse' | 'sw', load: 'none' | 'R', V, ton, T, L, n (= n2/n1), R}
+ *  pulse：0〜ton で +V、T/2〜T/2+ton で −V、ほかは 0（ton は T/2 まで）
+ *  sw   ：直流 V をスイッチで 0〜ton だけつなぐ（ton は 0.9T まで）。負荷 R が必要
+ * 戻り値: t, s（1: v1 = +V（オン）/ 2: v1 = −V / 0: v1 = 0 またはスイッチ オフ）, im（励磁電流、1次側に換算）, T, periods, p
+ */
+function simulateExcite(p0) {
+  const p = Object.assign({}, p0), T = p.T, V = p.V, L = p.L;
+  if (p.src === 'sw' && p.load !== 'R') p.load = 'R';
+  const lim = p.src === 'pulse' ? T / 2 : 0.9 * T;
+  p.tonSet = p.ton; p.clamped = p.ton > lim * (1 + 1e-9);
+  p.ton = Math.min(p.ton, lim);
+  const ton = p.ton;
+  p.tau = p.load === 'R' ? p.n * p.n * L / p.R : Infinity;
+  let periods = 6;
+  if (p.src === 'sw') {
+    const a = Math.exp(-(T - ton) / p.tau);
+    periods = a < 1e-6 ? 6 : Math.min(4000, Math.max(6, Math.ceil(Math.log(1e-5) / Math.log(a)) + 3));
+  }
+  // 区間：[始まり, 長さ, s, 動き]（動き：'up' +V/L、'dn' −V/L、'hold' 一定、'dec' τ で減る）
+  const segs = p.src === 'pulse'
+    ? [[0, ton, 1, 'up'], [ton, T / 2 - ton, 0, 'hold'], [T / 2, ton, 2, 'dn'], [T / 2 + ton, T / 2 - ton, 0, 'hold']]
+    : [[0, ton, 1, 'up'], [ton, T - ton, 0, 'dec']];
+  const tA = [], sA = [], mA = [];
+  let im = 0;
+  const HI = Math.min(12, periods);
+  for (let pn = 0; pn < periods; pn++) {
+    const hiRes = pn >= periods - HI;
+    for (const [a, dur, s, kind] of segs) {
+      if (dur <= 1e-12 * T) continue;
+      const t0 = pn * T + a;
+      const n = kind === 'dec' ? (hiRes ? 160 : 12) : 4;
+      const im0 = im;
+      tA.push(t0); sA.push(s); mA.push(im0);
+      for (let j = 1; j <= n; j++) {
+        const u = dur * j / n;
+        im = kind === 'up' ? im0 + V * u / L : kind === 'dn' ? im0 - V * u / L : kind === 'dec' ? im0 * Math.exp(-u / p.tau) : im0;
+        tA.push(t0 + u); sA.push(s); mA.push(im);
+      }
+    }
+  }
+  return {t: Float64Array.from(tA), s: Int8Array.from(sA), im: Float64Array.from(mA), T, periods, p, unstable: false};
+}
+/** 1次の巻線の電圧 v1（○ の側が＋） */
+function exV1(S, k) {
+  const p = S.p, s = S.s[k];
+  if (s === 1) return p.V;
+  if (s === 2) return -p.V;
+  return p.src === 'sw' ? -p.R * S.im[k] / (p.n * p.n) : 0;
+}
+const exV2 = (S, k) => S.p.n * exV1(S, k);                                  // 2次の巻線の電圧（○ の側が＋）
+const exI2 = (S, k) => S.p.load === 'R' ? exV2(S, k) / S.p.R : 0;          // 2次の電流（○ から出て R へ）
+const exI1 = (S, k) => S.im[k] + S.p.n * exI2(S, k);                       // 1次の電流（○ に入る向き）
+const exVs = (S, k) => S.p.V - exV1(S, k);                                  // スイッチの両端の電圧（左が＋）
+function exciteMetrics(S) {
+  const p = S.p, T = S.T, n = S.t.length, tA = (S.periods - 1) * T;
+  let k0 = 0;
+  while (k0 < n && S.t[k0] < tA - 1e-9 * T) k0++;
+  const m = {imMax: -Infinity, imMin: Infinity, i1Max: -Infinity, i1Min: Infinity, i2Max: -Infinity, i2Min: Infinity,
+    v2Max: -Infinity, v2Min: Infinity, vsMax: -Infinity, imOn0: NaN, imOn1: NaN, v2Off: NaN, tauSim: NaN, k0};
+  for (let k = k0; k < n; k++) {
+    const im = S.im[k], i1 = exI1(S, k), i2 = exI2(S, k), v2 = exV2(S, k);
+    m.imMax = Math.max(m.imMax, im); m.imMin = Math.min(m.imMin, im);
+    m.i1Max = Math.max(m.i1Max, i1); m.i1Min = Math.min(m.i1Min, i1);
+    m.i2Max = Math.max(m.i2Max, i2); m.i2Min = Math.min(m.i2Min, i2);
+    m.v2Max = Math.max(m.v2Max, v2); m.v2Min = Math.min(m.v2Min, v2);
+    if (p.src === 'sw') m.vsMax = Math.max(m.vsMax, exVs(S, k));
+  }
+  // オンの始まりと終わりの I_m、オフ直後の v2、オフの間の減り方から τ
+  for (let k = k0; k < n; k++) {
+    if (S.s[k] === 1 && isNaN(m.imOn0)) m.imOn0 = S.im[k];
+    if (S.s[k] === 1) m.imOn1 = S.im[k];
+    if (p.src === 'sw' && k > k0 && S.s[k] === 0 && S.s[k - 1] === 1 && isNaN(m.v2Off)) {
+      m.v2Off = exV2(S, k);
+      if (k + 1 < n && S.s[k + 1] === 0 && S.im[k + 1] > 0 && S.im[k] > S.im[k + 1]) m.tauSim = (S.t[k + 1] - S.t[k]) / Math.log(S.im[k] / S.im[k + 1]);
+    }
+  }
+  // 定常状態か：最後の 2 周期の I_m の山
+  let prevMax = -Infinity;
+  for (let k = 0; k < k0; k++) if (S.t[k] >= tA - T - 1e-9 * T) prevMax = Math.max(prevMax, S.im[k]);
+  m.steady = S.periods < 2 || Math.abs(m.imMax - prevMax) <= 1e-3 * Math.max(Math.abs(m.imMax), 1e-15);
+  m.absI = Math.max(Math.abs(m.i1Max), Math.abs(m.i1Min), Math.abs(m.i2Max), Math.abs(m.i2Min), Math.abs(m.imMax), 1e-15);
+  return m;
+}
+// ==SIM-END==
+</script>
+<script src="common.js"></script>
+<script>
+(() => {
+'use strict';
+let src = 'pulse', load = 'none';
+const H = 220, YM = 110;
+const X = {B: 0, S1: 100, S2: 180, NP: 290, CA: 320, CB: 332, NS: 362, XT: 450, XR: 540};
+const Y = {c1: 45, c2: 175};
+const CORE = (X.CA + X.CB) / 2;
+const C1 = '#2563eb', C2 = COL.orange, CM = '#be123c', CS = COL.fuchsia, CB = COL.ink2;
+const r3 = (x) => +x.toPrecision(3);
+let gPulse, gBat, gSwW, gSwStraight, gRes, gOpen, ratioText, srcName, srcNameV, hitWires = [], wireOf = [];
+const PR = {};
+
+// 線の当たり判定を、今の電源・負荷で使わない所は消す
+const wireHidden = (nn, idx) =>
+  (nn === 'in' && src === 'pulse') || (nn === 'p' && idx === 1 && src === 'sw') ||
+  ((nn === 's' || nn === 'gnd2') && idx === 1 && load !== 'R');
+
+const paneP = gateRowsPane([{label: '+V', color: C1, on: (S, k) => S.s[k] === 1}, {label: '−V', color: COL.red, on: (S, k) => S.s[k] === 2}]);
+const paneS = gateRowsPane([{label: 'スイッチ', color: CS, on: (S, k) => S.s[k] === 1}]);
+
+Object.assign(PR, {
+  'n:in':  {b: 'V', s: '', color: CB, q: 'V', what: '電池の＋側の節点の電位', f: (S) => S.p.V, hidden: (S) => S.p.src !== 'sw'},
+  'n:p':   {b: 'v', s: '1', up: true, color: C1, q: 'V', what: '1次の巻線の ○ の側の節点の電位（= v₁）', f: exV1},
+  'n:gnd': {b: 'GND', s: '', color: COL.sub, q: 'V', what: '1次側の下の線（0 V）', f: () => 0},
+  'n:s':   {b: 'v', s: '2', up: true, color: C2, q: 'V', what: '2次の巻線の ○ の側の節点の電位（= v₂）', f: exV2},
+  'n:gnd2': {b: 'GND₂', s: '', color: COL.sub, q: 'V', what: '2次側の下の線（0 V）', base: '2次側の電位の基準（1次側とは絶縁されている）', f: () => 0},
+  'i:src': {b: 'I', s: '1', up: true, color: C1, q: 'I', what: '電源の電流（上向きが正。= I₁）', f: exI1},
+  'v:src': {b: 'v', s: '1', up: true, color: C1, q: 'V', what: '電源の電圧（上が＋）', f: exV1},
+  'i:S':   {b: 'I', s: '1', up: true, color: C1, q: 'I', what: 'スイッチの電流（右向きが正。= I₁）', f: exI1, hidden: (S) => S.p.src !== 'sw'},
+  'v:S':   {b: 'v', s: 'S', up: true, color: CS, q: 'V', what: 'スイッチ両端の電圧（左が＋、V − v₁）。スライドの v_sw（ゲート信号）とは別の量', f: exVs, hidden: (S) => S.p.src !== 'sw'},
+  'i:P1':  {b: 'I', s: '1', up: true, color: C1, q: 'I', what: '1次の巻線の電流（○ に入る向きが正）= 励磁電流 + 負荷電流', f: exI1},
+  'v:P1':  {b: 'v', s: '1', up: true, color: C1, q: 'V', what: '1次の巻線の電圧（○ の側が＋）', f: exV1},
+  'i:core': {b: 'I', s: 'm', color: CM, q: 'I', what: '励磁電流（1次側に換算。鉄心の磁束に比例）', f: (S, k) => S.im[k]},
+  'i:P2':  {b: 'I', s: '2', up: true, color: C2, q: 'I', what: '2次の巻線の電流（○ から出る向きが正）', f: exI2},
+  'v:P2':  {b: 'v', s: '2', up: true, color: C2, q: 'V', what: '2次の巻線の電圧（○ の側が＋）', f: exV2},
+  'i:R':   {b: 'I', s: '2', up: true, color: C2, q: 'I', what: '抵抗の電流（下向きが正。= I₂）', f: exI2, hidden: (S) => S.p.load !== 'R'},
+  'v:R':   {b: 'v', s: '2', up: true, color: C2, q: 'V', what: '抵抗の両端の電圧（上が＋。= v₂）', f: exV2, hidden: (S) => S.p.load !== 'R'},
+});
+
+const setProbes = (a, keys) => { a.probes.clear(); keys.forEach(k => a.probes.add(k)); };
+
+SimApp({
+  pdef: [
+    {k: 'V', b: 'V', s: '', title: '電源の電圧', min: 1, max: 100, step: 0.5, log: false, unit: 'V', def: 10},
+    {k: 'ton', b: 't', s: 'on', up: true, title: '+V（スイッチ オン）の時間', min: 0.1e-6, max: 100e-6, log: true, unit: 's', def: 1e-6},
+    {k: 'T', b: 'T', s: '', title: '周期', min: 1e-6, max: 1e-3, log: true, unit: 's', def: 10e-6},
+    {k: 'L', b: 'L', s: '', title: '1次の巻線の自己インダクタンス', min: 10e-6, max: 100e-3, log: true, unit: 'H', def: 1e-3},
+    {k: 'n', html: 'n<sub style="font-style:normal">2</sub>/n<sub style="font-style:normal">1</sub>', title: '巻数比 n2/n1', min: 0.1, max: 10, log: true, unit: '', def: 1, fmt: r3},
+    {k: 'R', b: 'R', s: '', title: '負荷の抵抗', min: 10, max: 100e3, log: true, unit: 'Ω', def: 500},
+  ],
+  extraParams(el, a) {
+    const d1 = document.createElement('div');
+    d1.className = 'crow';
+    d1.innerHTML = `<span style="min-width:3em">電源</span><span class="seg"><button data-v="pulse">±パルス（p19〜25）</button><button data-v="sw">直流＋スイッチ（p29〜30）</button></span>`;
+    const d2 = document.createElement('div');
+    d2.className = 'crow';
+    d2.innerHTML = `<span style="min-width:3em">負荷</span><span class="seg"><button data-v="none">なし</button><button data-v="R">抵抗 R</button></span>`;
+    const note = document.createElement('div');
+    note.className = 'mnote';
+    note.textContent = '直流＋スイッチでは負荷なしは選べません（オフで励磁電流の行き場がなく、電圧が限りなく大きくなるため）。';
+    const b1 = d1.querySelectorAll('button'), b2 = d2.querySelectorAll('button');
+    a.showMode = () => {
+      if (src === 'sw') load = 'R';
+      b1.forEach(b => b.classList.toggle('on', b.dataset.v === src));
+      b2.forEach(b => { b.classList.toggle('on', b.dataset.v === load); b.disabled = src === 'sw' && b.dataset.v === 'none'; });
+      note.style.display = src === 'sw' ? '' : 'none';
+      a.sliders.R.row.style.display = load === 'R' ? '' : 'none';
+    };
+    b1.forEach(b => b.onclick = () => {
+      if (src === b.dataset.v) return;
+      src = b.dataset.v;
+      if (src === 'sw' && !a.probes.has('v:S')) a.probes.add('v:S');
+      a.showMode(); a.schedule();
+    });
+    b2.forEach(b => b.onclick = () => { if (b.disabled) return; load = b.dataset.v; a.showMode(); a.schedule(); });
+    el.insertBefore(d1, a.sliders.V.row);
+    el.insertBefore(d2, a.sliders.V.row);
+    el.insertBefore(note, a.sliders.V.row);
+    a.showMode();
+  },
+  presets: [
+    {name: 'p20：負荷なし（励磁電流だけ）', v: {V: 10, ton: 1e-6, T: 10e-6, L: 1e-3, n: 1},
+      apply: (a) => { src = 'pulse'; load = 'none'; a.showMode(); setProbes(a, ['v:P1', 'i:core']); }},
+    {name: 'p25：負荷 500 Ω（I₁ = 励磁電流 + 負荷電流）', v: {V: 10, ton: 1e-6, T: 10e-6, L: 1e-3, n: 1, R: 500},
+      apply: (a) => { src = 'pulse'; load = 'R'; a.showMode(); setProbes(a, ['v:P1', 'v:P2', 'i:core', 'i:P2', 'i:P1']); }},
+    {name: 'p30：直流＋スイッチ、500 Ω', v: {V: 10, ton: 1e-6, T: 10e-6, L: 1e-3, n: 1, R: 500},
+      apply: (a) => { src = 'sw'; load = 'R'; a.showMode(); setProbes(a, ['v:S', 'v:P2', 'i:P1', 'i:P2']); }},
+  ],
+  simulate: (P) => simulateExcite({src, load, V: P.V, ton: P.ton, T: P.T, L: P.L, n: P.n, R: P.R}),
+  metrics: exciteMetrics,
+  gatePane: {
+    get h() { return src === 'pulse' ? paneP.h : paneS.h; },
+    draw(c, S, g) { (S.p.src === 'pulse' ? paneP : paneS).draw(c, S, g); },
+  },
+  probes: PR,
+  defaultProbes: ['v:P1', 'i:core'],
+  refLines: [
+    {keys: ['i:core'], val: (S) => S.p.V * S.p.ton / S.p.L, label: 'Vtₒₙ/L', color: CM},
+  ],
+  hideWire: (nn, idx) => wireHidden(nn, idx),
+  build(K) {
+    const {el, W, gWire} = K;
+    const nodeW = {
+      in: [[[X.B, YM - 28], [X.B, 0], [X.S1, 0]]],
+      p: [[[X.S2, 0], [X.NP, 0], [X.NP, Y.c1]], [[X.B, YM - 28], [X.B, 0], [X.S2, 0]]],
+      gnd: [[[X.B, YM + 28], [X.B, H], [X.NP, H], [X.NP, Y.c2]]],
+      s: [[[X.NS, Y.c1], [X.NS, 0], [X.XT, 0]], [[X.XT, 0], [X.XR, 0], [X.XR, YM - 45]]],
+      gnd2: [[[X.NS, Y.c2], [X.NS, H], [X.XT, H]], [[X.XT, H], [X.XR, H], [X.XR, YM + 45]]],
+    };
+    for (const nn in nodeW) nodeW[nn].forEach((pts, idx) => { wireOf.push([nn, idx]); });
+    // 両方の電源で使う線
+    W(nodeW.in[0]); W(nodeW.p[0]); W(nodeW.gnd[0]); W(nodeW.s[0]); W(nodeW.gnd2[0]);
+    // ±パルスの電源（○ の中に ⎍）
+    gPulse = el('g', {}, gWire);
+    el('circle', {cx: X.B, cy: YM, r: 28, fill: '#fff'}, gPulse);
+    el('path', {d: `M-15 ${YM + 9} H-7 V${YM - 10} H7 V${YM + 9} H15`, 'stroke-width': 2.6}, gPulse);
+    // 直流（電池）
+    gBat = el('g', {}, gWire);
+    W([[X.B, YM - 28], [X.B, YM - 9]], gBat); W([[X.B, YM + 9], [X.B, YM + 28]], gBat);
+    el('line', {x1: X.B - 26, y1: YM - 9, x2: X.B + 26, y2: YM - 9}, gBat);
+    el('line', {x1: X.B - 13, y1: YM + 9, x2: X.B + 13, y2: YM + 9, 'stroke-width': 6}, gBat);
+    srcName = K.name(-48, YM + 10, 'v', 'end', 30, '1');
+    srcNameV = K.name(-40, YM + 10, 'V', 'end', 30);
+    // スイッチ（直流＋スイッチのとき）と、その代わりのただの線（±パルスのとき）
+    gSwStraight = el('g', {}, gWire);
+    W(nodeW.p[1], gSwStraight);
+    gSwW = el('g', {}, gWire);
+    const n0 = gWire.childNodes.length;
+    const sw = K.switch([X.S1, 0], [X.S2, 0], 1);
+    K.box(X.S1 - 18, -32, X.S2 - X.S1 + 36, 58, CS);
+    K.text((X.S1 + X.S2) / 2, -42, 'スイッチ', CS, 22);
+    [...gWire.childNodes].slice(n0).forEach(e => gSwW.appendChild(e));
+    // 変圧器：○ は巻線の最初の 1 巻きの横、鉄心と反対の側
+    K.coil([X.NP, Y.c1], [X.NP, Y.c2], 4, 1, 4);
+    K.coil([X.NS, Y.c1], [X.NS, Y.c2], 4, -1, 4);
+    el('line', {x1: X.CA, y1: Y.c1 - 12, x2: X.CA, y2: Y.c2 + 12}, gWire);
+    el('line', {x1: X.CB, y1: Y.c1 - 12, x2: X.CB, y2: Y.c2 + 12}, gWire);
+    K.pol(X.NP - 22, Y.c1 + 12); K.pol(X.NS + 22, Y.c1 + 12);
+    K.name(X.NP - 30, Y.c2 - 6, 'n', 'end', 30, '1');
+    K.name(X.NS + 30, Y.c2 - 6, 'n', 'start', 30, '2');
+    ratioText = K.text(X.B - 40, H + 50, '', COL.ink, 22, 'start');
+    K.text(X.XR + 10, H + 50, '2次側（絶縁）', COL.sub, 20, 'end');
+    // 負荷：抵抗 R、または開いた端子
+    gRes = el('g', {}, gWire);
+    W(nodeW.s[1], gRes); W(nodeW.gnd2[1], gRes);
+    gRes.appendChild(K.res(X.XR, YM));
+    gRes.appendChild(K.name(X.XR - 24, YM + 10, 'R', 'end'));
+    gOpen = el('g', {}, gWire);
+    el('circle', {cx: X.XT, cy: 0, r: 6, fill: '#fff'}, gOpen);
+    el('circle', {cx: X.XT, cy: H, r: 6, fill: '#fff'}, gOpen);
+    gOpen.appendChild(K.text(X.XT + 16, YM + 6, '負荷なし（開放）', COL.sub, 20, 'start'));
+    const I = 20;
+    return {
+      nodeW,
+      hits: [['e:src', [-34, YM - 32, 68, 64]], ['e:S', [X.S1 + 8, -24, X.S2 - X.S1 - 16, 44]],
+        ['e:P1', [X.NP - 16, Y.c1 + 4, 32, Y.c2 - Y.c1 - 8]], ['e:P2', [X.NS - 16, Y.c1 + 4, 32, Y.c2 - Y.c1 - 8]],
+        ['e:core', [X.CA - 8, Y.c1 - 12, X.CB - X.CA + 16, Y.c2 - Y.c1 + 24]], ['e:R', [X.XR - 22, YM - 50, 44, 100]]],
+      arrows: {
+        'i:src': [[-22, 62], [-22, 16], 'L'], 'v:src': [[-100, YM + 44], [-100, YM - 44], 'L'],
+        'i:S': [[X.S1 + 14, 40], [X.S2 - 14, 40], 'B'], 'v:S': [[X.S2 - 6, 76], [X.S1 + 6, 76], 'B'],
+        'i:P1': [[X.NP - 60, Y.c1 + 30], [X.NP - 60, Y.c2 - 40], 'L'], 'v:P1': [[X.NP - 60, Y.c2 - 20], [X.NP - 60, Y.c1 + 20], 'L'],
+        'i:P2': [[X.NS + 60, Y.c2 - 40], [X.NS + 60, Y.c1 + 30], 'R'], 'v:P2': [[X.NS + 60, Y.c2 - 20], [X.NS + 60, Y.c1 + 20], 'R'],
+        'i:R': [[X.XR + 34, YM - 30], [X.XR + 34, YM + 30], 'R'], 'v:R': [[X.XR + 76, YM + 44], [X.XR + 76, YM - 44], 'R'],
+      },
+      nodeTag: {in: [X.S1 - 50, 0, 0, -16], p: [X.S2 + 56, 0, 0, -16], gnd: [150, H, 0, 40], s: [X.XT - 30, 0, 0, -16], gnd2: [X.XT - 30, H, 0, 40]},
+      loops: {
+        p_cw: [[I, I], [X.NP - I, I], [X.NP - I, H - I], [I, H - I]],
+        s_cw: [[X.NS + I, H - I], [X.NS + I, I], [X.XR - I, I], [X.XR - I, H - I]],
+      },
+      sw: {S: sw},
+    };
+  },
+  onRun(S, a) {
+    const sw = S.p.src === 'sw', R = S.p.load === 'R';
+    gPulse.style.display = sw ? 'none' : ''; gBat.style.display = sw ? '' : 'none';
+    srcName.style.display = sw ? 'none' : ''; srcNameV.style.display = sw ? '' : 'none';
+    gSwW.style.display = sw ? '' : 'none'; gSwStraight.style.display = sw ? 'none' : '';
+    gRes.style.display = R ? '' : 'none'; gOpen.style.display = R ? 'none' : '';
+    a.hitEl['e:S'].style.display = sw ? '' : 'none';
+    a.hitEl['e:R'].style.display = R ? '' : 'none';
+    if (!hitWires.length) hitWires = [...document.querySelectorAll('#sch polyline.hitw')];
+    hitWires.forEach((h, q) => { const [nn, idx] = wireOf[q]; h.style.display = wireHidden(nn, idx) ? 'none' : ''; });
+    // 電源の電圧：±パルスでは v1、直流では V
+    Object.assign(PR['v:src'], sw
+      ? {b: 'V', s: '', up: false, color: CB, what: '電池の電圧（上が＋）', f: (S) => S.p.V}
+      : {b: 'v', s: '1', up: true, color: C1, what: '電源の電圧（上が＋。= v₁）', f: exV1});
+    PR['n:p'].what = sw ? 'スイッチの右（1次の巻線の ○ の側）の節点の電位（= v₁）' : '電源と1次の巻線の ○ の側の節点の電位（= v₁）';
+    const n = S.p.n, L2 = n * n * S.p.L;
+    ratioText.textContent = `n₁ : n₂ = 1 : ${r3(n)}、L₁ = ${fmtSI(S.p.L, 'H', 3).replace(/\.0+ /, ' ')}、L₂ = ${fmtSI(L2, 'H', 3).replace(/\.0+ /, ' ')}`;
+  },
+  state(S, k, MET) {
+    const p = S.p, s = S.s[k], im = S.im[k], i1 = exI1(S, k), i2 = exI2(S, k);
+    const fr = (x) => Math.abs(x) / MET.absI, R = p.load === 'R';
+    const loops = [];
+    const tiny = 1e-9 * MET.absI;
+    if (Math.abs(i1) > tiny) loops.push(['p_cw', fr(i1)]);
+    if (R && Math.abs(i2) > tiny) loops.push(['s_cw', fr(i2)]);
+    let html;
+    const sec = R ? `2次側に <span class="eq">v<sub>2</sub> = (n<sub>2</sub>/n<sub>1</sub>)v<sub>1</sub></span> が出て <span class="eq">I<sub>2</sub> = v<sub>2</sub>/R</span> が流れ、1次側の電流は <span class="eq">I<sub>1</sub> = I<sub>m</sub> + (n<sub>2</sub>/n<sub>1</sub>)I<sub>2</sub></span>。` : `2次側は開いているので <span class="eq">I<sub>2</sub> = 0</span>、<span class="eq">I<sub>1</sub> = I<sub>m</sub></span>。`;
+    if (s === 1) html = (p.src === 'sw' ? `<span class="sw-on">スイッチ オン</span>（<span class="eq">v<sub>1</sub> = V</span>）：` : `<span class="sw-on">v<sub>1</sub> = +V</span>：`) + `<span class="eq">I<sub>m</sub></span> が <span class="eq">V/L</span> の傾きで増える。` + sec;
+    else if (s === 2) html = `<span class="sw-on">v<sub>1</sub> = −V</span>：<span class="eq">I<sub>m</sub></span> が <span class="eq">V/L</span> の傾きで減る。` + sec + (R ? ' <span class="eq">I<sub>2</sub></span> は負（矢印と逆向き）。' : '');
+    else if (p.src === 'pulse') html = `<span class="sw-off">v<sub>1</sub> = 0</span>：<span class="eq">L dI<sub>m</sub>/dt = 0</span> なので <span class="eq">I<sub>m</sub></span> は一定のまま（鉄心の磁束も一定）。<span class="eq">I<sub>2</sub> = 0</span>、<span class="eq">I<sub>1</sub> = I<sub>m</sub></span>（0 V の電源を通って流れ続ける）。`;
+    else html = `<span class="sw-off">スイッチ オフ</span>：<span class="eq">I<sub>1</sub> = 0</span>。<span class="eq">I<sub>m</sub></span> は 2次側に移って <span class="eq">I<sub>2</sub> = −(n<sub>1</sub>/n<sub>2</sub>)I<sub>m</sub></span>（矢印と逆向き）が R に流れ、<span class="eq">τ = L<sub>2</sub>/R</span> で減っていく。スイッチの両端は <span class="eq">V + (n<sub>1</sub>/n<sub>2</sub>)<sup>2</sup>RI<sub>m</sub></span> = ${fmtSI(exVs(S, k), 'V', 3)}。`;
+    if (p.clamped) html += ` <span class="warn">t<sub>on</sub> が長すぎるので ${p.src === 'pulse' ? 'T/2' : '0.9T'} = ${fmtSI(p.ton, 's', 3)} にしています。</span>`;
+    return {sw: {S: s === 1}, loops, html};
+  },
+  metricsHtml(S, m) {
+    const p = S.p, T = S.T, n = p.n, R = p.load === 'R', V = p.V;
+    const F = (x, u) => fmtSI(x, u, 4);
+    const row = (nm, sim, eq, val, u, tol = 0.01) => `<tr><td>${nm}</td><td class="num">${F(sim, u)}</td><td class="eq">${eq}</td><td class="num">${F(val, u)}</td><td>${pctDiff(sim, val)} ${okMark(sim, val, tol)}</td></tr>`;
+    const imTh = V * p.ton / p.L, i2Th = R ? n * V / p.R : 0;
+    let rows = `<tr><th>量</th><th>シミュレーション</th><th>授業の式</th><th>式の値</th><th>差</th></tr>`;
+    if (p.src === 'pulse') {
+      rows += row('励磁電流の山 <span class="eq">I<sub>m</sub></span>', m.imMax, 'Vt<sub>on</sub> / L', imTh, 'A');
+      if (R) {
+        rows += row('+V の間の 2次の電圧 <span class="eq">v<sub>2</sub></span>', m.v2Max, '(n<sub>2</sub>/n<sub>1</sub>)V', n * V, 'V');
+        rows += row('+V の間の 2次の電流 <span class="eq">I<sub>2</sub></span>', m.i2Max, '(n<sub>2</sub>/n<sub>1</sub>)V / R', i2Th, 'A');
+        rows += row('1次の電流の山 <span class="eq">I<sub>1</sub></span>', m.i1Max, 'I<sub>m</sub>の山 + (n<sub>2</sub>/n<sub>1</sub>)I<sub>2</sub>', imTh + n * i2Th, 'A');
+        rows += row('1次の電流の谷（−V の終わり）', m.i1Min, '−(n<sub>2</sub>/n<sub>1</sub>)I<sub>2</sub>', -n * i2Th, 'A');
+      } else {
+        rows += row('1次の電流の山 <span class="eq">I<sub>1</sub></span>', m.i1Max, 'I<sub>1</sub> = I<sub>m</sub>（負荷なし）', imTh, 'A');
+      }
+    } else {
+      const tau = p.tau, a = Math.exp(-(T - p.ton) / tau), imEx = imTh / (1 - a), tol = 0.02;
+      rows += row('オンの間に増える励磁電流', m.imOn1 - m.imOn0, 'Vt<sub>on</sub> / L', imTh, 'A');
+      rows += row('励磁電流の山 <span class="eq">I<sub>m</sub></span>', m.imMax, 'Vt<sub>on</sub> / L', imTh, 'A', tol);
+      rows += row('オンの間の 2次の電流 <span class="eq">I<sub>2</sub></span>', m.i2Max, '(n<sub>2</sub>/n<sub>1</sub>)V / R', i2Th, 'A');
+      rows += row('1次の電流の山 <span class="eq">I<sub>1</sub></span>', m.i1Max, 'I<sub>m</sub>の山 + (n<sub>2</sub>/n<sub>1</sub>)I<sub>2</sub>', imTh + n * i2Th, 'A', tol);
+      rows += row('オフ直後の 2次の電圧 <span class="eq">v<sub>2</sub></span>', m.v2Off, '−(n<sub>1</sub>/n<sub>2</sub>)I<sub>m</sub>R', -imTh * p.R / n, 'V', tol);
+      rows += row('オフの間の時定数', m.tauSim, 'τ = L<sub>2</sub>/R = (n<sub>2</sub>/n<sub>1</sub>)<sup>2</sup>L / R', tau, 's');
+      rows += row('スイッチ両端の電圧の山', m.vsMax, 'V + (n<sub>1</sub>/n<sub>2</sub>)<sup>2</sup>I<sub>m</sub>R', V + imTh * p.R / (n * n), 'V', tol);
+      rows += `<tr><td colspan="5" class="small">参考：オフの間（<span class="eq">T − t<sub>on</sub></span> = ${fmtSI(T - p.ton, 's', 3)}）に <span class="eq">I<sub>m</sub></span> は <span class="eq">e<sup>−(T−t<sub>on</sub>)/τ</sup></span> = ${(100 * a).toPrecision(3)} % 残るので、定常状態の山は <span class="eq">(Vt<sub>on</sub>/L)/(1 − e<sup>−(T−t<sub>on</sub>)/τ</sup>)</span> = ${F(imEx, 'A')}（シミュレーションとの差 ${pctDiff(m.imMax, imEx)}）。上の表の「<span class="eq">I<sub>m</sub></span>」は授業どおり <span class="eq">Vt<sub>on</sub>/L</span> で計算しています。${a > 0.02 ? ' <span class="ng"><span class="eq">τ</span> が <span class="eq">T − t<sub>on</sub></span> に比べて長いので、残りが大きく、授業の式からずれます。</span>' : ''}</td></tr>`;
+    }
+    let sub = `最後の 1 周期で計算（${S.periods} 周期を計算）。`;
+    if (!m.steady) sub += ' <span class="ng">まだ定常状態に達していません</span>';
+    if (p.clamped) sub += ` <span class="ng">t<sub>on</sub> を ${p.src === 'pulse' ? 'T/2' : '0.9T'} = ${fmtSI(p.ton, 's', 3)} にしています</span>`;
+    return {rows, sub};
+  },
+});
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>間接式の周波数変換のシミュレーター — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<header>
+  <nav class="hnav"><a href="../index.html">← 科目のページへ戻る</a><a href="index.html">回路を選ぶ（シミュレーターの一覧）</a></nav>
+  <h1>間接式の周波数変換（AC → DC → AC）のシミュレーター</h1>
+  <div class="subtitle">パワーエレクトロニクス 第13回 交流-交流変換 p4・5・18 / 大阪工業大学</div>
+</header>
+<main>
+  <div class="notice">
+    ダイオードの全波整流回路で一度<b>直流</b>にして、<b>DC リンクコンデンサ</b> <span class="eq">C</span> にためてから、フルブリッジのインバータ（正弦波 PWM・バイポーラ、第12回）で<b>好きな周波数の交流</b>を作ります（p5）。
+    回路図の<b>線をクリックすると電位</b>（直流側の − の線を 0 V とする）、<b>素子をクリックすると電流</b>が出ます。
+  </div>
+
+  <div class="top">
+    <section class="card">
+      <div class="card-h">
+        <span class="ttl">回路</span>
+        <span class="small">素子をクリックしたとき：</span>
+        <span class="seg" id="emode"><button data-m="i" class="on">電流</button><button data-m="v">両端の電圧</button></span>
+      </div>
+      <svg id="sch" viewBox="-130 -90 1120 450" aria-label="間接式の周波数変換の回路図"></svg>
+      <div id="state"></div>
+    </section>
+
+    <section class="card params">
+      <div class="card-h"><span class="ttl">回路の値</span></div>
+      <div class="card-b" id="params"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-h">
+      <span class="ttl">波形</span>
+      <span class="seg" id="win">
+        <button data-w="all">起動から最後まで</button><button data-w="first">起動直後</button><button data-w="last" class="on">定常状態</button>
+      </span>
+    </div>
+    <div class="ctl">
+      <button id="play">▶ 再生</button>
+      <label>速さ <select id="speed"><option value="0.05">×0.05</option><option value="0.1">×0.1</option><option value="0.25">×0.25</option><option value="0.5">×0.5</option><option value="1" selected>×1</option></select></label>
+      <label id="nper">入力の周期の数 <select id="nP"><option>1</option><option selected>2</option><option>3</option><option>5</option></select></label>
+      <label>グラフ <select id="lay"><option value="vi">電圧と電流の2段</option><option value="each">1本ずつ別の段</option></select></label>
+    </div>
+    <div class="scrubrow"><input type="range" id="scrub" min="0" max="10000" value="0" aria-label="時刻"><span class="tc" id="tc"></span></div>
+    <div id="legend"></div>
+    <div id="plotwrap"><canvas id="plot"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">定常状態の値と、授業の式の比較</span><span class="small" id="msub"></span></div>
+    <div class="card-b" style="overflow-x:auto"><table class="m" id="metrics"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">このシミュレーターの前提</span></div>
+    <div class="card-b">
+      <ul class="notes">
+        <li>電源は <span class="eq">v<sub>S</sub> = V<sub>0</sub> sin(2πf<sub>i</sub>t)</span>。電源の配線などの抵抗を <span class="eq">R<sub>s</sub></span> としました（これがないと、コンデンサに流れ込む電流が無限大になる）。ダイオードは理想で、<span class="eq">|v<sub>S</sub>| &gt; v<sub>C</sub></span> の間だけ流れ、電流は <span class="eq">(|v<sub>S</sub>| − v<sub>C</sub>)/R<sub>s</sub></span> です。</li>
+        <li>インバータは正弦波 PWM（バイポーラ、第12回 p21）：指令 <span class="eq">m sin(2πf<sub>o</sub>t)</span> が搬送波（三角波、周波数 <span class="eq">f<sub>c</sub></span>）より大きい間は S<sub>1</sub>・S<sub>4</sub> がオン（<span class="eq">v<sub>o</sub> = +v<sub>C</sub></span>）、小さい間は S<sub>2</sub>・S<sub>3</sub> がオン（<span class="eq">v<sub>o</sub> = −v<sub>C</sub></span>）。スイッチに逆並列のダイオードがあるので、負荷の電流の向きによらず、この電圧になります。
+          搬送波が速い（<span class="eq">f<sub>c</sub></span> = 5 kHz）ので、波形のゲートの帯は塗りつぶしに見えます。「入力の周期の数」を 1 にするか、<span class="eq">f<sub>c</sub></span> を下げると 1 本ずつ見えます。</li>
+        <li>出力電圧の基本波の振幅は <span class="eq">m V<sub>dc</sub></span>（<span class="eq">m ≤ 1</span>）。直流の電圧 <span class="eq">V<sub>dc</sub></span> がほぼ一定なので、出力の周波数は入力と関係なく決められます（入力より高くても低くても）。</li>
+        <li>コンデンサが小さいと、直流の電圧が入力の周波数の 2 倍で大きく揺れ、出力にもその揺れが出ます（p18 の大きなコンデンサが必要な理由）。一方、コンデンサが大きいほど、入力の電流は電圧のピーク付近だけに流れる細いパルスになり、力率が悪くなります（第10回）。</li>
+        <li>t = 0 でコンデンサの電圧 0 から始めるので、起動直後には大きな突入電流が流れます（実際の装置は抵抗などで制限する）。</li>
+        <li>計算は 4 次のルンゲ・クッタ法で、PWM の切り替わり（指令と搬送波の交点）とダイオードがオン・オフする時刻は二分法で求めています。</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<footer>パワーエレクトロニクス ｜ 神野 崇馬 ｜ 試作版</footer>
+<div id="tip"></div>
+
+<script src="common.js"></script>
+<script>
+// ==SIM-BEGIN==
+/** 入力と出力の両方が周期的になる長さ 1/gcd(fi, fo)（周波数は整数 Hz とみなす。長くても 1 秒） */
+function adSpan(p) { let a = Math.max(1, Math.round(p.fi)), b = Math.max(1, Math.round(p.fo)); while (b) [a, b] = [b, a % b]; return 1 / a; }
+/** 搬送波（三角波、−1〜1。t = 0 で 1） */
+function adCarrier(fc, t) { const u = t * fc - Math.floor(t * fc); return 4 * Math.abs(u - 0.5) - 1; }
+/**
+ * 間接式（ダイオード整流 → DC リンク C → フルブリッジのバイポーラ PWM → R-L 負荷）。
+ * p = {V0, fi, Rs, C, fo, m, fc, R, L}。状態変数 [vC, iL]。離散状態 s = r + 2b（r：整流のダイオードが流れている、b：1 なら S1・S4 オン）
+ */
+function acdcacModel(p) {
+  const wi = 2 * Math.PI * p.fi, wo = 2 * Math.PI * p.fo, T = 1 / p.fi, Tc = 1 / p.fc;
+  const vs = (t) => p.V0 * Math.sin(wi * t);
+  const d = (t) => p.m * Math.sin(wo * t) - adCarrier(p.fc, t); // 正なら S1・S4
+  const ir = (t, x, s) => (s & 1) ? (Math.abs(vs(t)) - x[0]) / p.Rs : 0;
+  // 起動の過渡（8 L/R、少なくとも 6 周期）＋ 入力と出力の両方が周期的になる長さ adSpan の 2 倍
+  const periods = Math.min(400, Math.max(6, Math.ceil(8 * (p.L / p.R) * p.fi) + 2) + Math.ceil(2 * adSpan(p) * p.fi - 1e-9));
+  return {
+    T, periods, h: Math.min(Tc / 20, T / 720), x0: [0, 0], s0: 1 + 2 * (d(1e-12) > 0 ? 1 : 0),
+    f: (t, x, s) => {
+      const b = (s >> 1) ? 1 : -1;
+      return [(ir(t, x, s) - b * x[1]) / p.C, (b * x[0] - p.R * x[1]) / p.L];
+    },
+    breaks: (t0, t1) => {
+      // 搬送波の半周期ごとに、指令との交点（あれば 1 つ）を二分法で
+      const r = [];
+      for (let k = Math.floor(t0 / (Tc / 2)); k * Tc / 2 < t1; k++) {
+        let a = k * Tc / 2, b = a + Tc / 2;
+        const da = d(a + 1e-12 * Tc), db = d(b - 1e-12 * Tc);
+        if (da * db >= 0) continue;
+        for (let it = 0; it < 60; it++) { const mm = (a + b) / 2; if (d(mm) * da > 0) a = mm; else b = mm; }
+        r.push(b);
+      }
+      return r.filter(b => b >= t0 && b < t1);
+    },
+    onBreak: (t, x, s) => (s & 1) + 2 * (d(t + 1e-9 * Tc) > 0 ? 1 : 0),
+    guards: (t, x, s) => [(s & 1) ? Math.abs(vs(t)) - x[0] : x[0] - Math.abs(vs(t))],
+    onGuard: (t, x, s) => s ^ 1,
+  };
+}
+function simulateAcdcac(p) { const S = simEv(acdcacModel(p)); S.p = Object.assign({}, p); return S; }
+function adVs(S, k) { return S.p.V0 * Math.sin(2 * Math.PI * S.p.fi * S.t[k]); }
+function adIr(S, k) { return (S.s[k] & 1) ? Math.max(0, (Math.abs(adVs(S, k)) - S.x[0][k]) / S.p.Rs) : 0; }
+/** 電源の電流（上の端から出る向きが正） */
+function adIs(S, k) { return adVs(S, k) >= 0 ? adIr(S, k) : -adIr(S, k); }
+function adB(S, k) { return (S.s[k] >> 1) ? 1 : -1; }
+function adVo(S, k) { return adB(S, k) * S.x[0][k]; }
+function acdcacMetrics(S) {
+  const p = S.p, T = S.T;
+  const sp = adSpan(p), spanO = sp; // 入力・出力のどちらの周期の整数倍でもある長さ
+  const VC = acStats(S, (S, k) => S.x[0][k], sp, 0), Vo = acStats(S, adVo, sp, p.fo), IL = acStats(S, (S, k) => S.x[1][k], sp, p.fo);
+  const Is = acStats(S, adIs, sp, p.fi), Pin = acStats(S, (S, k) => adVs(S, k) * adIs(S, k), sp, 0).avg;
+  const I1 = Is.c1 / Math.SQRT2, Vsr = p.V0 / Math.SQRT2;
+  return {VC, Vo, IL, Is, Pin, pf: Pin / (Vsr * Is.rms), I1, cosph1: Math.cos(Is.ph), thd: Math.sqrt(Math.max(0, Is.rms ** 2 - I1 ** 2)) / I1,
+    Pout: acStats(S, (S, k) => p.R * S.x[1][k] ** 2, spanO, 0).avg, spanO};
+}
+// ==SIM-END==
+</script>
+<script>
+(() => {
+'use strict';
+const XS = 0, XRs = 110, XA = 220, XD1 = 300, XB = 370, XD2 = 440, XC = 560, XI1 = 670, XI2 = 920, XO1 = 705, XO2 = 870, YT = 0, YB = 260, YM = 130;
+const CD = COL.teal, CSW = COL.fuchsia;
+const r3 = (x) => String(+x.toPrecision(3));
+const pos = (S, k) => adVs(S, k) >= 0;
+const on = (S, k) => (S.s[k] & 1) && adIr(S, k) > 0;
+// AC 側の 2 つの節点 a（D1・D3 の間）と b（D2・D4 の間）の電位。整流が止まっているときは決まらないので、vC/2 を中心に ±vS/2 と表示
+const va = (S, k) => on(S, k) ? (pos(S, k) ? S.x[0][k] : 0) : S.x[0][k] / 2 + adVs(S, k) / 2;
+const vb = (S, k) => on(S, k) ? (pos(S, k) ? 0 : S.x[0][k]) : S.x[0][k] / 2 - adVs(S, k) / 2;
+const vx = (S, k) => adB(S, k) > 0 ? S.x[0][k] : 0;
+const vy = (S, k) => adB(S, k) > 0 ? 0 : S.x[0][k];
+const iInv = (S, k) => adB(S, k) * S.x[1][k];
+let sw = {};
+
+SimApp({
+  pdef: [
+    {k: 'V0', b: 'V', s: '0', up: true, title: '電源の電圧の振幅', min: 10, max: 400, step: 1, log: false, unit: 'V', def: 141},
+    {k: 'fi', b: 'f', s: 'i', title: '入力の周波数', min: 10, max: 100, step: 1, log: false, unit: 'Hz', def: 60},
+    {k: 'Rs', b: 'R', s: 's', title: '電源側の抵抗', min: 0.05, max: 10, log: true, unit: 'Ω', def: 0.5},
+    {k: 'C', b: 'C', s: '', title: 'DC リンクコンデンサ', min: 10e-6, max: 10e-3, log: true, unit: 'F', def: 2200e-6},
+    {k: 'fo', b: 'f', s: 'o', title: '出力の周波数', min: 1, max: 500, step: 1, log: false, unit: 'Hz', def: 50},
+    {k: 'm', b: 'm', s: '', title: '変調率（指令の振幅 / 搬送波の振幅）', min: 0, max: 1, step: 0.01, log: false, unit: '', def: 0.8, fmt: r3},
+    {k: 'fc', b: 'f', s: 'c', title: '搬送波の周波数', min: 500, max: 20e3, log: true, unit: 'Hz', def: 5e3},
+    {k: 'R', b: 'R', s: '', min: 1, max: 200, log: true, unit: 'Ω', def: 20},
+    {k: 'L', b: 'L', s: '', min: 0.5e-3, max: 200e-3, log: true, unit: 'H', def: 20e-3},
+  ],
+  presets: [
+    {name: '60 Hz → 50 Hz', v: {V0: 141, fi: 60, Rs: 0.5, C: 2200e-6, fo: 50, m: 0.8, fc: 5e3, R: 20, L: 20e-3}},
+    {name: '60 Hz → 200 Hz（p5 の絵）', v: {V0: 141, fi: 60, Rs: 0.5, C: 2200e-6, fo: 200, m: 0.8, fc: 5e3, R: 20, L: 20e-3}},
+    {name: 'コンデンサが小さい（220 μF）', v: {V0: 141, fi: 60, Rs: 0.5, C: 220e-6, fo: 50, m: 0.8, fc: 5e3, R: 20, L: 20e-3}},
+    {name: '低い周波数（10 Hz）', v: {V0: 141, fi: 60, Rs: 0.5, C: 2200e-6, fo: 10, m: 0.8, fc: 5e3, R: 20, L: 20e-3}},
+  ],
+  simulate: (P) => simulateAcdcac({V0: P.V0, fi: P.fi, Rs: P.Rs, C: P.C, fo: P.fo, m: P.m, fc: P.fc, R: P.R, L: P.L}),
+  metrics: acdcacMetrics,
+  initWin: 'last',
+  gatePane: gateRowsPane([
+    {label: '整流', color: CD, on: on},
+    {label: 'S₁S₄', color: CSW, on: (S, k) => adB(S, k) > 0},
+    {label: 'S₂S₃', color: COL.violet, on: (S, k) => adB(S, k) < 0},
+  ]),
+  probes: {
+    'n:gnd': {b: 'GND', s: '', color: COL.sub, q: 'V', what: '直流側の − の線（0 V）', f: () => 0},
+    'n:s': {b: 'v', s: 's', color: COL.blue, q: 'V', what: '電源の上の端の電位（整流が止まっているときは決まらないので、vC/2 を中心に表示）', f: (S, k) => va(S, k) + S.p.Rs * adIs(S, k)},
+    'n:a': {b: 'v', s: 'a', color: COL.orange, q: 'V', what: 'ブリッジの左の入力（D₁・D₃ の間）の電位', f: va},
+    'n:b': {b: 'v', s: 'b', color: COL.green, q: 'V', what: '電源の下の端（D₂・D₄ の間）の電位', f: vb},
+    'n:p': {b: 'v', s: 'C', color: COL.violet, q: 'V', what: '直流側の ＋ の線の電位（= コンデンサの電圧 vC）', f: (S, k) => S.x[0][k]},
+    'n:x': {b: 'v', s: 'x', color: COL.fuchsia, q: 'V', what: 'インバータの左の脚の中点の電位', f: vx},
+    'n:y': {b: 'v', s: 'y', color: COL.fuchsia, q: 'V', what: 'インバータの右の脚の中点の電位', f: vy},
+    'n:m': {b: 'v', s: 'm', color: COL.teal, q: 'V', what: 'R と L の間の電位', f: (S, k) => vx(S, k) - S.p.R * S.x[1][k]},
+    'i:V': {b: 'i', s: 'S', color: COL.iin, q: 'I', what: '電源の電流（上の端から出る向きが正）', f: adIs},
+    'v:V': {b: 'v', s: 'S', color: COL.blue, q: 'V', what: '電源の電圧（上が＋）', f: adVs},
+    'i:Rs': {b: 'i', s: 'S', color: COL.iin, q: 'I', what: '電源側の抵抗の電流（右向きが正）', f: adIs},
+    'v:Rs': {b: 'v', s: 'Rs', color: COL.blue, q: 'V', what: '電源側の抵抗の両端の電圧（左が＋）', f: (S, k) => S.p.Rs * adIs(S, k)},
+    'i:D1': {b: 'i', s: 'D1', color: CD, q: 'I', what: 'D₁ の電流（上向きが正）', f: (S, k) => on(S, k) && pos(S, k) ? adIr(S, k) : 0},
+    'v:D1': {b: 'v', s: 'D1', color: CD, q: 'V', what: 'D₁ の両端の電圧（上のカソードが＋。逆電圧）', f: (S, k) => S.x[0][k] - va(S, k)},
+    'i:D3': {b: 'i', s: 'D3', color: CD, q: 'I', what: 'D₃ の電流（上向きが正）', f: (S, k) => on(S, k) && !pos(S, k) ? adIr(S, k) : 0},
+    'v:D3': {b: 'v', s: 'D3', color: CD, q: 'V', what: 'D₃ の両端の電圧（上のカソードが＋）', f: (S, k) => va(S, k)},
+    'i:D2': {b: 'i', s: 'D2', color: CD, q: 'I', what: 'D₂ の電流（上向きが正）', f: (S, k) => on(S, k) && !pos(S, k) ? adIr(S, k) : 0},
+    'v:D2': {b: 'v', s: 'D2', color: CD, q: 'V', what: 'D₂ の両端の電圧（上のカソードが＋）', f: (S, k) => S.x[0][k] - vb(S, k)},
+    'i:D4': {b: 'i', s: 'D4', color: CD, q: 'I', what: 'D₄ の電流（上向きが正）', f: (S, k) => on(S, k) && pos(S, k) ? adIr(S, k) : 0},
+    'v:D4': {b: 'v', s: 'D4', color: CD, q: 'V', what: 'D₄ の両端の電圧（上のカソードが＋）', f: vb},
+    'i:C': {b: 'i', s: 'C', color: COL.violet, q: 'I', what: 'コンデンサの電流（下向き＝充電が正）', f: (S, k) => adIr(S, k) - iInv(S, k)},
+    'v:C': {b: 'v', s: 'C', color: COL.violet, q: 'V', what: 'コンデンサの電圧（上が＋）', f: (S, k) => S.x[0][k]},
+    'i:S1': {b: 'i', s: 'S1', color: CSW, q: 'I', what: 'S₁（と逆並列ダイオード）の電流（下向きが正）', f: (S, k) => adB(S, k) > 0 ? S.x[1][k] : 0},
+    'v:S1': {b: 'v', s: 'S1', color: CSW, q: 'V', what: 'S₁ の両端の電圧（上が＋）', f: (S, k) => S.x[0][k] - vx(S, k)},
+    'i:S2': {b: 'i', s: 'S2', color: COL.violet, q: 'I', what: 'S₂（と逆並列ダイオード）の電流（下向きが正）', f: (S, k) => adB(S, k) < 0 ? -S.x[1][k] : 0},
+    'v:S2': {b: 'v', s: 'S2', color: COL.violet, q: 'V', what: 'S₂ の両端の電圧（上が＋）', f: vx},
+    'i:S3': {b: 'i', s: 'S3', color: COL.violet, q: 'I', what: 'S₃（と逆並列ダイオード）の電流（下向きが正）', f: (S, k) => adB(S, k) < 0 ? -S.x[1][k] : 0},
+    'v:S3': {b: 'v', s: 'S3', color: COL.violet, q: 'V', what: 'S₃ の両端の電圧（上が＋）', f: (S, k) => S.x[0][k] - vy(S, k)},
+    'i:S4': {b: 'i', s: 'S4', color: CSW, q: 'I', what: 'S₄（と逆並列ダイオード）の電流（下向きが正）', f: (S, k) => adB(S, k) > 0 ? S.x[1][k] : 0},
+    'v:S4': {b: 'v', s: 'S4', color: CSW, q: 'V', what: 'S₄ の両端の電圧（上が＋）', f: vy},
+    'i:R': {b: 'i', s: 'o', color: COL.ir, q: 'I', what: '負荷の電流（右向きが正）', f: (S, k) => S.x[1][k]},
+    'v:R': {b: 'v', s: 'R', color: COL.green, q: 'V', what: '抵抗の両端の電圧（左が＋）', f: (S, k) => S.p.R * S.x[1][k]},
+    'i:L': {b: 'i', s: 'o', color: COL.ir, q: 'I', what: '負荷の電流（右向きが正）', f: (S, k) => S.x[1][k]},
+    'v:L': {b: 'v', s: 'L', color: COL.teal, q: 'V', what: 'コイルの両端の電圧（左が＋）', f: (S, k) => adVo(S, k) - S.p.R * S.x[1][k]},
+    'x:vo': {b: 'v', s: 'o', color: COL.fuchsia, q: 'V', what: 'インバータの出力電圧（左の脚 − 右の脚）', f: adVo},
+  },
+  defaultProbes: ['v:V', 'v:C', 'i:V', 'i:R'],
+  extraButtons: [{key: 'x:vo', label: '出力電圧 v<sub>o</sub>'}],
+  refLines: [{keys: ['v:C', 'n:p'], val: (S) => S.p.V0, label: 'V₀', color: COL.violet}],
+  build(K) {
+    const {W, el, gWire} = K;
+    const nodeW = {
+      s: [[[XS, YM - 28], [XS, YT + 40], [XRs - 35, YT + 40]]],
+      a: [[[XRs + 35, YT + 40], [XA, YT + 40], [XA, YM], [XD1, YM]]],
+      b: [[[XS, YM + 28], [XS, YB + 50], [XB, YB + 50], [XB, YM], [XD2, YM]]],
+      p: [[[XD1, YT], [XI2, YT]], [[XC, YT], [XC, YM - 10]], [[XI1, YT], [XI1, 30]], [[XI2, YT], [XI2, 30]]],
+      gnd: [[[XD1, YB], [XI2, YB]], [[XC, YB], [XC, YM + 10]], [[XI1, YB], [XI1, 230]], [[XI2, YB], [XI2, 230]]],
+      x: [[[XI1, 90], [XI1, 170]], [[XI1, YM], [XO1, YM]]],
+      m: [[[XO1 + 90, YM], [XO2 - 70, YM]]],
+      y: [[[XI2, 90], [XI2, 170]], [[XO2 + 10, YM], [XI2, YM]]],
+    };
+    for (const nn in nodeW) nodeW[nn].forEach(p => W(p));
+    K.hop(XB, YB);
+    K.acsrc(XS, YM, 28);
+    K.resH(XRs, YT + 40, 70);
+    K.name(XRs, YT + 12, 'R', 'middle', 28, 's');
+    K.diode([XD1, YM], [XD1, YT]); K.diode([XD1, YB], [XD1, YM]);
+    K.diode([XD2, YM], [XD2, YT]); K.diode([XD2, YB], [XD2, YM]);
+    K.name(XD1 - 26, 75, 'D', 'end', 26, '1'); K.name(XD1 - 26, 205, 'D', 'end', 26, '3');
+    K.name(XD2 + 26, 75, 'D', 'start', 26, '2'); K.name(XD2 + 26, 205, 'D', 'start', 26, '4');
+    K.cap(XC, YM);
+    K.name(XC + 38, YM + 32, 'C', 'start');
+    K.text(XC, YB + 44, 'DC リンク', COL.violet, 20);
+    sw.S1 = K.switch([XI1, 30], [XI1, 90], 1); sw.S2 = K.switch([XI1, 170], [XI1, 230], 1);
+    sw.S3 = K.switch([XI2, 30], [XI2, 90], -1); sw.S4 = K.switch([XI2, 170], [XI2, 230], -1);
+    K.name(XI1 - 30, 70, 'S', 'end', 26, '1'); K.name(XI1 - 30, 210, 'S', 'end', 26, '2');
+    K.name(XI2 + 30, 70, 'S', 'start', 26, '3'); K.name(XI2 + 30, 210, 'S', 'start', 26, '4');
+    K.box(XI1 - 70, -36, XI2 - XI1 + 140, YB + 66, CSW);
+    K.text((XI1 + XI2) / 2, YB + 50, 'インバータ（第11・12回）', CSW, 20);
+    K.box(XD1 - 70, -36, XD2 - XD1 + 140, YB + 66, CD);
+    K.text((XD1 + XD2) / 2, -46, '整流（第9・10回）', CD, 20);
+    K.resH(XO1 + 45, YM, 90);
+    K.name(XO1 + 45, YM - 22, 'R', 'middle', 28);
+    K.coil([XO2 - 70, YM], [XO2 + 10, YM], 3, 1);
+    K.name(XO2 - 30, YM + 46, 'L', 'middle', 28);
+    [[XD2, YT], [XC, YT], [XI1, YT], [XD2, YB], [XC, YB], [XI1, YB], [XI1, YM], [XI2, YM], [XD1, YM], [XD2, YM]].forEach(([x, y]) => K.dot(x, y));
+    K.name(XS - 42, YM + 10, 'v', 'end', 30, 'S');
+    return {
+      nodeW,
+      hits: [['e:V', [XS - 30, YM - 30, 60, 60]], ['e:Rs', [XRs - 36, YT + 26, 72, 28]],
+        ['e:D1', [XD1 - 24, 40, 48, 50]], ['e:D3', [XD1 - 24, 170, 48, 50]], ['e:D2', [XD2 - 24, 40, 48, 50]], ['e:D4', [XD2 - 24, 170, 48, 50]],
+        ['e:C', [XC - 36, YM - 24, 72, 48]], ['e:S1', [XI1 - 24, 34, 48, 52]], ['e:S2', [XI1 - 24, 174, 48, 52]], ['e:S3', [XI2 - 24, 34, 48, 52]], ['e:S4', [XI2 - 24, 174, 48, 52]],
+        ['e:R', [XO1 + 2, YM - 15, 86, 30]], ['e:L', [XO2 - 68, YM - 22, 76, 30]]],
+      arrows: {
+        'i:V': [[XS + 44, YM + 26], [XS + 44, YM - 26], 'R'], 'v:V': [[XS - 74, YM + 44], [XS - 74, YM - 44], 'L'],
+        'i:Rs': [[XRs - 30, YT + 70], [XRs + 30, YT + 70], 'B'], 'v:Rs': [[XRs + 30, YT - 40], [XRs - 30, YT - 40], 'T'],
+        'i:D1': [[XD1 + 28, 92], [XD1 + 28, 40], 'R'], 'v:D1': [[XD1 + 28, 96], [XD1 + 28, 36], 'R'],
+        'i:D3': [[XD1 + 28, 222], [XD1 + 28, 170], 'R'], 'v:D3': [[XD1 + 28, 226], [XD1 + 28, 166], 'R'],
+        'i:D2': [[XD2 - 28, 92], [XD2 - 28, 40], 'L'], 'v:D2': [[XD2 - 28, 96], [XD2 - 28, 36], 'L'],
+        'i:D4': [[XD2 - 28, 222], [XD2 - 28, 170], 'L'], 'v:D4': [[XD2 - 28, 226], [XD2 - 28, 166], 'L'],
+        'i:C': [[XC - 48, YM - 30], [XC - 48, YM + 30], 'L'], 'v:C': [[XC - 48, YM + 40], [XC - 48, YM - 40], 'L'],
+        'i:S1': [[XI1 + 26, 36], [XI1 + 26, 84], 'R'], 'v:S1': [[XI1 + 26, 88], [XI1 + 26, 32], 'R'],
+        'i:S2': [[XI1 + 26, 176], [XI1 + 26, 224], 'R'], 'v:S2': [[XI1 + 26, 228], [XI1 + 26, 172], 'R'],
+        'i:S3': [[XI2 - 26, 36], [XI2 - 26, 84], 'L'], 'v:S3': [[XI2 - 26, 88], [XI2 - 26, 32], 'L'],
+        'i:S4': [[XI2 - 26, 176], [XI2 - 26, 224], 'L'], 'v:S4': [[XI2 - 26, 228], [XI2 - 26, 172], 'L'],
+        'i:R': [[XO1 + 15, YM + 30], [XO1 + 75, YM + 30], 'B'], 'v:R': [[XO1 + 85, YM - 60], [XO1 + 5, YM - 60], 'T'],
+        'i:L': [[XO2 - 60, YM + 70], [XO2, YM + 70], 'B'], 'v:L': [[XO2 + 5, YM - 50], [XO2 - 65, YM - 50], 'T'],
+      },
+      nodeTag: {gnd: [XC + 60, YB, 0, 34], s: [XS + 40, YT + 40, 0, -14], a: [XA, YM, -14, 8, 'end'], b: [XB - 60, YB + 50, 0, 34], p: [XC + 60, YT, 0, -14],
+        x: [XI1, 150, -14, 8, 'end'], y: [XI2, 150, 14, 8, 'start'], m: [XO1 + 105, YM, 0, -14]},
+      loops: {
+        rp: [[XS, YM], [XS, YT + 40], [XA, YT + 40], [XA, YM], [XD1, YM], [XD1, YT], [XC, YT], [XC, YB], [XD2, YB], [XD2, YM], [XB, YM], [XB, YB + 50], [XS, YB + 50]],
+        rn: [[XS, YM], [XS, YB + 50], [XB, YB + 50], [XB, YM], [XD2, YM], [XD2, YT], [XC, YT], [XC, YB], [XD1, YB], [XD1, YM], [XA, YM], [XA, YT + 40], [XS, YT + 40]],
+        ip: [[XC, YB], [XC, YT], [XI1, YT], [XI1, YM], [XI2, YM], [XI2, YB]],
+        in: [[XC, YB], [XC, YT], [XI2, YT], [XI2, YM], [XI1, YM], [XI1, YB]],
+        ipr: [[XI2, YB], [XI2, YM], [XI1, YM], [XI1, YT], [XC, YT], [XC, YB]],
+        inr: [[XI1, YB], [XI1, YM], [XI2, YM], [XI2, YT], [XC, YT], [XC, YB]],
+      },
+      sw,
+    };
+  },
+  state(S, k, MET) {
+    const p = S.p, b = adB(S, k), iL = S.x[1][k], ir = adIr(S, k);
+    const loops = [];
+    const frI = Math.abs(iL) / Math.max(1e-12, Math.max(MET.IL.max, -MET.IL.min)), frR = ir / Math.max(1e-12, MET.Is.max);
+    if (on(S, k)) loops.push([pos(S, k) ? 'rp' : 'rn', frR]);
+    // インバータ側：DC リンクから見た電流 b·iL が正ならコンデンサから出る向き
+    if (b > 0) loops.push([iL >= 0 ? 'ip' : 'ipr', frI]); else loops.push([iL <= 0 ? 'in' : 'inr', frI]);
+    let html = on(S, k) ? `<span class="sw-on" style="color:${COL.teal}">整流のダイオードが流れている</span>（|v<sub>S</sub>| &gt; v<sub>C</sub>、${pos(S, k) ? 'D₁・D₄' : 'D₂・D₃'}）：コンデンサを充電。` :
+      `<span class="sw-off">整流のダイオードは止まっている</span>（|v<sub>S</sub>| &lt; v<sub>C</sub>）：インバータにはコンデンサだけから電流が出る。`;
+    html += b > 0 ? ` <span class="sw-on">S₁・S₄ オン</span>：<span class="eq">v<sub>o</sub> = +v<sub>C</sub></span>。` : ` <span class="sw-on" style="color:${COL.violet}">S₂・S₃ オン</span>：<span class="eq">v<sub>o</sub> = −v<sub>C</sub></span>。`;
+    if (b * iL < 0) html += '負荷の電流がスイッチと逆向きなので、逆並列のダイオードを通ってコンデンサに戻っている。';
+    return {sw: {S1: b > 0, S4: b > 0, S2: b < 0, S3: b < 0}, loops, html};
+  },
+  metricsHtml(S, m) {
+    const p = S.p, Vdc = m.VC.avg, Z = Math.hypot(p.R, 2 * Math.PI * p.fo * p.L);
+    let rows = `<tr><th>量</th><th>シミュレーション</th><th>授業の式</th><th>式の値</th><th>差</th></tr>`;
+    rows += `<tr><td>直流の電圧（コンデンサ）の平均 <span class="eq">V<sub>dc</sub></span></td><td class="num">${fmtSI(Vdc, 'V', 4)}</td><td class="eq">≈ V<sub>0</sub>（ピーク）</td><td class="num">${fmtSI(p.V0, 'V', 4)}</td><td>${pctDiff(Vdc, p.V0)}<span class="small">（目安。負荷が重いほど、R<sub>s</sub> の電圧降下と揺れの分だけ下がる）</span></td></tr>`;
+    const Idc = m.Pout / Vdc, dVth = Idc / (2 * p.fi * p.C);
+    rows += `<tr><td>直流の電圧の揺れ（山 − 谷）</td><td class="num">${fmtSI(m.VC.max - m.VC.min, 'V', 3)}</td><td class="eq">≈ I<sub>dc</sub> / (2 f<sub>i</sub> C)</td><td class="num">${fmtSI(dVth, 'V', 3)}</td><td>${pctDiff(m.VC.max - m.VC.min, dVth)}（目安の式）</td></tr>`;
+    // 直流の電圧の揺れが大きい（下の注記）と mV_dc の前提が崩れるので、ずれたときは「目安」
+    const bigRip = (m.VC.max - m.VC.min) > 0.1 * Vdc;
+    const mk = (a, b) => bigRip && Math.abs(a - b) > 0.03 * Math.abs(b) ? '<span style="color:var(--sub);font-weight:700">目安</span><span class="small">（直流の電圧の揺れが大きい）</span>' : okMark(a, b, 0.03);
+    rows += `<tr><td>出力電圧の基本波（${r3(p.fo)} Hz）の振幅</td><td class="num">${fmtSI(m.Vo.c1, 'V', 4)}</td><td class="eq">m V<sub>dc</sub></td><td class="num">${fmtSI(p.m * Vdc, 'V', 4)}</td><td>${pctDiff(m.Vo.c1, p.m * Vdc)} ${mk(m.Vo.c1, p.m * Vdc)}</td></tr>`;
+    rows += `<tr><td>負荷電流の基本波の振幅</td><td class="num">${fmtSI(m.IL.c1, 'A', 4)}</td><td class="eq">m V<sub>dc</sub> / √(R² + (2πf<sub>o</sub>L)²)</td><td class="num">${fmtSI(p.m * Vdc / Z, 'A', 4)}</td><td>${pctDiff(m.IL.c1, p.m * Vdc / Z)} ${mk(m.IL.c1, p.m * Vdc / Z)}</td></tr>`;
+    const Pb = m.Pout + p.Rs * m.Is.rms ** 2;
+    rows += `<tr><td>電源から入る電力 <span class="eq">P<sub>in</sub></span></td><td class="num">${fmtSI(m.Pin, 'W', 4)}</td><td class="eq">P<sub>out</sub> + R<sub>s</sub> I<sub>s,rms</sub>²（エネルギーの収支）</td><td class="num">${fmtSI(Pb, 'W', 4)}</td><td>${pctDiff(m.Pin, Pb)} ${bigRip && Math.abs(m.Pin - Pb) > 0.01 * Math.abs(Pb) ? '<span style="color:var(--sub);font-weight:700">目安</span><span class="small">（直流の電圧の揺れが大きい）</span>' : okMark(m.Pin, Pb, 0.01)}</td></tr>`;
+    rows += `<tr><td>負荷の電力 <span class="eq">P<sub>out</sub></span></td><td class="num">${fmtSI(m.Pout, 'W', 4)}</td><td colspan="3"></td></tr>`;
+    rows += `<tr><td>入力の電流の実効値</td><td class="num">${fmtSI(m.Is.rms, 'A', 4)}</td><td colspan="3">ピーク ${fmtSI(m.Is.max, 'A', 3)}（細いパルス）</td></tr>`;
+    rows += `<tr><td>入力の力率 <span class="eq">PF</span></td><td class="num">${isFinite(m.pf) ? m.pf.toFixed(3) : '—'}</td><td colspan="3">変位率 <span class="eq">cos φ<sub>1</sub></span> = ${m.cosph1.toFixed(3)} × ひずみ率 <span class="eq">I<sub>1</sub>/I<sub>rms</sub></span> = ${(m.I1 / m.Is.rms).toFixed(3)}（第10回）</td></tr>`;
+    rows += `<tr><td>入力の電流の THD</td><td class="num">${isFinite(m.thd) && m.I1 > 1e-6 * m.Is.rms ? (m.thd * 100).toFixed(0) + ' %' : '—'}</td><td colspan="3">コンデンサが大きいほど、パルスが細くなって大きくなる</td></tr>`;
+    if ((m.VC.max - m.VC.min) > 0.1 * Vdc) rows += `<tr><td colspan="5"><span class="ng">直流の電圧の揺れが大きい</span>（平均の ${((m.VC.max - m.VC.min) / Vdc * 100).toFixed(0)} %）ので、出力は <span class="eq">m V<sub>dc</sub></span> にならず、波形もゆがみます（コンデンサを大きくすると直る）。</td></tr>`;
+    return {rows, sub: `最後の ${fmtSI(m.spanO, 's', 3)}（入力 ${Math.round(m.spanO * p.fi)} 周期・出力 ${Math.round(m.spanO * p.fo)} 周期）で計算（入力の ${S.periods} 周期を計算）。`};
+  },
+});
+})();
+</script>
+</body>
+</html>

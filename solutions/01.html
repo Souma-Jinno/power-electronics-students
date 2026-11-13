@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>第1回 演習問題 解答・解説 — パワーエレクトロニクス</title>
+  <script>
+    window.MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+      line-height: 1.8;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #2c3e50;
+      border-bottom: 3px solid #3498db;
+      padding-bottom: 10px;
+      font-size: 1.6em;
+    }
+    h2 {
+      color: #34495e;
+      margin-top: 40px;
+      border-left: 4px solid #3498db;
+      padding-left: 10px;
+    }
+    h3 {
+      color: #2c3e50;
+      margin-top: 25px;
+      font-size: 1.1em;
+    }
+    a { color: #3498db; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    ul, ol { padding-left: 1.5em; }
+    li { margin: 5px 0; line-height: 2.0; }
+    strong { color: #2c3e50; }
+    nav {
+      background: #2c3e50;
+      padding: 10px 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+    nav a { color: white; margin-right: 15px; }
+    nav a:hover { color: #3498db; text-decoration: none; }
+    .info-box { background: #e3f2fd; padding: 15px 20px; border-left: 4px solid #2196f3; margin: 20px 0; border-radius: 0 4px 4px 0; }
+    .check-box { background: #fff3e0; padding: 15px 20px; border-left: 4px solid #ff9800; margin: 20px 0; border-radius: 0 4px 4px 0; }
+    .answer-header { background: #27ae60; color: white; padding: 10px 20px; border-radius: 4px; font-size: 1.1em; font-weight: bold; margin: 30px 0 15px 0; }
+    .final { background: #e8f5e9; padding: 8px 16px; border-left: 4px solid #4caf50; margin: 12px 0 20px; border-radius: 0 4px 4px 0; }
+    mjx-container { overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+    p { line-height: 2.0; }
+    figure { margin: 16px 0; text-align: center; }
+    figure img { max-width: min(100%, 620px); height: auto; border-radius: 4px; }
+    figcaption { font-size: 0.9em; color: #7f8c8d; }
+    .q-text { color: #555; }
+    .law { color: #2c3e50; border-left: 3px solid #b0bec5; padding-left: 10px; margin: 14px 0 4px; }
+    .problem-box {
+      background: #f4f4f4;
+      border-left: 4px solid #95a5a6;
+      padding: 12px 20px;
+      margin: 10px 0 20px;
+      border-radius: 0 4px 4px 0;
+    }
+    .problem-box .problem-label {
+      display: block;
+      font-size: 0.78em;
+      font-weight: bold;
+      color: #7f8c8d;
+      margin-bottom: 6px;
+    }
+    .problem-box p { margin: 0 0 8px; color: #333; }
+    .problem-box p:last-child { margin-bottom: 0; }
+    .problem-box figure { margin: 10px 0 0; }
+    .problem-box ol, .problem-box ul { margin: 6px 0 0; }
+    footer {
+      text-align: center;
+      color: #95a5a6;
+      font-size: 0.9em;
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #ddd;
+    }
+    @media (max-width: 600px) {
+      body { padding: 10px; font-size: 15px; }
+      .container { padding: 15px; }
+      mjx-container { font-size: 90% !important; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="../index.html">← 科目のページへ戻る</a>
+    <a href="../exercises/01.html">第1回の問題</a>
+  </nav>
+  <div class="container">
+
+    <h1>☑️ パワーエレクトロニクス（ 1 ） 演習問題 解答・解説</h1>
+
+    <div class="check-box">
+      <h3 style="margin-top:0">📝 総評</h3>
+      <p>みなさんの解答を読んで共通して気になった点をまとめます。</p>
+      <p><strong>共通の改善点</strong></p>
+      <ul>
+        <li>式の根拠を書く。いきなり式が並んでいて、なぜその式を選んだのかがわからない解答が多かった。オームの法則なのか、KVLなのか、KCLなのかを一行添えること。KVLなら「どのループを周回しているのか」を明示すること。</li>
+        <li>回路図を描く。式だけの解答では、どの変数が回路のどこに対応するのか読み取れない。自分で描いた回路図＋電流の向き・極性を先に示し、そのあとに式を書く習慣をつけてほしい。</li>
+      </ul>
+      <p><strong>次回に向けて</strong></p>
+      <ul>
+        <li>「式 → 根拠（使った法則） → 回路図」の順で書くと、自分の思考も整理され、採点者にも伝わります。</li>
+      </ul>
+    </div>
+
+    <div class="info-box">
+      <p>🗒️ 第1回は「抵抗で電圧を落とすと損ばかり、スイッチで切り刻めば理想的には損がない、でも実際のスイッチは切り替わりの瞬間に損をする」という流れを、手を動かして確かめる問題です。問題1と問題2は同じ $12\,[\mathrm{V}]$ と $10\,[\Omega]$ で、どちらも負荷の電圧を（平均で）$3\,[\mathrm{V}]$ にしているので、効率を並べて比べてもらうのがねらいです。</p>
+      <p>解答は、総評に合わせて「回路図（電流の向き・電圧の極性・周回するループ）→ 使った法則 → 式」の順で書いています。左に縦線のついた行が、そのすぐ下の式の根拠です。</p>
+    </div>
+
+    <!-- ==================== 問題1 ==================== -->
+    <h2>問題1：可変抵抗を用いた電力変換</h2>
+    <div class="problem-box">
+      <span class="problem-label">📄 問題文</span>
+      <p>下記の回路は $12\,[\mathrm{V}]$ の直流電圧源と $R_x\,[\Omega]$ の可変抵抗と $10\,[\Omega]$ の抵抗が直列で接続されている。可変抵抗の抵抗値を変化させることで、負荷にかかる電圧を変化させることができる。以下の時に答えよ。</p>
+      <figure><img src="../exercises/img/pe01_q1_variable_resistor.png" alt="12V電源、可変抵抗Rx、10Ω負荷の直列回路"></figure>
+    </div>
+
+    <div class="answer-header">解答1-1</div>
+    <div class="problem-box"><span class="problem-label">📄 問題文</span><p>負荷にかかる電圧を $3\,[\mathrm{V}]$ にしたい。この時、可変抵抗を何 $\Omega$ にすれば良いか求めよ。</p></div>
+    <p>まず回路図を描いて、電流と電圧の向きを決めておきます。回路に流れる電流を $I$ とし、電源の＋から出て $R_x$、負荷の順に時計回りに流れる向きにとります。抵抗では電流が入ってくる側が＋になるので、$R_x$ は左が＋、負荷は上が＋です。問題1の4つの小問は、全部この図で考えます。</p>
+    <figure>
+      <img src="img/pe01_q1_ans_circuit.png" alt="12V電源、可変抵抗Rx、10Ω負荷の直列回路。電流Iは時計回り。Rxは左が＋で電圧RxI、負荷は上が＋で電圧vo=10I。緑の破線は時計回りのKVLのループ">
+      <figcaption>解答用の回路図。青：電流 $I$ の向き、赤：各素子の電圧の極性、緑：KVL で周回するループ（時計回り）</figcaption>
+    </figure>
+    <p class="law">オームの法則より（$R_x$ と負荷の電圧）</p>
+    $$v_{R_x} = R_x I, \qquad v_o = 10 I$$
+    <p class="law">KVL（電源 → $R_x$ → 負荷 → 電源 のループを時計回りに周回）より</p>
+    <p>電源で $12\,[\mathrm{V}]$ 上がって、$R_x$ と負荷で $R_x I$ と $10I$ だけ下がって元に戻るので、</p>
+    $$12 - R_x I - 10 I = 0$$
+    <p class="law">オームの法則より（負荷の電圧 $v_o = 3\,[\mathrm{V}]$ から電流を求める）</p>
+    $$10 I = 3 \quad\Rightarrow\quad I = 0.3\,[\mathrm{A}]$$
+    <p>これを KVL の式に入れると、</p>
+    $$12 - 0.3 R_x - 3 = 0 \quad\Rightarrow\quad 0.3 R_x = 9 \quad\Rightarrow\quad R_x = 30\,[\Omega]$$
+    <p>可変抵抗に $9\,[\mathrm{V}]$、負荷に $3\,[\mathrm{V}]$ で、足して $12\,[\mathrm{V}]$ になり、KVL を満たしています。</p>
+    <div class="final">答え：$R_x = 30\,[\Omega]$</div>
+
+    <div class="answer-header">解答1-2</div>
+    <div class="problem-box"><span class="problem-label">📄 問題文</span><p>負荷にかかる電力 $P_\mathrm{out}$ を求めよ。また、この電力変換の効率 $\eta$ を求めよ。</p></div>
+    <p>解答1-1 の回路図で考えます。負荷は上が＋、電流 $I$ は＋の側から入っているので、電圧と電流の積が負荷の受け取る電力です。</p>
+    <p class="law">電力の式 $P = vI$ より（負荷）</p>
+    $$P_\mathrm{out} = v_o I = 3 \times 0.3 = 0.9\,[\mathrm{W}]$$
+    <p>オームの法則 $v_o = 10I$ を入れた $P = RI^2$ で計算しても $10 \times 0.3^2 = 0.9\,[\mathrm{W}]$ で同じになります。</p>
+    <p>効率は、電源が出した電力のうち、負荷まで届いた割合です。直列回路なので、KCL より電源から出る電流も負荷と同じ $I$ です。</p>
+    <p class="law">電力の式 $P = vI$ より（電源）</p>
+    $$P_\mathrm{in} = 12 \times 0.3 = 3.6\,[\mathrm{W}]$$
+    <p class="law">効率の定義より</p>
+    $$\eta = \frac{P_\mathrm{out}}{P_\mathrm{in}} = \frac{0.9}{3.6} = 0.25$$
+    <p>つまり $25\,\%$ です。残りの $2.7\,[\mathrm{W}]$（$= 30 \times 0.3^2$）は可変抵抗で熱になって捨てられています（電源の $3.6\,[\mathrm{W}]$ ＝ 負荷の $0.9\,[\mathrm{W}]$ ＋ $R_x$ の $2.7\,[\mathrm{W}]$）。負荷に届けた電力の 3 倍を捨てており、これが抵抗で電圧を落とすやり方の弱点です。</p>
+    <div class="final">答え：$P_\mathrm{out} = 0.9\,[\mathrm{W}]$、$\eta = 0.25$（$25\,\%$）</div>
+
+    <div class="answer-header">解答1-3</div>
+    <div class="problem-box"><span class="problem-label">📄 問題文</span><p>負荷電圧 $v_o$ を $R_x$ を用いて表せ。</p></div>
+    <p>解答1-1 の回路図のまま、$R_x$ を文字のまま残して解きます。</p>
+    <p class="law">KVL（電源 → $R_x$ → 負荷 → 電源 のループを時計回りに周回）より</p>
+    $$12 - R_x I - 10 I = 0 \quad\Rightarrow\quad I = \frac{12}{R_x + 10}$$
+    <p class="law">オームの法則より（負荷）</p>
+    $$v_o = 10 I = \frac{10}{R_x + 10} \times 12 = \frac{120}{R_x + 10}\,[\mathrm{V}]$$
+    <p>これは分圧の式です。$R_x = 30\,[\Omega]$ を入れると $120/40 = 3\,[\mathrm{V}]$ になって、1-1 と合います。$R_x = 0$ で $12\,[\mathrm{V}]$、$R_x$ を大きくするほど $0$ に近づきます。</p>
+    <div class="final">答え：$v_o = \dfrac{120}{R_x + 10}\,[\mathrm{V}]$</div>
+
+    <div class="answer-header">解答1-4</div>
+    <div class="problem-box"><span class="problem-label">📄 問題文</span><p>電力変換効率 $\eta$ を負荷電圧 $v_o$ を用いて表せ。</p></div>
+    <p>解答1-1 の回路図で、電源・$R_x$・負荷は1本の道でつながっています。</p>
+    <p class="law">KCL より（直列なので、どの素子にも同じ電流 $I$ が流れる）</p>
+    <p>電源から出る電流と負荷に流れる電流は同じ $I$ です。</p>
+    <p class="law">効率の定義と電力の式 $P = vI$ より</p>
+    $$\eta = \frac{P_\mathrm{out}}{P_\mathrm{in}} = \frac{v_o I}{12 I} = \frac{v_o}{12}$$
+    <p>$I$ が約分できるので、効率は負荷電圧だけで決まります。</p>
+    <p>$R_x$ で書けば $\eta = \dfrac{10}{R_x + 10}$ です。</p>
+    <p>この式が言っているのは、「出力電圧を下げれば下げるほど、効率もそれに比例して下がる」ということです。電圧を半分にしたら効率も半分、$3\,[\mathrm{V}]$ なら $1/4$。抵抗で電圧を調整する限り、この直線から逃げられません。下の図の赤い線です。</p>
+    <figure>
+      <img src="img/pe01_eta_vs_vo.png" alt="負荷電圧に対する効率。可変抵抗では eta=vo/12 の直線、理想スイッチでは常に1">
+      <figcaption>負荷電圧と効率。赤：可変抵抗（問題1）、青の破線：理想スイッチ（問題2、横軸は負荷電圧の時間平均）</figcaption>
+    </figure>
+    <div class="final">答え：$\eta = \dfrac{v_o}{12}$</div>
+
+    <!-- ==================== 問題2 ==================== -->
+    <h2>問題2：スイッチを用いた電力変換</h2>
+    <div class="problem-box">
+      <span class="problem-label">📄 問題文</span>
+      <p>下図は $12\,[\mathrm{V}]$ の直流電圧源とスイッチと $10\,[\Omega]$ の抵抗が直列で接続されている。ここで、スイッチをオンオフすることで、負荷にかかる電力を調整する。以下の問いに答えよ。</p>
+      <figure><img src="../exercises/img/pe01_q2_switch.png" alt="スイッチを含む直列回路と、出力電圧の方形波"></figure>
+    </div>
+
+    <div class="answer-header">解答2-1</div>
+    <div class="problem-box"><span class="problem-label">📄 問題文</span><p>スイッチング周波数 $1\,[\mathrm{kHz}]$ でスイッチがオンオフしている。この時のスイッチング周期 $T_\mathrm{SW}$ は何秒か求めよ。</p></div>
+    <p>問題2も、先に回路図を描いておきます。スイッチがオンのときとオフのときで回路の様子が変わるので、2枚に分けて描きます。2-1 は周期の定義だけで解けますが、2-2・2-3 はこの図を使います。</p>
+    <figure>
+      <img src="img/pe01_q2_ans_circuit.png" alt="上：スイッチがオンのとき。電流 i=1.2A が時計回り、スイッチの電圧 vSW=0、負荷は上が＋で vo=12V。下：スイッチがオフのとき。i=0、スイッチは左が＋で vSW=12V、負荷の電圧 vo=0。どちらも緑の破線で時計回りのKVLのループ">
+      <figcaption>解答用の回路図。上：オンのとき、下：オフのとき。青：電流、赤：電圧の極性と値、緑：KVL で周回するループ（時計回り）</figcaption>
+    </figure>
+    <p class="law">周期の定義（周波数の逆数）より</p>
+    $$T_\mathrm{SW} = \frac{1}{f_\mathrm{SW}} = \frac{1}{1 \times 10^{3}} = 1 \times 10^{-3}\,[\mathrm{s}]$$
+    <p>$1\,[\mathrm{ms}]$ と書いても正解です。$\mu$ と $\mathrm{m}$ の取り違えに気をつけてください。</p>
+    <div class="final">答え：$T_\mathrm{SW} = 1 \times 10^{-3}\,[\mathrm{s}] = 1\,[\mathrm{ms}]$</div>
+
+    <div class="answer-header">解答2-2</div>
+    <div class="problem-box"><span class="problem-label">📄 問題文</span><p>負荷にかかる電圧の時間平均を $3\,[\mathrm{V}]$ にするためには、オンにしている時間 $T_\mathrm{on}$ を何秒にすれば良いか求めよ。</p></div>
+    <p>まず、上の回路図でオンのときとオフのときの $v_o$ を求めます。</p>
+    <p class="law">オンのとき：KVL（電源 → スイッチ → 負荷 → 電源 のループを時計回りに周回）より</p>
+    $$12 - v_\mathrm{SW} - v_o = 0$$
+    <p>理想スイッチはオンのとき $v_\mathrm{SW} = 0$ なので、$v_o = 12\,[\mathrm{V}]$ です。電源の電圧がそのまま負荷にかかります。</p>
+    <p class="law">オフのとき：オームの法則より（電流が流れないので $i = 0$）</p>
+    $$v_o = 10 \times 0 = 0$$
+    <p>このとき同じ KVL の式から $v_\mathrm{SW} = 12\,[\mathrm{V}]$ で、電源の電圧は全部スイッチの両端にかかります。</p>
+    <p class="law">時間平均の定義（1 周期で積分して周期で割る）より</p>
+    $$\bar{v}_o = \frac{1}{T_\mathrm{SW}} \int_0^{T_\mathrm{SW}} v_o(t)\,dt$$
+    <p>オンの間だけ $12\,[\mathrm{V}]$、オフの間は $0$ なので、積分は問題の図の長方形の面積 $12 \times T_\mathrm{on}$ です。</p>
+    $$\bar{v}_o = \frac{T_\mathrm{on}}{T_\mathrm{SW}} \times 12 = 12D$$
+    <p>ここで $D = T_\mathrm{on}/T_\mathrm{SW}$ がデューティ比です。$\bar{v}_o = 3\,[\mathrm{V}]$ にしたいので $D = 3/12 = 0.25$、したがって</p>
+    $$T_\mathrm{on} = D\,T_\mathrm{SW} = 0.25 \times 1 \times 10^{-3} = 2.5 \times 10^{-4}\,[\mathrm{s}]$$
+    <p>$0.25\,[\mathrm{ms}]$ や $250\,[\mu\mathrm{s}]$ でも同じです。つまり、周期の 4 分の 1 だけオンにします。</p>
+    <div class="final">答え：$T_\mathrm{on} = 2.5 \times 10^{-4}\,[\mathrm{s}] = 0.25\,[\mathrm{ms}]$（デューティ比 $D = 0.25$）</div>
+
+    <div class="answer-header">解答2-3</div>
+    <div class="problem-box"><span class="problem-label">📄 問題文</span><p>負荷にかかる平均電力を求めよ。また、この電力変換の効率を求めよ。ここで、スイッチは理想的なものとする。</p></div>
+    <p>上の回路図のオンのとき・オフのときで、負荷の電流を求めます。</p>
+    <p class="law">オンのとき：オームの法則より（2-2 の KVL で $v_o = 12\,[\mathrm{V}]$）</p>
+    $$i = \frac{v_o}{10} = \frac{12}{10} = 1.2\,[\mathrm{A}]$$
+    <p>オフのときは回路が切れているので $i = 0$ です。</p>
+    <p class="law">電力の式 $p = v_o\,i$ と、時間平均の定義より</p>
+    $$\bar{P}_\mathrm{out} = \frac{1}{T_\mathrm{SW}} \int_0^{T_\mathrm{SW}} v_o(t)\,i(t)\,dt$$
+    <p>オンの間の電力は $12 \times 1.2 = 14.4\,[\mathrm{W}]$、オフの間は電圧も電流も $0$ です。よって</p>
+    $$\bar{P}_\mathrm{out} = \frac{T_\mathrm{on}}{T_\mathrm{SW}} \times 12 \times 1.2 = 0.25 \times 14.4 = 3.6\,[\mathrm{W}]$$
+    <p class="law">電力の式 $P = vI$ より（電源。KCL より電源の電流も負荷と同じ $i$）</p>
+    <p>電源は、オンの間だけ $12\,[\mathrm{V}]$ で $1.2\,[\mathrm{A}]$ を流しているので</p>
+    $$\bar{P}_\mathrm{in} = 0.25 \times 12 \times 1.2 = 3.6\,[\mathrm{W}]$$
+    <p class="law">効率の定義より</p>
+    $$\eta = \frac{\bar{P}_\mathrm{out}}{\bar{P}_\mathrm{in}} = \frac{3.6}{3.6} = 1$$
+    <p>効率 $100\,\%$ です。上の回路図のとおり、理想スイッチはオンのとき電圧が $0$、オフのとき電流が $0$ なので、スイッチでの電力 $v_\mathrm{SW} \times i$ はいつも $0$。だからどこにも損失が出ません。上の図の青い破線で、平均電圧をいくつにしても効率は 1 のままです。これがパワーエレクトロニクスがスイッチを使う理由です。</p>
+    <p>ひとつ気をつけてほしいのは、平均電圧は問題1と同じ $3\,[\mathrm{V}]$ なのに、負荷の電力は $0.9\,[\mathrm{W}]$ ではなく $3.6\,[\mathrm{W}]$ になっていることです。電力は電圧の 2 乗に比例するので、平均電圧の 2 乗を $R$ で割っても（$3^2/10 = 0.9$）平均電力にはなりません。$v_o^2$ を平均して $R$ で割るのが正しくて、$0.25 \times 12^2 / 10 = 3.6\,[\mathrm{W}]$ です。言い換えると、この方形波の実効値は $\sqrt{0.25 \times 12^2} = 6\,[\mathrm{V}]$ です。$\bar{v}_o^{\,2}/R$ で $0.9\,[\mathrm{W}]$ と答えた人は、ここを取り違えています。</p>
+    <div class="final">答え：$\bar{P}_\mathrm{out} = 3.6\,[\mathrm{W}]$、$\eta = 1$（$100\,\%$）</div>
+
+    <!-- ==================== 問題3 ==================== -->
+    <h2>問題3：スイッチのオンオフにおける損失</h2>
+    <div class="problem-box">
+      <span class="problem-label">📄 問題文</span>
+      <p>実際のスイッチは下図のようにオンオフの動作（スイッチング）に時間がかかる。その際、電圧と電流が同時に存在するため、$P = VI$ より、余分な電力を消費する。これをスイッチング損失と呼ぶ。ここでは、スイッチング損失を実際に式で表す。下記の問いに答えよ。</p>
+      <figure><img src="../exercises/img/pe01_q3_switching_loss.png" alt="ターンオン時の駆動信号、電圧v(t)、電流i(t)の波形"></figure>
+    </div>
+
+    <div class="answer-header">解答3-1</div>
+    <div class="problem-box"><span class="problem-label">📄 問題文</span><p>時刻 $0 \le t \le \Delta T_\mathrm{on}$ において、スイッチがオフからオンに入れ替わっている（ターンオンという）。この間の時刻の電圧 $v(t)$ と電流 $i(t)$ を $V_\mathrm{off},\ I_\mathrm{on},\ \Delta T_\mathrm{on}$ を用いて表せ。ここで、オン時の電圧 $V_\mathrm{on}$ とオフ時の電流 $I_\mathrm{off}$ は 0 とみなす（$V_\mathrm{on} = I_\mathrm{off} = 0$）。</p></div>
+    <p>問題3には回路図がないので、まずスイッチの電圧 $v(t)$ と電流 $i(t)$ の向きを決めておきます。電流がスイッチの＋の端子から入る向きにとります。こうしておくと、3-2 の $p = vi$ がそのまま「スイッチが受け取って熱にする電力」になります。</p>
+    <figure>
+      <img src="img/pe01_q3_ans_switch.png" style="max-width: min(100%, 440px)" alt="スイッチの左の端子から電流 i(t) が入り、左が＋・右が−で電圧 v(t)。電流が＋の端子から入る向きなので p=vi はスイッチが受け取る電力">
+      <figcaption>スイッチの電圧と電流の向き。青：電流 $i(t)$、赤：電圧 $v(t)$ の極性</figcaption>
+    </figure>
+    <p class="law">問題の波形が直線（一次関数）であることより</p>
+    <p>どちらも直線で変わっているので、傾きと切片を読めば終わりです。電圧は $\Delta T_\mathrm{on}$ の間に $V_\mathrm{off}$ から $0$ まで下がるので、傾きは $-V_\mathrm{off}/\Delta T_\mathrm{on}$、$t = 0$ で $V_\mathrm{off}$ です。電流は $0$ から $I_\mathrm{on}$ まで上がるので、傾きは $I_\mathrm{on}/\Delta T_\mathrm{on}$、$t = 0$ で $0$ です。</p>
+    $$v(t) = V_\mathrm{off} - \frac{V_\mathrm{off}}{\Delta T_\mathrm{on}}\,t = V_\mathrm{off}\left(1 - \frac{t}{\Delta T_\mathrm{on}}\right)$$
+    $$i(t) = \frac{I_\mathrm{on}}{\Delta T_\mathrm{on}}\,t$$
+    <p>$t = 0$ と $t = \Delta T_\mathrm{on}$ を入れて、図の値と合っているか確かめておいてください。</p>
+    <div class="final">答え：$v(t) = V_\mathrm{off}\left(1 - \dfrac{t}{\Delta T_\mathrm{on}}\right)$、$i(t) = \dfrac{I_\mathrm{on}}{\Delta T_\mathrm{on}}\,t$</div>
+
+    <div class="answer-header">解答3-2</div>
+    <div class="problem-box"><span class="problem-label">📄 問題文</span><p>1 で求めた電圧と電流を用いて、ターンオン時（$0 \le t \le \Delta T_\mathrm{on}$）の消費電力 $p(t)$ を $V_\mathrm{off},\ I_\mathrm{on},\ \Delta T_\mathrm{on}$ を用いて表せ。</p></div>
+    <p class="law">電力の式 $p = v\,i$ より（電流が＋の端子から入る向きなので、スイッチが受け取る電力）</p>
+    <p>$p(t) = v(t)\,i(t)$ に 3-1 の式をそのまま入れます。</p>
+    $$\begin{aligned}
+    p(t) &= V_\mathrm{off}\left(1 - \frac{t}{\Delta T_\mathrm{on}}\right) \cdot \frac{I_\mathrm{on}}{\Delta T_\mathrm{on}}\,t \\
+         &= \frac{V_\mathrm{off} I_\mathrm{on}}{\Delta T_\mathrm{on}}\,t - \frac{V_\mathrm{off} I_\mathrm{on}}{\Delta T_\mathrm{on}^{2}}\,t^{2}
+    \end{aligned}$$
+    <p>上に凸の放物線で、$t = 0$ と $t = \Delta T_\mathrm{on}$ で $0$、真ん中の $t = \Delta T_\mathrm{on}/2$ で最大 $V_\mathrm{off} I_\mathrm{on}/4$ になります。電圧が半分まで下がって、電流が半分まで上がったところで一番発熱している、というイメージです。式の形は展開してもしなくても、同じ関数になっていれば正解です。</p>
+    <figure>
+      <img src="img/pe01_ploss.png" alt="ターンオン中の v(t), i(t), p(t)。p(t) は放物線で、その面積がスイッチング損失">
+      <figcaption>ターンオン中の電圧・電流・電力（それぞれ $V_\mathrm{off}$, $I_\mathrm{on}$, $V_\mathrm{off}I_\mathrm{on}$ で規格化）。灰色の面積が 1 回あたりのスイッチング損失</figcaption>
+    </figure>
+    <div class="final">答え：$p(t) = \dfrac{V_\mathrm{off} I_\mathrm{on}}{\Delta T_\mathrm{on}}\,t - \dfrac{V_\mathrm{off} I_\mathrm{on}}{\Delta T_\mathrm{on}^{2}}\,t^{2}$</div>
+
+    <div class="answer-header">解答3-3</div>
+    <div class="problem-box"><span class="problem-label">📄 問題文</span><p>ターンオン 1 回で消費するエネルギーを求めよ。これをスイッチング損失と呼ぶ。この時、スイッチング時間 $\Delta T_\mathrm{on}$ の大きさとスイッチング損失の関係を考察せよ。また、スイッチング周波数とスイッチング損失の関係も考察せよ。</p></div>
+    <p class="law">エネルギー＝電力の時間積分 より</p>
+    <p>$p(t)$ を $0$ から $\Delta T_\mathrm{on}$ まで積分します。これを $W_\mathrm{s}$ とおきます。</p>
+    $$\begin{aligned}
+    W_\mathrm{s} &= \int_0^{\Delta T_\mathrm{on}} p(t)\,dt
+      = \int_0^{\Delta T_\mathrm{on}} \left( \frac{V_\mathrm{off} I_\mathrm{on}}{\Delta T_\mathrm{on}}\,t - \frac{V_\mathrm{off} I_\mathrm{on}}{\Delta T_\mathrm{on}^{2}}\,t^{2} \right) dt \\
+      &= \frac{V_\mathrm{off} I_\mathrm{on}}{\Delta T_\mathrm{on}} \left[ \frac{t^{2}}{2} \right]_0^{\Delta T_\mathrm{on}}
+       - \frac{V_\mathrm{off} I_\mathrm{on}}{\Delta T_\mathrm{on}^{2}} \left[ \frac{t^{3}}{3} \right]_0^{\Delta T_\mathrm{on}} \\
+      &= \frac{1}{2} V_\mathrm{off} I_\mathrm{on} \Delta T_\mathrm{on} - \frac{1}{3} V_\mathrm{off} I_\mathrm{on} \Delta T_\mathrm{on} \\
+      &= \frac{1}{6} V_\mathrm{off} I_\mathrm{on} \Delta T_\mathrm{on}\,[\mathrm{J}]
+    \end{aligned}$$
+    <p>上の図の灰色の面積がこれです。</p>
+    <p>まずスイッチング時間との関係です。$W_\mathrm{s}$ は $\Delta T_\mathrm{on}$ に比例しています。切り替えに時間がかかるスイッチほど、電圧と電流が重なっている時間が長いので、1 回あたりの損失が大きくなります。逆に言えば、速く切り替わるスイッチを使えば損失は減らせる。高速なパワー半導体（たとえば GaN や SiC）が欲しくなる理由はここにあります。</p>
+    <p>次にスイッチング周波数との関係です。</p>
+    <p class="law">平均電力＝1 回あたりのエネルギー × 1 秒あたりの回数 より</p>
+    <p>$W_\mathrm{s}$ は 1 回あたりのエネルギーで、スイッチング周波数 $f_\mathrm{SW}$ は 1 秒間に何回切り替えるかなので、1 秒あたりの損失、つまり平均の損失電力は</p>
+    $$P_\mathrm{s} = f_\mathrm{SW}\,W_\mathrm{s} = \frac{1}{6} V_\mathrm{off} I_\mathrm{on} \Delta T_\mathrm{on} f_\mathrm{SW}\,[\mathrm{W}]$$
+    <p>となって、周波数に比例して増えます。周波数を上げるとインダクタやコンデンサを小さくできるので装置は小型になりますが、そのぶんスイッチング損失が増えて発熱も増える。ここがトレードオフです。ここではターンオンだけを考えましたが、ターンオフでも同じように損失が出るので、実際の損失はその合計になります。</p>
+    <div class="final">答え：$W_\mathrm{s} = \dfrac{1}{6} V_\mathrm{off} I_\mathrm{on} \Delta T_\mathrm{on}\,[\mathrm{J}]$。$\Delta T_\mathrm{on}$ が長いほど 1 回の損失は大きい。平均の損失電力は $f_\mathrm{SW} W_\mathrm{s}$ で、スイッチング周波数に比例して大きくなる。</div>
+
+    <footer>パワーエレクトロニクス（2026年度） ｜ 神野 崇馬 </footer>
+  </div>
+</body>
+</html>

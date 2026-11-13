@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>正弦波 PWM のシミュレーター — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="common.css">
+<style>
+#spec { display: block; width: 100%; }
+</style>
+</head>
+<body>
+<header>
+  <nav class="hnav"><a href="../index.html">← 科目のページへ戻る</a><a href="index.html">回路を選ぶ（シミュレーターの一覧）</a></nav>
+  <h1>正弦波 PWM 制御（バイポーラ・ユニポーラ）のシミュレーター</h1>
+  <div class="subtitle">パワーエレクトロニクス 第12回 直流-交流変換（２） p21〜29 / 大阪工業大学</div>
+</header>
+<main>
+  <div class="notice">
+    出力したい正弦波（<b>指令信号</b>）と、速く上下する三角波（<b>搬送波</b>）を比べて、フルブリッジのスイッチを切り替えます（p21）。
+    <b>バイポーラ</b>は負荷の電圧 <span class="eq">v</span> が <span class="eq">±E</span> の 2 つ、<b>ユニポーラ</b>は右のレグを「−指令信号」と比べるので <span class="eq">E・0・−E</span> の 3 つになります（p25・26）。
+    R-L 負荷の電流 <span class="eq">i</span> は指令信号に似た形になり（p24）、ユニポーラの方がリプルが小さくなります（p28）。下の<b>スペクトル</b>で、高調波がどの次数に出るかも比べられます（p29）。
+    回路図の<b>線をクリックすると電位</b>（電源の − の線を 0 V とする）、<b>素子をクリックすると電流</b>（矢印の向きが正）が出ます。
+  </div>
+
+  <div class="top">
+    <section class="card">
+      <div class="card-h">
+        <span class="ttl">回路</span>
+        <span class="small">素子をクリックしたとき：</span>
+        <span class="seg" id="emode"><button data-m="i" class="on">電流</button><button data-m="v">両端の電圧</button></span>
+      </div>
+      <svg id="sch" viewBox="-130 -70 880 470" aria-label="フルブリッジの回路図"></svg>
+      <div id="state"></div>
+    </section>
+
+    <section class="card params">
+      <div class="card-h"><span class="ttl">回路の値</span></div>
+      <div class="card-b" id="params"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-h">
+      <span class="ttl">波形</span>
+      <span class="seg" id="win">
+        <button data-w="all">起動から最後まで</button><button data-w="first">起動直後</button><button data-w="last" class="on">定常状態</button>
+      </span>
+    </div>
+    <div class="ctl">
+      <button id="play">▶ 再生</button>
+      <label>速さ <select id="speed"><option value="0.05">×0.05</option><option value="0.1">×0.1</option><option value="0.25" selected>×0.25</option><option value="0.5">×0.5</option><option value="1">×1</option></select></label>
+      <label id="nper">周期の数 <select id="nP"><option selected>1</option><option>2</option><option>3</option><option>5</option></select></label>
+      <label>グラフ <select id="lay"><option value="vi">電圧と電流の2段</option><option value="each">1本ずつ別の段</option></select></label>
+    </div>
+    <div class="scrubrow"><input type="range" id="scrub" min="0" max="10000" value="0" aria-label="時刻"><span class="tc" id="tc"></span></div>
+    <div id="legend"></div>
+    <div id="plotwrap"><canvas id="plot"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">高調波のスペクトル（p29）</span><span class="small" id="specsub"></span></div>
+    <div class="card-b"><canvas id="spec" aria-label="電圧と電流の高調波のスペクトル"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">定常状態の値と、授業の式の比較</span><span class="small" id="msub"></span></div>
+    <div class="card-b" style="overflow-x:auto"><table class="m" id="metrics"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">このシミュレーターの前提</span></div>
+    <div class="card-b">
+      <ul class="notes">
+        <li>スイッチとダイオードは理想（オンで抵抗 0、オフで電流 0、切り替えは一瞬）。同じレグの上と下は必ず反対（デッドタイムは考えない）。電源 <span class="eq">E</span> は理想の直流電圧源です。</li>
+        <li>波形のいちばん上の帯は、塗られている間そのスイッチがオン。バイポーラは「S₁S₄ オン」と「S₂S₃ オン」の 2 本、ユニポーラは「S₁ オン（S₂ オフ）」と「S₃ オン（S₄ オフ）」の 2 本です（塗られていない間は S₂ オン・S₄ オン）。</li>
+        <li>搬送波は −1〜1 の三角波（周波数 <span class="eq">m<sub>f</sub> f</span>、<span class="eq">t</span> = 0 で −1、p21 の図）。指令信号は <span class="eq">v<sub>ref</sub> = m<sub>a</sub> sin ωt</span>（<span class="eq">m<sub>a</sub></span>：変調率、<span class="eq">m<sub>f</sub></span>：周波数比。p21 の図は <span class="eq">m<sub>a</sub></span> ≈ 0.85、<span class="eq">m<sub>f</sub></span> = 10）。</li>
+        <li><b>バイポーラ</b>（p21）：<span class="eq">v<sub>ref</sub></span> &gt; 搬送波 の間 S<sub>1</sub>・S<sub>4</sub> オン（<span class="eq">v = E</span>）、それ以外は S<sub>2</sub>・S<sub>3</sub> オン（<span class="eq">v = −E</span>）。
+          <b>ユニポーラ</b>（p25）：左のレグは <span class="eq">v<sub>ref</sub></span> &gt; 搬送波 で S<sub>1</sub> オン（S<sub>2</sub> オフ）、右のレグは <span class="eq">−v<sub>ref</sub></span> &gt; 搬送波 で S<sub>3</sub> オン（S<sub>4</sub> オフ）。</li>
+        <li>逆並列のダイオードがあるので、<span class="eq">v</span> は負荷の電流の向きによらずゲート信号だけで決まります。</li>
+        <li>基本波の振幅の式 <span class="eq">m<sub>a</sub>E</span> は <span class="eq">m<sub>a</sub> ≤ 1</span> で、搬送波が十分に速いときの式です（スライドには式は無く、「指令信号に似た波形」p24。第13回の間接式のページでも使う）。<span class="eq">m<sub>f</sub></span> = 3 のように搬送波が遅いと式から数 % ずれるので、表の判定は「目安」にしています。<span class="eq">m<sub>a</sub></span> &gt; 1（過変調）にすると、パルスが抜けて基本波は <span class="eq">m<sub>a</sub>E</span> より小さくなります。</li>
+        <li>スペクトルは、定常状態の最後の 1 周期の波形のフーリエ係数（p9 の <span class="eq">A<sub>n</sub>・B<sub>n</sub></span>）を数値で計算し、振幅 <span class="eq">√(A<sub>n</sub>² + B<sub>n</sub>²)</span> を基本波との比で描いています（FFT と同じもの）。<span class="eq">m<sub>f</sub></span> は整数にしているので、波形は出力の 1 周期ごとに繰り返します。教科書の図（p29）とは条件が少し違うので、棒の高さは少し違います。</li>
+        <li>計算は 4 次のルンゲ・クッタ法。指令信号と搬送波の交点（切り替えの時刻）は二分法で求めています。電流は 0 から始めて、定常状態になるまで（<span class="eq">L/R</span> の約 8 倍）計算します。</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<footer>パワーエレクトロニクス ｜ 神野 崇馬 ｜ 試作版</footer>
+<div id="tip"></div>
+
+<script src="common.js"></script>
+<script>
+// ==SIM-BEGIN==
+/**
+ * 最後の span 秒の f(S, k) のフーリエ係数（n 次、基本周波数 f0）。点の間を直線でつないだ波形を厳密に積分する
+ * （区分的に一定の電圧も、指数関数の電流も、高い次数まで正しく出る）。時刻は最後の span の始まりから測る。
+ * 戻り値 {A, B, amp}：A = (2/L)∫y cos nωt dt、B = (2/L)∫y sin nωt dt、amp = √(A² + B²)
+ */
+function fourierLin(S, f, span, f0, n) {
+  const N = S.t.length, tEnd = S.t[N - 1], ts = tEnd - span, w = 2 * Math.PI * f0 * n;
+  let k0 = 0;
+  while (k0 < N && S.t[k0] < ts - 1e-12 * span) k0++;
+  let re = 0, im = 0, y0 = f(S, k0);
+  for (let k = k0 + 1; k < N; k++) {
+    const y1 = f(S, k), t0 = S.t[k - 1] - ts, t1 = S.t[k] - ts, dt = t1 - t0;
+    if (dt > 0) {
+      const c0 = Math.cos(w * t0), s0 = Math.sin(w * t0), c1 = Math.cos(w * t1), s1 = Math.sin(w * t1);
+      if (w * dt < 1e-4) { re += (y0 * c0 + y1 * c1) / 2 * dt; im += (y0 * s0 + y1 * s1) / 2 * dt; } // ごく短い区間は台形（桁落ちを避ける）
+      else {
+        const sl = (y1 - y0) / dt;
+        re += y0 * (s1 - s0) / w + sl * (dt * s1 / w + (c1 - c0) / (w * w));
+        im += -y0 * (c1 - c0) / w + sl * (-dt * c1 / w + (s1 - s0) / (w * w));
+      }
+    }
+    y0 = y1;
+  }
+  const L = tEnd - S.t[k0], A = 2 * re / L, B = 2 * im / L;
+  return {A, B, amp: Math.hypot(A, B)};
+}
+/** 搬送波（−1〜1 の三角波、u = t·fc。u = 0 で −1、最初の山は u = 1/2） */
+function spCar(u) { const x = u - Math.floor(u); return x < 0.5 ? -1 + 4 * x : 3 - 4 * x; }
+/** 指令信号 − 搬送波（sg = −1 で −指令信号 − 搬送波） */
+function spD(p, t, sg) { return sg * p.ma * Math.sin(2 * Math.PI * p.f * t) - spCar(t * p.f * p.mf); }
+/** ゲート：s = b1 + 2·b3（b1：S1 オン（S2 オフ）、b3：S3 オン（S4 オフ））。バイポーラは b3 = 1 − b1 */
+function spGate(p, t) {
+  const b1 = spD(p, t, 1) > 0 ? 1 : 0, b3 = p.uni ? (spD(p, t, -1) > 0 ? 1 : 0) : 1 - b1;
+  return b1 + 2 * b3;
+}
+function spV(p, s) { return p.E * ((s & 1) - (s >> 1)); }
+/** 正弦波 PWM のフルブリッジ（R-L 負荷）。p = {E, f, ma, mf（整数）, R, L, uni}。状態変数 [i] */
+function spwmModel(p) {
+  const T = 1 / p.f, Tc = T / p.mf, tau = p.L / p.R;
+  const periods = Math.min(150, Math.max(3, Math.ceil(8 * tau / T) + 2));
+  const fs = p.uni ? [1, -1] : [1];
+  return {
+    T, periods, h: Math.min(Tc / 40, tau / 10), x0: [0], s0: spGate(p, 0),
+    f: (t, x, s) => [(spV(p, s) - p.R * x[0]) / p.L],
+    breaks: (t0, t1) => {
+      // 搬送波の半周期ごとに（その中では 指令信号 − 搬送波 は単調）、交点を二分法で
+      const r = [];
+      for (let k = Math.floor(t0 / (Tc / 2)); k * Tc / 2 < t1; k++) for (const sg of fs) {
+        let a = k * Tc / 2, b = a + Tc / 2;
+        const da = spD(p, a + 1e-12 * Tc, sg), db = spD(p, b - 1e-12 * Tc, sg);
+        if (da * db >= 0) continue;
+        for (let it = 0; it < 60; it++) { const mm = (a + b) / 2; if (spD(p, mm, sg) * da > 0) a = mm; else b = mm; }
+        r.push(b);
+      }
+      return r.filter(b => b >= t0 && b < t1).sort((a, b) => a - b);
+    },
+    onBreak: (t) => spGate(p, t + 1e-9 * Tc),
+  };
+}
+function simulateSpwm(p) { const S = simEv(spwmModel(p)); S.p = Object.assign({}, p); return S; }
+const spVo = (S, k) => spV(S.p, S.s[k]);
+const spI = (S, k) => S.x[0][k];
+/** 定常の値。spec = true ならスペクトル（1〜nMax 次）も */
+function spwmMetrics(S, spec = true) {
+  const p = S.p, T = S.T, w = 2 * Math.PI * p.f;
+  const V1 = fourierLin(S, spVo, T, p.f, 1), I1 = fourierLin(S, spI, T, p.f, 1);
+  const V = acStats(S, spVo, T, 0), I = acStats(S, spI, T, 0);
+  const N = S.t.length, ts = S.t[N - 1] - T;
+  const lv = new Set();
+  let jump = 0, ripple = 0;
+  for (let k = I.k0; k < N; k++) {
+    lv.add(Math.round(spVo(S, k) / p.E));
+    if (k > I.k0) jump = Math.max(jump, Math.abs(spVo(S, k) - spVo(S, k - 1)));
+    const tt = S.t[k] - ts;
+    ripple = Math.max(ripple, Math.abs(spI(S, k) - (I1.A * Math.cos(w * tt) + I1.B * Math.sin(w * tt))));
+  }
+  const m = {V1, I1, V, I, levels: [...lv].sort((a, b) => a - b), jump, ripple,
+    P: acStats(S, (S, k) => p.R * spI(S, k) ** 2, T, 0).avg,
+    thdI: Math.sqrt(Math.max(0, I.rms ** 2 - I.avg ** 2 - I1.amp ** 2 / 2)) / (I1.amp / Math.SQRT2),
+    thdV: Math.sqrt(Math.max(0, V.rms ** 2 - V.avg ** 2 - V1.amp ** 2 / 2)) / (V1.amp / Math.SQRT2)};
+  if (spec) {
+    const nMax = Math.min(200, Math.max(100, Math.ceil((2 * p.mf + 20) / 10) * 10));
+    m.nMax = nMax; m.specV = [0]; m.specI = [0];
+    for (let n = 1; n <= nMax; n++) {
+      m.specV.push(n === 1 ? V1.amp : fourierLin(S, spVo, T, p.f, n).amp);
+      m.specI.push(n === 1 ? I1.amp : fourierLin(S, spI, T, p.f, n).amp);
+    }
+    let nb = 2;
+    for (let n = 2; n <= nMax; n++) if (m.specV[n] > m.specV[nb]) nb = n;
+    m.nBig = nb;
+  }
+  S.MET = m;
+  return m;
+}
+// ==SIM-END==
+</script>
+<script>
+(() => {
+'use strict';
+// 回路図の座標：電源 x = 0、左のレグ XL、右のレグ XR、逆並列ダイオードは各レグの右 DX
+const XL = 200, XR = 600, DX = 48, YT = 0, YB = 340, YM = 170, XRs = 345, XLc0 = 430, XLc1 = 530;
+const yS = [[40, 110], [230, 300]], yD = [[24, 126], [214, 316]];
+const CA = COL.fuchsia, CB = COL.violet;
+const r3 = (x) => String(+x.toPrecision(3));
+/** 式の前提が崩れている行の判定（灰色の「目安」と理由） */
+const MEYASU = (why) => `<span style="color:var(--sub);font-weight:700">目安</span>${why ? `<span class="small">（${why}）</span>` : ''}`;
+let uni = false, sw = {};
+const b1 = (S, k) => S.s[k] & 1, b3 = (S, k) => S.s[k] >> 1;
+const va = (S, k) => b1(S, k) ? S.p.E : 0, vb = (S, k) => b3(S, k) ? S.p.E : 0;
+const wOf = (S) => 2 * Math.PI * S.p.f;
+const tLast = (S) => S.t[S.t.length - 1] - S.T;
+const i1 = (S, k) => { const m = S.MET; if (!m) return 0; const w = wOf(S), t = S.t[k] - tLast(S); return m.I1.A * Math.cos(w * t) + m.I1.B * Math.sin(w * t); };
+const region = (S, k) => { const s = S.s[k]; return s === 1 ? 0 : s === 2 ? 1 : s === 3 ? 2 : 3; };
+
+/** グラフのいちばん上の段：搬送波と指令信号（ユニポーラは −指令信号も）、その下にゲートの帯 */
+const WH = 70, RH = 15;
+const carrierPane = {
+  h: WH + 2 * RH + 10,
+  draw(c, S, g) {
+    const {X_, t0w, t1w, y0, ML, pw, i0, i1: j1} = g, p = S.p, fc = p.f * p.mf;
+    c.fillStyle = '#f7f8fa'; c.fillRect(ML, y0, pw, WH);
+    const Y = (v) => y0 + WH / 2 - v * (WH / 2 - 4) / 1.05;
+    c.strokeStyle = '#cbd5e1'; c.lineWidth = 1; c.beginPath(); c.moveTo(ML, Y(0)); c.lineTo(ML + pw, Y(0)); c.stroke();
+    c.save(); c.beginPath(); c.rect(ML, y0, pw, WH); c.clip();
+    // 搬送波：角の点を結ぶ（細かすぎるときは帯で）
+    const nC = (t1w - t0w) * fc * 2;
+    c.strokeStyle = COL.sub; c.lineWidth = 1.1;
+    if (nC < pw / 2) {
+      c.beginPath();
+      const k0 = Math.floor(t0w * fc * 2), k1 = Math.ceil(t1w * fc * 2);
+      for (let k = k0; k <= k1; k++) { const t = k / (2 * fc), x = X_(t), y = Y(k % 2 === 0 ? -1 : 1); if (k === k0) c.moveTo(x, y); else c.lineTo(x, y); }
+      c.stroke();
+    } else { c.fillStyle = 'rgba(91,107,123,0.25)'; c.fillRect(ML, Y(1), pw, Y(-1) - Y(1)); }
+    // 指令信号
+    const ref = (sg) => {
+      c.beginPath();
+      for (let x = 0; x <= pw; x += 1) { const t = t0w + x / pw * (t1w - t0w), y = Y(sg * p.ma * Math.sin(2 * Math.PI * p.f * t)); if (x === 0) c.moveTo(ML + x, y); else c.lineTo(ML + x, y); }
+      c.stroke();
+    };
+    c.strokeStyle = COL.blue; c.lineWidth = 2; ref(1);
+    if (p.uni) { c.setLineDash([5, 4]); ref(-1); c.setLineDash([]); }
+    c.restore();
+    c.font = '11px sans-serif'; c.textAlign = 'right';
+    c.fillStyle = COL.blue; c.fillText(p.uni ? '±指令' : '指令信号', ML - 5, y0 + 16);
+    c.fillStyle = COL.sub; c.fillText('搬送波', ML - 5, y0 + 32);
+    // ゲートの帯
+    // 帯が塗られている間オン。ユニポーラは S₁ オンのとき S₂ オフ、S₃ オンのとき S₄ オフ
+    const rows = p.uni ? [['S₁ オン', CA, (S, k) => b1(S, k) === 1], ['S₃ オン', CB, (S, k) => b3(S, k) === 1]]
+      : [['S₁S₄ オン', CA, (S, k) => b1(S, k) === 1], ['S₂S₃ オン', CB, (S, k) => b1(S, k) === 0]];
+    const yr0 = y0 + WH + 4;
+    c.fillStyle = '#f7f8fa'; c.fillRect(ML, yr0, pw, 2 * RH + 4);
+    rows.forEach(([label, color, on], q) => {
+      const y = yr0 + 2 + q * RH;
+      c.fillStyle = color;
+      let start = null;
+      for (let k = i0; k <= j1; k++) {
+        const o = on(S, k);
+        if (o && start === null) start = Math.max(t0w, S.t[k]);
+        if ((!o || k === j1) && start !== null) {
+          const e = Math.min(t1w, S.t[k]);
+          if (e > start) c.fillRect(X_(start), y + 2, Math.max(0.8, X_(e) - X_(start)), RH - 4);
+          start = null;
+        }
+      }
+      c.font = '10px sans-serif'; c.textAlign = 'right'; c.fillStyle = color;
+      c.fillText(label, ML - 4, y + RH - 4);
+    });
+  },
+};
+
+/** スペクトルの棒グラフ（電圧・電流。基本波に対する割合） */
+const specCv = document.getElementById('spec');
+let lastS = null;
+function drawSpectrum(S) {
+  lastS = S;
+  const m = S.MET, p = S.p;
+  if (!m || !m.specV) return;
+  const W = specCv.parentElement.clientWidth - 28, wide = W >= 620;
+  const noFund = !(m.specV[1] > 1e-6 * p.E); // 基本波がほぼ 0（mₐ = 0 など）：基本波との比は意味がないので描かない
+  const PH = wide ? 200 : 170, H = wide ? PH + 50 : 2 * (PH + 50);
+  const dpr = window.devicePixelRatio || 1;
+  specCv.width = Math.round(W * dpr); specCv.height = Math.round(H * dpr); specCv.style.height = H + 'px';
+  const c = specCv.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.fillStyle = '#fff'; c.fillRect(0, 0, W, H);
+  if (noFund) {
+    specCv.style.height = '60px'; specCv.height = Math.round(60 * dpr);
+    c.setTransform(dpr, 0, 0, dpr, 0, 0); c.fillStyle = '#fff'; c.fillRect(0, 0, W, 60);
+    c.font = '13px sans-serif'; c.textAlign = 'left'; c.fillStyle = COL.sub;
+    c.fillText('基本波がほぼ 0（mₐ = 0）なので、「基本波に対する割合」のスペクトルは描きません。', 8, 34);
+    document.getElementById('specsub').textContent = `${p.uni ? 'ユニポーラ' : 'バイポーラ'}、mf = ${p.mf}。基本波なし`;
+    return;
+  }
+  const pw = wide ? (W - 16) / 2 : W;
+  const panel = (x0, y0, arr, title, color, ymax) => {
+    const ML = 44, MR = 8, gw = pw - ML - MR, top = y0 + 24, gh = PH - 24;
+    const n = m.nMax, X = (k) => x0 + ML + (k + 0.5) / (n + 1) * gw, Y = (v) => top + gh - Math.min(v, ymax) / ymax * gh;
+    c.font = '13px sans-serif'; c.textAlign = 'left'; c.fillStyle = COL.ink; c.fillText(title, x0 + ML, y0 + 15);
+    // m_f と 2m_f の帯（p29 の黄色の帯）
+    for (const [q, lb] of [[p.mf, 'm_f'], [2 * p.mf, '2m_f']]) {
+      if (q > n) continue;
+      c.fillStyle = 'rgba(250,204,21,0.25)'; c.fillRect(X(q - 2.5), top, X(q + 2.5) - X(q - 2.5), gh);
+      c.fillStyle = '#a16207'; c.font = `italic 12px ${SERIF}`; c.textAlign = 'center';
+      c.fillText(lb === 'm_f' ? 'mf' : '2mf', X(q), top + 12);
+    }
+    c.strokeStyle = '#d5dbe2'; c.lineWidth = 1; c.strokeRect(x0 + ML + 0.5, top + 0.5, gw - 1, gh - 1);
+    const st = Math.max(ymax > 1.5 ? 0.5 : 0.2, Math.ceil(ymax / 10 / 0.5) * 0.5); // 目盛りは多くても 10 本程度
+    c.font = '11px Menlo, monospace'; c.textAlign = 'right'; c.fillStyle = COL.sub;
+    for (let v = 0; v <= ymax + 1e-9; v += st) { const y = Y(v); c.strokeStyle = '#eef1f4'; c.beginPath(); c.moveTo(x0 + ML, y); c.lineTo(x0 + ML + gw, y); c.stroke(); c.fillText(v.toFixed(1), x0 + ML - 4, y + 4); }
+    c.textAlign = 'center';
+    for (let k = 0; k <= n; k += (n > 120 ? 40 : 20)) c.fillText(String(k), X(k), top + gh + 14);
+    c.fillText('高調波次数', x0 + ML + gw / 2, top + gh + 28);
+    const bw = Math.max(1, gw / (n + 1) * 0.6);
+    for (let k = 1; k <= n; k++) {
+      const r = arr[k] / arr[1];
+      if (r < 1e-4) continue;
+      c.fillStyle = k === 1 ? COL.ink : color;
+      c.fillRect(X(k) - bw / 2, Y(r), bw, top + gh - Y(r));
+    }
+    c.save(); c.translate(x0 + 10, top + gh / 2); c.rotate(-Math.PI / 2); c.font = '11px sans-serif'; c.fillStyle = COL.sub; c.fillText('基本波に対する割合', 0, 0); c.restore();
+  };
+  let vmax = 1;
+  for (let k = 2; k <= m.nMax; k++) vmax = Math.max(vmax, m.specV[k] / m.specV[1]);
+  vmax = Math.min(20, Math.ceil(vmax * 1.05 / 0.2) * 0.2); // 上限（はみ出す棒は上端で切れる）
+  panel(0, 0, m.specV, '（a）負荷の電圧 v', COL.orange, vmax);
+  if (wide) panel(pw + 16, 0, m.specI, '（b）負荷の電流 i', COL.ir, 1.0);
+  else panel(0, PH + 50, m.specI, '（b）負荷の電流 i', COL.ir, 1.0);
+  document.getElementById('specsub').textContent = `${p.uni ? 'ユニポーラ' : 'バイポーラ'}、mf = ${p.mf}。いちばん大きい電圧の高調波：${m.nBig} 次（基本波の ${(m.specV[m.nBig] / m.specV[1]).toFixed(2)} 倍）`;
+}
+window.addEventListener('resize', () => { if (lastS) drawSpectrum(lastS); });
+
+const Lex = (R, f) => 0.5 * R / (2 * Math.PI * f); // ωL/R = 0.5（PE12_PLAN の模式の値）
+SimApp({
+  pdef: [
+    {k: 'E', b: 'E', s: '', title: '直流電源の電圧', min: 10, max: 400, step: 1, log: false, unit: 'V', def: 100},
+    {k: 'f', b: 'f', s: '', title: '出力（指令信号）の周波数', min: 1, max: 400, log: true, unit: 'Hz', def: 50},
+    {k: 'ma', b: 'm', s: 'a', title: '変調率（指令信号の振幅 / 搬送波の振幅）', min: 0, max: 1.3, step: 0.01, log: false, unit: '', def: 0.85, fmt: r3},
+    {k: 'mf', b: 'm', s: 'f', title: '周波数比（搬送波の周波数 / 指令信号の周波数、整数）', min: 3, max: 41, step: 1, log: false, unit: '', def: 10, fmt: (x) => String(Math.round(x))},
+    {k: 'R', b: 'R', s: '', min: 1, max: 200, log: true, unit: 'Ω', def: 10},
+    {k: 'L', b: 'L', s: '', min: 0.5e-3, max: 500e-3, log: true, unit: 'H', def: Lex(10, 50)},
+  ],
+  extraParams(el, app) {
+    const d = document.createElement('div');
+    d.className = 'crow';
+    d.innerHTML = `<span style="min-width:4.6em">方式</span><span class="seg"><button data-v="0">バイポーラ（p21〜24）</button><button data-v="1">ユニポーラ（p25〜28）</button></span>`;
+    const bs = d.querySelectorAll('button');
+    const show = () => bs.forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === uni));
+    bs.forEach(b => b.onclick = () => { uni = b.dataset.v === '1'; show(); app.schedule(); });
+    el.insertBefore(d, el.firstChild);
+    app.showMode = show;
+    show();
+  },
+  presets: [
+    {name: 'バイポーラ（p21〜24）', v: {E: 100, f: 50, ma: 0.85, mf: 10, R: 10, L: Lex(10, 50)}, apply: (a) => { uni = false; a.showMode(); }},
+    {name: 'ユニポーラ（p25〜28）', v: {E: 100, f: 50, ma: 0.85, mf: 10, R: 10, L: Lex(10, 50)}, apply: (a) => { uni = true; a.showMode(); }},
+    {name: 'バイポーラ・mₐ = 0.5', v: {E: 100, f: 50, ma: 0.5, mf: 10, R: 10, L: Lex(10, 50)}, apply: (a) => { uni = false; a.showMode(); }},
+    {name: 'ユニポーラ・mₐ = 0.5', v: {E: 100, f: 50, ma: 0.5, mf: 10, R: 10, L: Lex(10, 50)}, apply: (a) => { uni = true; a.showMode(); }},
+    {name: 'バイポーラ・mf = 21（速い搬送波）', v: {E: 100, f: 50, ma: 0.85, mf: 21, R: 10, L: Lex(10, 50)}, apply: (a) => { uni = false; a.showMode(); }},
+  ],
+  simulate: (P) => simulateSpwm({E: P.E, f: P.f, ma: P.ma, mf: Math.round(P.mf), R: P.R, L: P.L, uni}),
+  metrics: (S) => {
+    const m = spwmMetrics(S);
+    // もう片方の方式（同じ値）のリプル：p28 の比較用
+    const o = spwmMetrics(simulateSpwm(Object.assign({}, S.p, {uni: !S.p.uni})), false);
+    m.other = o; S.MET = m;
+    return m;
+  },
+  onRun: (S) => drawSpectrum(S),
+  initWin: 'last',
+  gatePane: carrierPane,
+  probes: {
+    'n:gnd': {b: 'GND', s: '', color: COL.sub, q: 'V', what: '電源の − の線（0 V）', f: () => 0},
+    'n:P': {b: 'v', s: 'P', color: COL.blue, q: 'V', what: '電源の ＋ の線の電位（= E）', f: (S) => S.p.E},
+    'n:a': {b: 'v', s: 'a', color: CA, q: 'V', what: '左のレグの中点の電位（0 か E）', f: va},
+    'n:b': {b: 'v', s: 'b', color: CB, q: 'V', what: '右のレグの中点の電位（0 か E）', f: vb},
+    'n:m': {b: 'v', s: 'm', color: COL.teal, q: 'V', what: 'R と L の間の電位', f: (S, k) => va(S, k) - S.p.R * spI(S, k)},
+    'i:E': {b: 'i', s: 'E', color: COL.iin, q: 'I', what: '電源の電流（＋ の端子から出る向きが正）', f: (S, k) => (b1(S, k) ? spI(S, k) : 0) - (b3(S, k) ? spI(S, k) : 0)},
+    'v:E': {b: 'E', s: '', color: COL.blue, q: 'V', what: '電源の電圧（上が＋）', f: (S) => S.p.E},
+    'i:S1': {b: 'i', s: 'S1', color: CA, q: 'I', what: 'S₁（と逆並列ダイオード）の電流（下向きが正。負ならダイオード）', f: (S, k) => b1(S, k) ? spI(S, k) : 0},
+    'v:S1': {b: 'v', s: 'S1', color: CA, q: 'V', what: 'S₁ の両端の電圧（上が＋）', f: (S, k) => S.p.E - va(S, k)},
+    'i:S2': {b: 'i', s: 'S2', color: CB, q: 'I', what: 'S₂（と逆並列ダイオード）の電流（下向きが正。負ならダイオード）', f: (S, k) => b1(S, k) ? 0 : -spI(S, k)},
+    'v:S2': {b: 'v', s: 'S2', color: CB, q: 'V', what: 'S₂ の両端の電圧（上が＋）', f: va},
+    'i:S3': {b: 'i', s: 'S3', color: CB, q: 'I', what: 'S₃（と逆並列ダイオード）の電流（下向きが正。負ならダイオード）', f: (S, k) => b3(S, k) ? -spI(S, k) : 0},
+    'v:S3': {b: 'v', s: 'S3', color: CB, q: 'V', what: 'S₃ の両端の電圧（上が＋）', f: (S, k) => S.p.E - vb(S, k)},
+    'i:S4': {b: 'i', s: 'S4', color: CA, q: 'I', what: 'S₄（と逆並列ダイオード）の電流（下向きが正。負ならダイオード）', f: (S, k) => b3(S, k) ? 0 : spI(S, k)},
+    'v:S4': {b: 'v', s: 'S4', color: CA, q: 'V', what: 'S₄ の両端の電圧（上が＋）', f: vb},
+    'i:R': {b: 'i', s: '', color: COL.ir, q: 'I', what: '負荷の電流（右向きが正）', f: spI},
+    'v:R': {b: 'v', s: 'R', color: COL.green, q: 'V', what: '抵抗の両端の電圧（左が＋）', f: (S, k) => S.p.R * spI(S, k)},
+    'i:L': {b: 'i', s: '', color: COL.ir, q: 'I', what: '負荷の電流（右向きが正）', f: spI},
+    'v:L': {b: 'v', s: 'L', color: COL.teal, q: 'V', what: 'コイルの両端の電圧（左が＋）', f: (S, k) => spVo(S, k) - S.p.R * spI(S, k)},
+    'x:v': {b: 'v', s: '', color: COL.orange, q: 'V', what: '負荷の電圧（左の中点 − 右の中点。矢じりの左が＋）', f: spVo},
+    'x:ref': {b: '指令信号×E', s: '', up: true, color: COL.blue, q: 'V', what: '指令信号 × E（= mₐE sin ωt。v の基本波の目安）', f: (S, k) => S.p.E * S.p.ma * Math.sin(wOf(S) * S.t[k])},
+    'x:i1': {b: 'i', s: '1', up: true, color: COL.sub, q: 'I', what: '負荷の電流の基本波（最後の 1 周期から）', f: i1},
+  },
+  defaultProbes: ['x:v', 'x:ref', 'i:R'],
+  extraButtons: [{key: 'x:v', label: '負荷の電圧 v'}, {key: 'x:ref', label: '指令信号 × E'}, {key: 'x:i1', label: '電流の基本波 i<sub>1</sub>'}],
+  build(K) {
+    const {W} = K;
+    const xdL = XL + DX, xdR = XR + DX;
+    const nodeW = {
+      P: [[[0, YM - 9], [0, YT], [XR, YT], [XR, yS[0][0]]], [[XL, YT], [XL, yS[0][0]]], [[XL, yD[0][0]], [xdL, yD[0][0]]], [[XR, yD[0][0]], [xdR, yD[0][0]]]],
+      a: [[[XL, yS[0][1]], [XL, yS[1][0]]], [[XL, YM], [XRs - 45, YM]], [[XL, yD[0][1]], [xdL, yD[0][1]]], [[XL, yD[1][0]], [xdL, yD[1][0]]]],
+      m: [[[XRs + 45, YM], [XLc0, YM]]],
+      b: [[[XLc1, YM], [XR, YM]], [[XR, yS[0][1]], [XR, yS[1][0]]], [[XR, yD[0][1]], [xdR, yD[0][1]]], [[XR, yD[1][0]], [xdR, yD[1][0]]]],
+      gnd: [[[0, YM + 9], [0, YB], [XR, YB], [XR, yS[1][1]]], [[XL, YB], [XL, yS[1][1]]], [[XL, yD[1][1]], [xdL, yD[1][1]]], [[XR, yD[1][1]], [xdR, yD[1][1]]]],
+    };
+    for (const nn in nodeW) nodeW[nn].forEach(p => W(p));
+    K.battery(0, YM);
+    K.name(-40, YM + 12, 'E', 'end');
+    sw.S1 = K.switch([XL, yS[0][0]], [XL, yS[0][1]], -1); sw.S2 = K.switch([XL, yS[1][0]], [XL, yS[1][1]], -1);
+    sw.S3 = K.switch([XR, yS[0][0]], [XR, yS[0][1]], -1); sw.S4 = K.switch([XR, yS[1][0]], [XR, yS[1][1]], -1);
+    for (const x of [xdL, xdR]) for (const [y0, y1] of yD) K.diode([x, y1], [x, y0], 15);
+    K.name(XL - 34, 85, 'S', 'end', 28, '1'); K.name(XL - 34, 275, 'S', 'end', 28, '2');
+    K.name(XR - 34, 85, 'S', 'end', 28, '3'); K.name(XR - 34, 275, 'S', 'end', 28, '4');
+    K.resH(XRs, YM, 90);
+    K.name(XRs, YM - 24, 'R', 'middle', 28);
+    K.coil([XLc0, YM], [XLc1, YM], 4, 1);
+    K.name((XLc0 + XLc1) / 2, YM - 26, 'L', 'middle', 28);
+    [[XL, YT], [XL, YB], [XL, YM], [XR, YM], [XL, yD[0][0]], [XL, yD[0][1]], [XL, yD[1][0]], [XL, yD[1][1]],
+      [XR, yD[0][0]], [XR, yD[0][1]], [XR, yD[1][0]], [XR, yD[1][1]]].forEach(([x, y]) => K.dot(x, y));
+    K.box(XL - 70, -30, DX + 120, YB + 60, CA); K.box(XR - 70, -30, DX + 120, YB + 60, CB);
+    K.text(XL + DX / 2 - 10, YB + 52, '左のレグ', CA, 20); K.text(XR + DX / 2 - 10, YB + 52, '右のレグ', CB, 20);
+    const hS = (x, y0) => [x - 30, y0 - 10, DX + 46, 90];
+    return {
+      nodeW,
+      hits: [['e:E', [-34, YM - 26, 68, 52]], ['e:S1', hS(XL, yS[0][0])], ['e:S2', hS(XL, yS[1][0])], ['e:S3', hS(XR, yS[0][0])], ['e:S4', hS(XR, yS[1][0])],
+        ['e:R', [XRs - 46, YM - 15, 92, 30]], ['e:L', [XLc0 + 2, YM - 22, XLc1 - XLc0 - 4, 30]]],
+      arrows: {
+        'i:E': [[34, YM + 30], [34, YM - 30], 'R'], 'v:E': [[-80, YM + 40], [-80, YM - 40], 'L'],
+        'i:S1': [[XL + 80, 50], [XL + 80, 100], 'R'], 'v:S1': [[XL + 80, 110], [XL + 80, 40], 'R'],
+        'i:S2': [[XL + 80, 240], [XL + 80, 290], 'R'], 'v:S2': [[XL + 80, 300], [XL + 80, 230], 'R'],
+        'i:S3': [[XR + 80, 50], [XR + 80, 100], 'R'], 'v:S3': [[XR + 80, 110], [XR + 80, 40], 'R'],
+        'i:S4': [[XR + 80, 240], [XR + 80, 290], 'R'], 'v:S4': [[XR + 80, 300], [XR + 80, 230], 'R'],
+        'i:R': [[XRs - 30, YM - 60], [XRs + 30, YM - 60], 'T'], 'v:R': [[XRs + 40, YM + 32], [XRs - 40, YM + 32], 'B'],
+        'i:L': [[XLc0 + 20, YM - 60], [XLc1 - 20, YM - 60], 'T'], 'v:L': [[XLc1 - 10, YM + 32], [XLc0 + 10, YM + 32], 'B'],
+        'x:v': [[XR - 50, YM + 78], [XL + 70, YM + 78], 'B'],
+      },
+      nodeTag: {gnd: [(XL + XR) / 2, YB, 0, 34], P: [(XL + XR) / 2, YT, 0, -14], a: [XL + 70, YM, 0, -14], b: [XR - 40, YM, 0, -14], m: [(XRs + 45 + XLc0) / 2, YM, 0, 40]},
+      loops: {
+        p14: [[0, YM], [0, YT], [XL, YT], [XL, YM], [XR, YM], [XR, YB], [0, YB]],
+        p14r: [[XR, YB], [XR, yD[1][1]], [xdR, yD[1][1]], [xdR, yD[1][0]], [XR, yD[1][0]], [XR, YM], [XL, YM], [XL, yD[0][1]], [xdL, yD[0][1]], [xdL, yD[0][0]], [XL, yD[0][0]], [XL, YT], [0, YT], [0, YB]],
+        p23: [[0, YM], [0, YT], [XR, YT], [XR, YM], [XL, YM], [XL, YB], [0, YB]],
+        p23r: [[XL, YB], [XL, yD[1][1]], [xdL, yD[1][1]], [xdL, yD[1][0]], [XL, yD[1][0]], [XL, YM], [XR, YM], [XR, yD[0][1]], [xdR, yD[0][1]], [xdR, yD[0][0]], [XR, yD[0][0]], [XR, YT], [0, YT], [0, YB]],
+        zt: [[XL, YT], [XL, YM], [XR, YM], [XR, yD[0][1]], [xdR, yD[0][1]], [xdR, yD[0][0]], [XR, yD[0][0]], [XR, YT]],
+        ztr: [[XR, YT], [XR, YM], [XL, YM], [XL, yD[0][1]], [xdL, yD[0][1]], [xdL, yD[0][0]], [XL, yD[0][0]], [XL, YT]],
+        zb: [[XL, YM], [XR, YM], [XR, YB], [XL, YB], [XL, yD[1][1]], [xdL, yD[1][1]], [xdL, yD[1][0]], [XL, yD[1][0]]],
+        zbr: [[XR, YM], [XL, YM], [XL, YB], [XR, YB], [XR, yD[1][1]], [xdR, yD[1][1]], [xdR, yD[1][0]], [XR, yD[1][0]]],
+      },
+      sw,
+    };
+  },
+  state(S, k, MET) {
+    const p = S.p, s = S.s[k], i = spI(S, k), rg = region(S, k), t = S.t[k];
+    const fr = Math.abs(i) / Math.max(1e-12, MET.I.max, -MET.I.min), pos = i > 0, neg = i < 0;
+    const ref = p.ma * Math.sin(wOf(S) * t), car = spCar(t * p.f * p.mf);
+    const f2 = (x) => (Math.abs(x) < 0.005 ? 0 : x).toFixed(2);
+    let html = `指令信号 ${f2(ref)}、搬送波 ${f2(car)}：`;
+    if (!p.uni) html += rg === 0 ? '指令信号 &gt; 搬送波 → ' : '指令信号 &lt; 搬送波 → ';
+    else html += `左のレグは ${b1(S, k) ? 'S₁' : 'S₂'}、右のレグは ${b3(S, k) ? 'S₃' : 'S₄'}（−指令信号 ${b3(S, k) ? '&gt;' : '&lt;'} 搬送波）→ `;
+    const names = ['S₁・S₄', 'S₂・S₃', 'S₁・S₃', 'S₂・S₄'][rg];
+    html += `<span class="sw-on"${rg % 2 ? ` style="color:${CB}"` : ''}>${names} オン</span>、<span class="eq">v</span> = ${['<span class="eq">E</span>', '−<span class="eq">E</span>', '0', '0'][rg]}。`;
+    const loops = [];
+    if (rg === 0) { if (pos) { loops.push(['p14', fr]); html += '電源 → S₁ → 負荷（右向き）→ S₄ → 電源。'; } else if (neg) { loops.push(['p14r', fr]); html += '電流が左向きなので、S₄・S₁ の逆並列ダイオードを通って電源に戻っている。'; } }
+    else if (rg === 1) { if (neg) { loops.push(['p23', fr]); html += '電源 → S₃ → 負荷（左向き）→ S₂ → 電源。'; } else if (pos) { loops.push(['p23r', fr]); html += '電流が右向きなので、S₂・S₃ の逆並列ダイオードを通って電源に戻っている。'; } }
+    else if (rg === 2) { if (pos) { loops.push(['zt', fr]); html += '上の 2 つで回っている（S₁ → 負荷 → S₃ のダイオード）。電源には流れない。'; } else if (neg) { loops.push(['ztr', fr]); html += '上の 2 つで回っている（S₃ → 負荷 → S₁ のダイオード）。電源には流れない。'; } }
+    else { if (pos) { loops.push(['zb', fr]); html += '下の 2 つで回っている（負荷 → S₄ → S₂ のダイオード）。電源には流れない。'; } else if (neg) { loops.push(['zbr', fr]); html += '下の 2 つで回っている（負荷 → S₂ → S₄ のダイオード）。電源には流れない。'; } }
+    return {sw: {S1: !!(s & 1), S2: !(s & 1), S3: !!(s >> 1), S4: !(s >> 1)}, loops, html};
+  },
+  metricsHtml(S, m) {
+    const p = S.p, w = wOf(S), Z1 = Math.hypot(p.R, w * p.L), over = p.ma > 1 + 1e-9;
+    const row = (nm, sim, eq, val, unit, tol = 0.02, note = '') => `<tr><td>${nm}</td><td class="num">${unit ? fmtSI(sim, unit, 4) : sim.toFixed(4)}</td><td class="eq">${eq}</td><td class="num">${unit ? fmtSI(val, unit, 4) : val.toFixed(4)}</td><td>${pctDiff(sim, val)} ${note || okMark(sim, val, tol)}</td></tr>`;
+    let rows = `<tr><th>量</th><th>シミュレーション</th><th>授業の式</th><th>式の値</th><th>差</th></tr>`;
+    const slow = p.mf <= 3; // 搬送波が遅い（mf = 3）と、基本波の式 mₐE からずれる
+    const ovNote = over ? '<span class="ng">過変調（mₐ &gt; 1）なので式は使えない</span>' : slow ? MEYASU('搬送波が遅いので式からずれる') : '';
+    if (p.ma > 0) {
+      rows += row('負荷の電圧 <span class="eq">v</span> の基本波の振幅', m.V1.amp, 'm<sub>a</sub>E', p.ma * p.E, 'V', 0.02, ovNote);
+      rows += row('負荷の電流 <span class="eq">i</span> の基本波の振幅', m.I1.amp, 'm<sub>a</sub>E / √(R² + (ωL)²)', p.ma * p.E / Z1, 'A', 0.02, ovNote);
+      // 電流の遅れ：i ≈ I1 sin(ωt − φ) → φ = −atan2(A, B)
+      const phi = -Math.atan2(m.I1.A, m.I1.B) + Math.atan2(m.V1.A, m.V1.B), phiTh = Math.atan(w * p.L / p.R);
+      rows += `<tr><td>電流の基本波の、電圧の基本波からの遅れ</td><td class="num">${(phi * 180 / Math.PI).toFixed(2)}°</td><td class="eq">tan<sup>−1</sup>(ωL/R)</td><td class="num">${(phiTh * 180 / Math.PI).toFixed(2)}°</td><td>${pctDiff(phi, phiTh)} ${okMark(phi, phiTh, 0.02)}</td></tr>`;
+    }
+    const lvTxt = (a) => a.map(q => q === 0 ? '0' : (q > 0 ? '' : '−') + 'E').join('・');
+    const ma0 = p.uni && p.ma < 1e-9, ma0Why = 'mₐ = 0 なので v は 0 のまま'; // ユニポーラで mₐ = 0：両方のレグが同じに切り替わる
+    const want = p.uni ? [-1, 0, 1] : [-1, 1], okLv = JSON.stringify(m.levels) === JSON.stringify(want);
+    rows += `<tr><td><span class="eq">v</span> の取る値（${p.uni ? 'p26' : 'p22'}）</td><td class="num">${lvTxt(m.levels)}</td><td class="eq">${lvTxt(want)}</td><td class="num"></td><td>${okLv ? '<span class="ok">一致</span>' : ma0 ? MEYASU(ma0Why) : '<span class="ng">ずれる</span>'}</td></tr>`;
+    const jTh = p.uni ? p.E : 2 * p.E;
+    rows += row(`1 回の切り替えでの <span class="eq">v</span> の変化の最大（${p.uni ? 'p26「必ず 0 を経由する」' : 'p22'}）`, m.jump, p.uni ? 'E' : '2E', jTh, 'V', 0.01, ma0 ? MEYASU(ma0Why) : '');
+    if (m.nBig && p.ma > 0) {
+      const nb = m.nBig, c = p.uni ? 2 * p.mf : p.mf, near = Math.abs(nb - c) <= 3;
+      rows += `<tr><td>いちばん大きい電圧の高調波の次数（p29）</td><td class="num">${nb} 次（${(m.specV[nb] / m.specV[1]).toFixed(2)} 倍）</td><td>${p.uni ? '2m<sub>f</sub> の近く（m<sub>f</sub> の近くは消える）' : 'm<sub>f</sub> の近く（搬送波によって変調された成分）'}</td><td class="num">${c} ± 3 次</td><td>${near ? '<span class="ok">一致</span>' : '<span class="ng">ずれる</span>'}</td></tr>`;
+      const rI = m.specI[nb] / m.specI[1], rTh = (m.specV[nb] / m.specV[1]) * Z1 / Math.hypot(p.R, nb * w * p.L);
+      rows += row(`その次数（${nb} 次）の電流の高調波 / 基本波`, rI, '(V<sub>n</sub>/V<sub>1</sub>)·|R + jωL| / |R + jnωL|', rTh, '', 0.02);
+    }
+    const o = m.other, us = p.uni ? m.ripple : o.ripple, bs = p.uni ? o.ripple : m.ripple;
+    rows += `<tr><td>電流のリプル（基本波からのずれの最大、p28）</td><td class="num">${fmtSI(m.ripple, 'A', 3)}</td><td colspan="2">同じ値で${p.uni ? 'バイポーラ' : 'ユニポーラ'}にすると ${fmtSI(o.ripple, 'A', 3)}</td><td>${us < bs ? '<span class="ok">ユニポーラの方が小さい</span>' : '<span class="ng">ユニポーラの方が大きい</span>'}</td></tr>`;
+    // 基本波がほぼ 0（mₐ = 0）のときは THD は定義できないので「—」
+    const noI1 = (mm) => !(mm.I1.amp > 1e-6 * p.E / Z1), thd = (mm, x, d) => noI1(mm) || !isFinite(x) ? '—' : (x * 100).toFixed(d) + ' %';
+    rows += `<tr><td>電流のひずみ（THD）</td><td class="num">${thd(m, m.thdI, 2)}</td><td colspan="3">${p.uni ? 'バイポーラ' : 'ユニポーラ'}なら ${thd(o, o.thdI, 2)}（電圧の THD：${thd(m, m.thdV, 0)}）${noI1(m) ? '　基本波が 0 なので THD は計算できない' : ''}</td></tr>`;
+    rows += `<tr><td>負荷の電力 <span class="eq">P</span></td><td class="num">${fmtSI(m.P, 'W', 4)}</td><td colspan="3"></td></tr>`;
+    const sub = `最後の 1 周期で計算（${S.periods} 周期を計算）。搬送波の周波数 ${fmtSI(p.mf * p.f, 'Hz', 3)}。`;
+    return {rows, sub};
+  },
+});
+})();
+</script>
+</body>
+</html>

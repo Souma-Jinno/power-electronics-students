@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>第1回 演習問題 — パワーエレクトロニクス</title>
+  <style>
+
+    :root {
+      --accent: #1a73e8;
+      --accent-light: #e8f0fe;
+      --text: #202124;
+      --text-secondary: #5f6368;
+      --surface: #ffffff;
+      --bg: #f8f9fa;
+      --border: #dadce0;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
+      --shadow-hover: 0 4px 12px rgba(26,115,232,0.18);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Sans', 'Noto Sans JP', 'Meiryo', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    a { color: inherit; text-decoration: none; }
+    header {
+      background: var(--accent);
+      color: #fff;
+      padding: 18px 20px 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+    }
+    header .subtitle {
+      font-size: 0.78rem;
+      opacity: 0.85;
+      margin-top: 2px;
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+    footer {
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      padding: 20px 16px;
+      border-top: 1px solid var(--border);
+      margin-top: 24px;
+    }
+
+    header h1 { font-size: 1.05rem; font-weight: 700; line-height: 1.4; }
+    header .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.8rem;
+      opacity: 0.88;
+      margin-bottom: 8px;
+    }
+    header .back-link:hover { opacity: 1; }
+    .lesson-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .lesson-num {
+      font-size: 0.8rem;
+      color: var(--accent);
+      font-weight: 700;
+      border: 1.5px solid var(--accent);
+      border-radius: 6px;
+      padding: 2px 10px;
+    }
+    .cat-badge {
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 20px;
+      background: #d8f5f6;
+      color: #0d7377;
+    }
+    .ch-count {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+    }
+    .video-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+    .ch-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px 10px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .ch-num {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--accent-light);
+      padding: 2px 9px;
+      border-radius: 5px;
+      white-space: nowrap;
+    }
+    .ch-title {
+      font-size: 0.93rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    video {
+      display: block;
+      background: #000;
+    }
+    .render-note {
+      padding: 20px 16px;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+    .back-bottom {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      padding: 10px 20px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      transition: opacity 0.15s;
+    }
+    .back-bottom:hover { opacity: 0.88; }
+  </style>
+  <script>
+    window.MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+  <style>
+    .notice {
+      background: var(--accent-light); border-left: 4px solid var(--accent);
+      border-radius: 8px; padding: 12px 16px; margin: 16px 0 24px;
+      font-size: 0.86rem; color: var(--text);
+    }
+    .notice ul, .aims ul { margin: 6px 0 0; padding-left: 1.2em; }
+    .notice li, .aims li { margin: 3px 0; }
+    /* 理解度の箱。提出についての青枠と並ぶので、こちらは枠線だけにして
+       区別をつける（2026-09-25）。 */
+    .aims {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px 18px; margin: 0 0 28px;
+      font-size: 0.86rem; color: var(--text-secondary);
+    }
+    .aims > p { margin: 0 0 4px; color: var(--text); font-weight: 600; }
+    .aims h3 { font-size: 0.88rem; margin: 14px 0 2px; color: var(--text); }
+    .aims h3:first-of-type { margin-top: 10px; }
+    .q { margin: 32px 0; }
+    .q h2 { font-size: 1.05rem; margin-bottom: 8px; }
+    .q .lead { margin: 0 0 14px; }
+    .q figure { margin: 0 0 14px; text-align: center; }
+    .q figure img { max-width: 100%; height: auto; }
+    .q ol { padding-left: 1.4em; }
+    .q ol li { margin: 10px 0; }
+  </style>
+<script>
+if (!/github\.io$/.test(location.hostname)) document.addEventListener("DOMContentLoaded", () => {
+  const b = document.createElement("div");
+  b.textContent = "確認用（Mac mini の作業中の版）。学生に見えるのは git push した後です";
+  b.style.cssText = "background:#fff3cd;color:#664d03;border-bottom:1px solid #e0c36a;padding:6px 12px;font-size:14px;text-align:center";
+  document.body.prepend(b);
+});
+</script>
+</head>
+<body>
+  <header>
+    <a class="back-link" href="../index.html">← 科目のページへ戻る</a>
+    <h1>第1回 演習問題</h1>
+    <div class="subtitle">パワーエレクトロニクスの概要 / パワーエレクトロニクス / 大阪工業大学</div>
+  </header>
+  <main>
+    <div class="lesson-meta">
+      <span class="lesson-num">第1回</span>
+      <span class="cat-badge">演習問題</span>
+      <span class="ch-count">全3問</span>
+    </div>
+    <div class="notice">
+      <strong>提出について</strong>
+      <ul><li>解答用紙は各自で準備すること。コピー用紙でも構いません。</li><li>解答用紙の左上に第何回目の授業の演習問題かを記入し、右上には自分の学生番号と名前を記入する。</li><li>解答用紙を写真で撮って、Google Classroom の演習問題の該当先に提出する。</li></ul>
+    </div>
+    <div class="aims">
+      <p>この演習問題は、下記の理解度を確認することを目的としています。</p>
+    <h3>問題1：可変抵抗を用いた電力変換</h3>
+    <ul><li>回路理論の基本法則（オームの法則、KVL）を正しく適用できるか。</li><li>入力電力、出力電力、そして電力変換の効率を計算できるか。</li><li>抵抗による電力変換が、なぜ損失が大きいのかを計算から理解できているか。</li></ul>
+    <h3>問題2：スイッチを用いた電力変換</h3>
+    <ul><li>スイッチング動作の基本用語（スイッチング周期、周波数、オン時間、デューティ比）の関係を理解しているか。</li><li>デューティー比を用いて、出力の平均電圧を制御する、というパワーエレクトロニクスの基本原理を計算できるか。</li><li>理想的なスイッチを使えば、電力変換の効率が 100% になることを数式で確認できるか。</li></ul>
+    <h3>問題3：スイッチのオンオフにおける損失</h3>
+    <ul><li>実際のスイッチでは、なぜスイッチング損失が発生するのか、その物理的な理由（電圧と電流の重なり）を理解しているか。</li><li>スイッチング損失のエネルギーを、数式（積分）を使って導出できるか。</li><li>スイッチング時間（スイッチの性能）やスイッチング周波数が、損失（＝発熱）にどのように影響するか、そのトレードオフ関係を考察できるか。</li></ul>
+    </div>
+    <section class="q">
+      <h2>問題１：可変抵抗を用いた電力変換</h2>
+      <p class="lead">下記の回路は $12\,[\mathrm{V}]$ の直流電圧源と $R_x\,[\Omega]$ の可変抵抗と $10\,[\Omega]$ の抵抗が直列で接続されている。可変抵抗の抵抗値を変化させることで、負荷にかかる電圧を変化させることができる。以下の時に答えよ。</p>
+      <figure><img src="img/pe01_q1_variable_resistor.png" alt="12V電源、可変抵抗Rx、10Ω負荷の直列回路"></figure>
+      <ol>
+        <li>負荷にかかる電圧を $3\,[\mathrm{V}]$ にしたい。この時、可変抵抗を何 $\Omega$ にすれば良いか求めよ。</li>
+        <li>負荷にかかる電力 $P_\mathrm{out}$ を求めよ。また、この電力変換の効率 $\eta$ を求めよ。</li>
+        <li>負荷電圧 $v_o$ を $R_x$ を用いて表せ。</li>
+        <li>電力変換効率 $\eta$ を負荷電圧 $v_o$ を用いて表せ。</li>
+      </ol>
+    </section>
+    <section class="q">
+      <h2>問題２：スイッチを用いた電力変換</h2>
+      <p class="lead">下図は $12\,[\mathrm{V}]$ の直流電圧源とスイッチと $10\,[\Omega]$ の抵抗が直列で接続されている。ここで、スイッチをオンオフすることで、負荷にかかる電力を調整する。以下の問いに答えよ。</p>
+      <figure><img src="img/pe01_q2_switch.png" alt="スイッチを含む直列回路と、出力電圧の方形波"></figure>
+      <ol>
+        <li>スイッチング周波数 $1\,[\mathrm{kHz}]$ でスイッチがオンオフしている。この時のスイッチング周期 $T_\mathrm{SW}$ は何秒か求めよ。</li>
+        <li>負荷にかかる電圧の時間平均を $3\,[\mathrm{V}]$ にするためには、オンにしている時間 $T_\mathrm{on}$ を何秒にすれば良いか求めよ。</li>
+        <li>負荷にかかる平均電力を求めよ。また、この電力変換の効率を求めよ。ここで、スイッチは理想的なものとする。</li>
+      </ol>
+    </section>
+    <section class="q">
+      <h2>問題３：スイッチのオンオフにおける損失</h2>
+      <p class="lead">実際のスイッチは下図のようにオンオフの動作（スイッチング）に時間がかかる。その際、電圧と電流が同時に存在するため、$P = VI$ より、余分な電力を消費する。これをスイッチング損失と呼ぶ。ここでは、スイッチング損失を実際に式で表す。下記の問いに答えよ。</p>
+      <figure><img src="img/pe01_q3_switching_loss.png" alt="ターンオン時の駆動信号、電圧v(t)、電流i(t)の波形"></figure>
+      <ol>
+        <li>時刻 $0 \le t \le \Delta T_\mathrm{on}$ において、スイッチがオフからオンに入れ替わっている（ターンオンという）。この間の時刻の電圧 $v(t)$ と電流 $i(t)$ を $V_\mathrm{off},\ I_\mathrm{on},\ \Delta T_\mathrm{on}$ を用いて表せ。ここで、オン時の電圧 $V_\mathrm{on}$ とオフ時の電流 $I_\mathrm{off}$ は 0 とみなす（$V_\mathrm{on} = I_\mathrm{off} = 0$）。</li>
+        <li>1 で求めた電圧と電流を用いて、ターンオン時（$0 \le t \le \Delta T_\mathrm{on}$）の消費電力 $p(t)$ を $V_\mathrm{off},\ I_\mathrm{on},\ \Delta T_\mathrm{on}$ を用いて表せ。</li>
+        <li>ターンオン 1 回で消費するエネルギーを求めよ。これをスイッチング損失と呼ぶ。この時、スイッチング時間 $\Delta T_\mathrm{on}$ の大きさとスイッチング損失の関係を考察せよ。また、スイッチング周波数とスイッチング損失の関係も考察せよ。</li>
+      </ol>
+    </section>
+  </main>
+  <footer>パワーエレクトロニクス（2026年度） ｜ 神野 崇馬</footer>
+</body>
+</html>

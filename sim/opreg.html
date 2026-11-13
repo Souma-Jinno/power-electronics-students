@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>オペアンプのフィードバック制御のシミュレーター — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<header>
+  <nav class="hnav"><a href="../index.html">← 科目のページへ戻る</a><a href="index.html">回路を選ぶ（シミュレーターの一覧）</a></nav>
+  <h1>オペアンプのフィードバック制御（とトランジスタのリニアレギュレータ）のシミュレーター</h1>
+  <div class="subtitle">パワーエレクトロニクス 第7回 直流-直流変換（３） p26〜30 / 大阪工業大学</div>
+</header>
+<main>
+  <div class="notice">
+    オペアンプの出力を、マイナスの入力 <span class="eq">V<sub>in−</sub></span> に戻します（フィードバック）。<b>t = 0 でスイッチをオン</b>にしてから、出力が落ち着くまでを計算します。
+    「回路の値」の<b>回路</b>のボタンで「例①：出力をそのまま戻す（p26〜27）」「例②：1 kΩ・2 kΩ で分けて戻す（p28〜29）」「トランジスタと 15 V を足したリニアレギュレータ（p30）」を選べます。
+    どの回路でも、出力は <span class="eq">V<sub>in−</sub> = V<sub>in+</sub></span> になる所で止まります（オペアンプの二つの入力は等しくなる）。
+    回路図の<b>線をクリック</b>するとその点の電位、<b>素子をクリック</b>すると電流（矢印の向きが正）が下のグラフに出ます。
+  </div>
+
+  <div class="top">
+    <section class="card">
+      <div class="card-h">
+        <span class="ttl">回路</span>
+        <span class="small">素子をクリックしたとき：</span>
+        <span class="seg" id="emode"><button data-m="i" class="on">電流</button><button data-m="v">両端の電圧</button></span>
+      </div>
+      <svg id="sch" viewBox="-150 -50 870 545" aria-label="オペアンプのフィードバック回路の回路図"></svg>
+      <div id="state"></div>
+    </section>
+
+    <section class="card params">
+      <div class="card-h"><span class="ttl">回路の値</span></div>
+      <div class="card-b" id="params"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-h">
+      <span class="ttl">波形（t = 0 でスイッチをオン）</span>
+      <span class="seg" id="win"><button data-w="all" class="on">スイッチを入れてから最後まで</button></span>
+    </div>
+    <div class="ctl">
+      <button id="play">▶ 再生</button>
+      <label>速さ <select id="speed"><option value="0.25">×0.25</option><option value="0.5">×0.5</option><option value="1" selected>×1</option><option value="2">×2</option><option value="4">×4</option></select></label>
+      <label id="nper" style="display:none">周期の数 <select id="nP"><option selected>1</option></select></label>
+      <label>グラフ <select id="lay"><option value="vi">電圧と電流の2段</option><option value="each">1本ずつ別の段</option></select></label>
+    </div>
+    <div class="scrubrow"><input type="range" id="scrub" min="0" max="10000" value="0" aria-label="時刻"><span class="tc" id="tc"></span></div>
+    <div id="legend"></div>
+    <div id="plotwrap"><canvas id="plot"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">落ち着いた後の値と、授業の式の比較</span><span class="small" id="msub"></span></div>
+    <div class="card-b" style="overflow-x:auto"><table class="m" id="metrics"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">このシミュレーターの前提</span></div>
+    <div class="card-b">
+      <ul class="notes">
+        <li><b>オペアンプ</b>：入力には電流が流れず、出力は <span class="eq">V<sub>S−</sub></span>（0 V、接地）〜 <span class="eq">V<sub>S+</sub></span> の間（p23）。出力は差 <span class="eq">V<sub>in+</sub> − V<sub>in−</sub></span> を積分するように動き、直流の増幅度は非常に大きい（p23 の 10<sup>5</sup>〜10<sup>7</sup> 程度より大きい）ので、落ち着くと <span class="eq">V<sub>in−</sub> = V<sub>in+</sub></span> になります。出力の変わる速さには上限（<b>スルーレート</b> SR）があり、差が大きい間は <span class="eq">SR</span> で一定の速さで変わります（式：<span class="eq">dV<sub>out</sub>/dt = SR · tanh(2πf<sub>T</sub>(V<sub>in+</sub> − V<sub>in−</sub>)/SR)</span>、利得帯域幅 <span class="eq">f<sub>T</sub></span> = 10 MHz。SR = 10 V/μs・f<sub>T</sub> = 10 MHz は LTspice の UniversalOpamp2 の既定値）。</li>
+        <li>スライド p27・p29 のグラフは時間の目盛りのない模式図です（直線で近づいて合流）。このシミュレーターの直線の部分が、スルーレートで変わっている所です。</li>
+        <li>スイッチは t = 0 でオンにして、その後はずっとオンです。例①・例② の「スイッチを入れる前の出力」（10 V か 0 V）は、p26・p28 の問いと同じく、t = 0 の値として与えます。p30 はスイッチで基準の電圧を <span class="eq">V<sub>in+</sub></span> に入れる回路で、スイッチを入れる前はすべて 0 です。スライド p30 の 200.0 μs（スイッチオン）が、この図の t = 0 です。</li>
+        <li><b>p30 のトランジスタ</b>は 2N2222（LTspice の標準ライブラリの値。IS = 10<sup>−14</sup> A、BF = 200、BR = 3、IKF = 0.3 A、VAF = 100 V、RB = 10 Ω、RC = 0.3 Ω、RE = 0.2 Ω）の直流の式（ガンメル・プーンの簡略形、27 °C）。リニアレギュレータのページ（第7回 p21）と同じモデルです。接合の容量は入れていません（変化はオペアンプのスルーレートで決まるため）。</li>
+        <li>p30 の負荷の抵抗の値はスライドに無いので、10 Ω としました（LTspice の .step の値。エミッタの電流 約 750 mA がスライドの <span class="eq">I<sub>e</sub></span> の図と合います）。p30 の <span class="eq">V<sub>out</sub></span> はオペアンプの出力（トランジスタのベースの電圧）で、負荷の電圧は <span class="eq">v<sub>R</sub></span> です。</li>
+        <li>スライド p30 の <span class="eq">I<sub>e</sub></span>(Q1) の図は LTspice の向き（素子に流れ込む向きが正）で負に描かれています。この回路図の矢印（エミッタから出る向き）では正です。</li>
+        <li>計算は 4 次のルンゲ・クッタ法（刻み 1 ns 以下）で、出力が <span class="eq">V<sub>S+</sub></span> や 0 V に届く時刻は二分法で求めています。</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<footer>パワーエレクトロニクス ｜ 神野 崇馬 ｜ 試作版</footer>
+<div id="tip"></div>
+
+<script>
+// ==SIM-BEGIN==
+const VT27 = 0.025865; // 27 °C の熱電圧 kT/q [V]
+/** 2N2222（LTspice standard.bjt）の直流モデルの値 */
+const Q2N2222 = {IS: 1e-14, BF: 200, BR: 3, IKF: 0.3, VAF: 100, RB: 10, RC: 0.3, RE: 0.2};
+const limv = (x, a) => Math.max(-a, Math.min(a, x));
+/** npn の内部の接合の電圧 u = vBE、w = vBC から、コレクタ・ベース・エミッタの電流（ガンメル・プーンの簡略形） */
+function bjtI(Q, u, w) {
+  const If = Q.IS * (Math.exp(Math.min(u, 1.2) / VT27) - 1), Ir = Q.IS * (Math.exp(Math.min(w, 1.2) / VT27) - 1);
+  const q1 = 1 / (1 - w / Q.VAF), q2 = If / Q.IKF, qb = q1 / 2 * (1 + Math.sqrt(1 + 4 * Math.max(q2, 0)));
+  const ic = (If - Ir) / qb - Ir / Q.BR, ib = If / Q.BF + Ir / Q.BR;
+  return {ic, ib, ie: ic + ib};
+}
+/**
+ * エミッタフォロワ（npn のコレクタは V0、エミッタに負荷 RL、ベースの電位 Vb を与える）の動作点。ニュートン法。
+ * 戻り値: Vb, Ve, Ic, Ib, Ie, u, w（内部の vBE・vBC。次の計算の初期値に使う）
+ */
+function emFollower(Q, V0, RL, Vb, guess) {
+  let u = guess ? guess.u : 0.7, w = guess ? guess.w : -3;
+  const res = (u, w) => {
+    const c = bjtI(Q, u, w);
+    const Ve = c.ie * RL, Vbi = Ve + Q.RE * c.ie + u, Vbx = Vbi + Q.RB * c.ib, Vc = Vbi - w + Q.RC * c.ic;
+    return [Vc - V0, Vbx - Vb, c, Ve];
+  };
+  for (let it = 0; it < 200; it++) {
+    const [f1, f2] = res(u, w), d = 1e-7;
+    const [a1, a2] = res(u + d, w), [b1, b2] = res(u, w + d);
+    const J11 = (a1 - f1) / d, J12 = (b1 - f1) / d, J21 = (a2 - f2) / d, J22 = (b2 - f2) / d, det = J11 * J22 - J12 * J21;
+    let du = (-f1 * J22 + f2 * J12) / det, dw = (-J11 * f2 + J21 * f1) / det;
+    if (!isFinite(du) || !isFinite(dw)) { du = 0; dw = 0; }
+    du = limv(du, 0.05); dw = limv(dw, 1);
+    u += du; w += dw;
+    if (Math.abs(du) < 1e-12 && Math.abs(dw) < 1e-10) break;
+  }
+  const [, , c, Ve] = res(u, w);
+  return {u, w, Vb, Ve, Ic: c.ic, Ib: c.ib, Ie: c.ie};
+}
+const OPA_FT = 10e6; // オペアンプの利得帯域幅 [Hz]
+/**
+ * オペアンプのフィードバック回路。p = {mode: 'f'（例①）| 'n'（例②）| 'r'（p30）, Vp（V_in+）, R1（上）, R2（下）,
+ *   SR（スルーレート V/s）, VSp（オペアンプの電源）, V0（p30 の電源）, RL（p30 の負荷）, x0（t = 0 の出力。p30 は 0）}
+ * 状態変数 x = [オペアンプの出力 vo]、離散状態 s = 0（ふつう）/ 1（V_S+ で飽和）/ 2（0 V で飽和）。simEv で計算する。
+ */
+function opregModel(p) {
+  const wu = 2 * Math.PI * OPA_FT, SR = p.SR, VSp = p.VSp, Rs = p.R1 + p.R2, beta = p.mode === 'f' ? 1 : p.R2 / Rs;
+  const Req = p.RL * Rs / (p.RL + Rs);
+  let g = null;
+  const emit = (vo) => { const o = emFollower(Q2N2222, p.V0, Req, vo, g); g = o; return o; };
+  const vnOf = (vo) => p.mode === 'f' ? vo : p.mode === 'n' ? vo * beta : emit(vo).Ve * beta;
+  const dRaw = (vo) => SR * Math.tanh(wu * (p.Vp - vnOf(vo)) / SR);
+  const x0 = p.mode === 'r' ? 0 : Math.min(VSp, Math.max(0, p.x0));
+  const xf = Math.min(VSp, Math.max(0, p.Vp / beta + (p.mode === 'r' ? 0.9 : 0)));
+  let tEnd = Math.max(2e-6, 1.25 * Math.abs(xf - x0) / SR + Math.min(3e-6, 40 / (wu * beta)));
+  tEnd = Math.ceil(tEnd / 0.5e-6 - 1e-9) * 0.5e-6;
+  const periods = 40, T = tEnd / periods;
+  const d0 = dRaw(x0);
+  const s0 = x0 >= VSp && d0 > 0 ? 1 : x0 <= 0 && d0 < 0 ? 2 : 0;
+  return {
+    T, periods, h: Math.min(1e-9, T / 10), x0: [x0], s0, vnOf, beta, Req,
+    f: (t, x, s) => [s ? 0 : dRaw(x[0])],
+    guards: (t, x, s) => s === 0 ? [VSp - x[0], x[0]] : s === 1 ? [dRaw(x[0])] : [-dRaw(x[0])],
+    onGuard: (t, x, s, idx) => s === 0 ? (idx.includes(0) ? 1 : 2) : 0,
+  };
+}
+/** 計算して、各点の V_in−・エミッタ・電流などを足す */
+function simulateOpreg(p) {
+  const M = opregModel(p), S = simEv(M), n = S.t.length;
+  const A = {vo: S.x[0], vn: new Float64Array(n), ve: new Float64Array(n), ic: new Float64Array(n), ib: new Float64Array(n), ie: new Float64Array(n),
+    ir: new Float64Array(n), ia: new Float64Array(n), slew: new Uint8Array(n), sat: new Uint8Array(n)};
+  const wu = 2 * Math.PI * OPA_FT, Rs = p.R1 + p.R2;
+  let g = null;
+  for (let k = 0; k < n; k++) {
+    const vo = A.vo[k];
+    if (p.mode === 'r') {
+      const o = emFollower(Q2N2222, p.V0, M.Req, vo, g); g = o;
+      A.ve[k] = o.Ve; A.ic[k] = o.Ic; A.ib[k] = o.Ib; A.ie[k] = o.Ie; A.vn[k] = o.Ve * M.beta; A.ir[k] = o.Ve / Rs; A.ia[k] = o.Ib;
+    } else {
+      A.vn[k] = p.mode === 'f' ? vo : vo * M.beta;
+      A.ve[k] = vo; A.ir[k] = p.mode === 'n' ? vo / Rs : 0; A.ia[k] = A.ir[k];
+    }
+    A.sat[k] = S.s[k] ? 1 : 0;
+    A.slew[k] = !S.s[k] && Math.abs(Math.tanh(wu * (p.Vp - A.vn[k]) / p.SR)) > 0.5 ? 1 : 0;
+  }
+  return Object.assign(S, A, {p: Object.assign({D: 0}, p)});
+}
+function maxAbs(...as) { let m = 0; for (const a of as) for (let k = 0; k < a.length; k++) m = Math.max(m, Math.abs(a[k])); return m; }
+/** 10 % → 90 % の時刻（y が y0 から yE へ単調に変わるとして） */
+function riseTimes(t, y) {
+  const n = t.length, y0 = y[0], yE = y[n - 1], d = yE - y0;
+  if (Math.abs(d) < 1e-6) return {t10: NaN, t90: NaN};
+  const at = (fr) => { for (let k = 1; k < n; k++) if ((y[k] - y0) / d >= fr) { const a = (y[k - 1] - y0) / d, b = (y[k] - y0) / d; return t[k - 1] + (fr - a) / (b - a || 1) * (t[k] - t[k - 1]); } return NaN; };
+  return {t10: at(0.1), t90: at(0.9)};
+}
+function opregMetrics(S) {
+  const n = S.t.length, k = n - 1, p = S.p;
+  const kq = Math.floor(n * 0.85);
+  const r = riseTimes(S.t, S.vo), rR = p.mode === 'r' ? riseTimes(S.t, S.ve) : {t10: NaN, t90: NaN};
+  return {vo: S.vo[k], vn: S.vn[k], ve: S.ve[k], ic: S.ic[k], ib: S.ib[k], ie: S.ie[k], ir: S.ir[k], ia: S.ia[k], sat: S.sat[k],
+    vo0: S.vo[0], t10: r.t10, t90: r.t90, tR10: rR.t10, tR90: rR.t90,
+    steady: Math.abs(S.vo[k] - S.vo[kq]) <= 1e-3 * Math.max(1, Math.abs(S.vo[k])),
+    absI: maxAbs(S.ie, S.ir)};
+}
+// ==SIM-END==
+</script>
+<script src="common.js"></script>
+<script>
+(() => {
+'use strict';
+let mode = 'f', x0Sel = 10;
+const CVP = COL.teal, CVN = COL.violet, CVO = COL.fuchsia, CVR = COL.orange;
+const SLIDE30 = {vo: 8.62, ic: 0.741, ib: 0.0116, ie: 0.7525, vR: 7.50, tr: 0.64e-6}; // scripts/pe07_sims.py（ngspice）の値
+let G = {}, txt = {}, app = null, swF = null, swR = null;
+
+SimApp({
+  pdef: [
+    {k: 'Vp', b: 'V', s: 'in+', up: true, title: 'プラスの入力に入れる電圧（基準）', min: 0.5, max: 9.5, step: 0.1, log: false, unit: 'V', def: 5, fmt: (x) => x.toFixed(1) + ' V'},
+    {k: 'R1', b: 'R', s: '1', up: true, title: '帰還の抵抗（上、出力側）', min: 100, max: 10e3, log: true, unit: 'Ω', def: 1e3},
+    {k: 'R2', b: 'R', s: '2', up: true, title: '帰還の抵抗（下、接地側）', min: 100, max: 10e3, log: true, unit: 'Ω', def: 2e3},
+    {k: 'RL', b: 'R', s: 'L', up: true, title: '負荷の抵抗（p30）', min: 1, max: 1000, log: true, unit: 'Ω', def: 10},
+    {k: 'V0', b: 'V', s: '0', up: true, title: 'トランジスタの電源（p30 の 15 V）', min: 5, max: 30, step: 0.5, log: false, unit: 'V', def: 15},
+    {k: 'VSp', b: 'V', s: 'S+', up: true, title: 'オペアンプの電源（V_S− は 0 V）', min: 5, max: 15, step: 0.5, log: false, unit: 'V', def: 10},
+    {k: 'SR', b: 'SR', s: '', up: true, title: 'オペアンプのスルーレート（出力の変わる速さの上限）', min: 1e6, max: 100e6, log: true, unit: 'V/s', def: 10e6,
+      fmt: (x) => +(x / 1e6).toPrecision(3) + ' V/μs'},
+  ],
+  extraParams(el, a) {
+    app = a;
+    const mk = (label, opts, get, set) => {
+      const d = document.createElement('div');
+      d.className = 'crow';
+      d.style.flexWrap = 'wrap';
+      d.innerHTML = `<span style="min-width:4.2em">${label}</span><span class="seg">${opts.map(([v, t]) => `<button data-v="${v}">${t}</button>`).join('')}</span>`;
+      const bs = d.querySelectorAll('button');
+      const show = () => bs.forEach(b => b.classList.toggle('on', b.dataset.v === String(get())));
+      bs.forEach(b => b.onclick = () => { set(b.dataset.v); show(); refresh(); a.schedule(); });
+      return {d, show};
+    };
+    const m1 = mk('回路', [['f', '例①（p26）'], ['n', '例②（p28）'], ['r', 'トランジスタ（p30）']], () => mode, (v) => { mode = v; });
+    const m2 = mk('t = 0 の出力', [['10', '10 V から'], ['0', '0 V から']], () => String(x0Sel), (v) => { x0Sel = +v; });
+    el.insertBefore(m2.d, el.firstChild); el.insertBefore(m1.d, el.firstChild);
+    const refresh = () => {
+      const sh = (k, on) => { a.sliders[k].row.style.display = on ? '' : 'none'; };
+      sh('R1', mode !== 'f'); sh('R2', mode !== 'f'); sh('RL', mode === 'r'); sh('V0', mode === 'r');
+      m2.d.style.display = mode === 'r' ? 'none' : '';
+    };
+    a.refreshSel = () => { m1.show(); m2.show(); refresh(); };
+    a.refreshSel();
+  },
+  presets: [
+    {name: 'p26〜27 例①：10 V から', v: {Vp: 5, VSp: 10, SR: 10e6}, apply: (a) => { mode = 'f'; x0Sel = 10; a.refreshSel(); }},
+    {name: 'p27 例①：0 V から', v: {Vp: 5, VSp: 10, SR: 10e6}, apply: (a) => { mode = 'f'; x0Sel = 0; a.refreshSel(); }},
+    {name: 'p28〜29 例②：10 V から', v: {Vp: 5, VSp: 10, SR: 10e6, R1: 1e3, R2: 2e3}, apply: (a) => { mode = 'n'; x0Sel = 10; a.refreshSel(); }},
+    {name: 'p29 例②：0 V から', v: {Vp: 5, VSp: 10, SR: 10e6, R1: 1e3, R2: 2e3}, apply: (a) => { mode = 'n'; x0Sel = 0; a.refreshSel(); }},
+    {name: 'p30：トランジスタ・15 V・負荷 10 Ω', v: {Vp: 5, VSp: 10, SR: 10e6, R1: 1e3, R2: 2e3, V0: 15, RL: 10}, apply: (a) => { mode = 'r'; a.refreshSel(); }},
+    {name: 'p30 の回路で負荷 100 Ω（vR は同じ 7.5 V）', v: {Vp: 5, VSp: 10, SR: 10e6, R1: 1e3, R2: 2e3, V0: 15, RL: 100}, apply: (a) => { mode = 'r'; a.refreshSel(); }},
+    {name: '例②で Vin+ = 8 V（出力が 10 V で頭打ち）', v: {Vp: 8, VSp: 10, SR: 10e6, R1: 1e3, R2: 2e3}, apply: (a) => { mode = 'n'; x0Sel = 0; a.refreshSel(); }},
+  ],
+  simulate: (P) => simulateOpreg({mode, Vp: P.Vp, R1: P.R1, R2: P.R2, SR: P.SR, VSp: P.VSp, V0: P.V0, RL: P.RL, x0: x0Sel}),
+  metrics: opregMetrics,
+  gatePane: gateRowsPane([
+    {label: 'SRで変化', color: CVO, on: (S, k) => !!S.slew[k]},
+    {label: '入力一致', color: COL.green, on: (S, k) => !S.slew[k] && !S.sat[k] && Math.abs(S.p.Vp - S.vn[k]) < 2e-3 * S.p.Vp},
+    {label: '飽和', color: COL.red, on: (S, k) => !!S.sat[k]},
+  ]),
+  probes: {
+    'n:p':   {b: 'V', s: 'in+', up: true, color: CVP, q: 'V', what: 'プラスの入力の電位（基準の電圧）', f: (S, k) => S.p.Vp},
+    'n:n':   {b: 'V', s: 'in−', up: true, color: CVN, q: 'V', what: 'マイナスの入力の電位（例②・p30 では帰還の電圧 Vfb）', f: (S, k) => S.vn[k]},
+    'n:o':   {b: 'V', s: 'out', up: true, color: CVO, q: 'V', what: 'オペアンプの出力の電位（p30 ではトランジスタのベース）', f: (S, k) => S.vo[k]},
+    'n:e':   {b: 'v', s: 'R', up: true, color: CVR, q: 'V', what: 'エミッタの節点の電位 = 負荷の電圧 vR', f: (S, k) => S.ve[k], hidden: (S) => S.p.mode !== 'r'},
+    'n:c':   {b: 'V', s: '0', up: true, color: COL.blue, q: 'V', what: 'トランジスタの電源の＋側（コレクタ）', f: (S, k) => S.p.V0, hidden: (S) => S.p.mode !== 'r'},
+    'n:gnd': {b: 'GND', s: '', color: COL.sub, q: 'V', what: '接地（0 V）', f: () => 0},
+    'v:Vp':  {b: 'V', s: 'in+', up: true, color: CVP, q: 'V', what: '基準の電池の電圧（上が＋）', f: (S, k) => S.p.Vp},
+    'i:A':   {b: 'I', s: 'A', up: true, color: CVO, q: 'I', what: 'オペアンプの出力の電流（右向きが正。例①は 0、例②は帰還の抵抗へ、p30 はベース電流）', f: (S, k) => S.ia[k]},
+    'i:R1':  {b: 'I', s: '', color: CVN, q: 'I', what: '上の抵抗 R1 の電流（下向きが正）', f: (S, k) => S.ir[k], hidden: (S) => S.p.mode === 'f'},
+    'v:R1':  {b: 'v', s: 'R1', up: true, color: CVN, q: 'V', what: '上の抵抗 R1 の電圧（上が＋）', f: (S, k) => S.ve[k] - S.vn[k], hidden: (S) => S.p.mode === 'f'},
+    'i:R2':  {b: 'I', s: '', color: CVN, q: 'I', what: '下の抵抗 R2 の電流（下向きが正。p29 の I）', f: (S, k) => S.ir[k], hidden: (S) => S.p.mode === 'f'},
+    'v:R2':  {b: 'V', s: 'fb', up: true, color: CVN, q: 'V', what: '下の抵抗 R2 の電圧 = Vfb（上が＋）', f: (S, k) => S.vn[k], hidden: (S) => S.p.mode === 'f'},
+    'i:Q':   {b: 'I', s: 'c', up: true, color: COL.ink, q: 'I', what: 'コレクタ電流（下向きが正）', f: (S, k) => S.ic[k], hidden: (S) => S.p.mode !== 'r'},
+    'v:Q':   {b: 'V', s: 'CE', up: true, color: COL.ink, q: 'V', what: 'コレクタ・エミッタ間の電圧（コレクタが＋）', f: (S, k) => S.p.V0 - S.ve[k], hidden: (S) => S.p.mode !== 'r'},
+    'i:B':   {b: 'I', s: 'b', up: true, color: CVO, q: 'I', what: 'ベース電流（右向きが正）', f: (S, k) => S.ib[k], hidden: (S) => S.p.mode !== 'r'},
+    'v:B':   {b: 'V', s: 'BE', up: true, color: COL.ink2, q: 'V', what: 'ベース・エミッタ間の電圧（ベースが＋）', f: (S, k) => S.vo[k] - S.ve[k], hidden: (S) => S.p.mode !== 'r'},
+    'i:E':   {b: 'I', s: 'e', up: true, color: COL.ink2, q: 'I', what: 'エミッタから出る電流（右向きが正。= 負荷 + 帰還の抵抗）', f: (S, k) => S.ie[k], hidden: (S) => S.p.mode !== 'r'},
+    'i:RL':  {b: 'i', s: 'R', up: true, color: CVR, q: 'I', what: '負荷の電流（下向きが正）', f: (S, k) => S.ve[k] / S.p.RL, hidden: (S) => S.p.mode !== 'r'},
+    'v:RL':  {b: 'v', s: 'R', up: true, color: CVR, q: 'V', what: '負荷の電圧（上が＋）', f: (S, k) => S.ve[k], hidden: (S) => S.p.mode !== 'r'},
+    'i:V0':  {b: 'I', s: 'c', up: true, color: COL.blue, q: 'I', what: '電源 V0 から出る電流（上向きが正。= コレクタ電流）', f: (S, k) => S.ic[k], hidden: (S) => S.p.mode !== 'r'},
+    'v:V0':  {b: 'V', s: '0', up: true, color: COL.blue, q: 'V', what: '電源 V0 の電圧（上が＋）', f: (S, k) => S.p.V0, hidden: (S) => S.p.mode !== 'r'},
+  },
+  defaultProbes: ['n:p', 'n:n', 'n:o'],
+  refLines: [
+    {keys: ['n:n', 'v:R2'], val: (S) => S.p.Vp, label: 'Vin+', color: CVP},
+    {keys: ['n:o'], val: (S) => S.p.mode === 'n' ? S.p.Vp * (S.p.R1 + S.p.R2) / S.p.R2 : NaN, label: '式の値', color: COL.orange},
+    {keys: ['n:e', 'v:RL'], val: (S) => S.p.Vp * (S.p.R1 + S.p.R2) / S.p.R2, label: 'Vin+(R1+R2)/R2', color: COL.orange},
+  ],
+  hideWire: (n, idx) => wireHidden(n, idx),
+  build(K) {
+    const {el, W, gWire} = K;
+    const mkG = () => el('g', {}, gWire);
+    G = {fn: mkG(), f: mkG(), n: mkG(), nr: mkG(), r: mkG(), vpf: mkG(), vpr: mkG()};
+    // オペアンプ
+    el('polygon', {points: '200,80 200,220 340,150', fill: '#fff'}, gWire);
+    el('text', {x: 210, y: 130, 'font-size': 30, fill: COL.ink, stroke: 'none'}, gWire, '+');
+    el('text', {x: 212, y: 190, 'font-size': 30, fill: COL.ink, stroke: 'none'}, gWire, '−');
+    W([[270, 115], [270, 72]]);
+    el('circle', {cx: 270, cy: 66, r: 5.5, fill: '#fff'}, gWire);
+    txt.vs = K.text(282, 70, '', COL.sub, 20, 'start');
+    W([[270, 185], [270, 232]]); K.ground(270, 232);
+    // 基準の電池 V_in+
+    K.battery(60, 280); W([[60, 289], [60, 340]]); K.ground(60, 340);
+    W([[60, 271], [60, 120], [100, 120]]); W([[160, 120], [200, 120]]);
+    W([[100, 120], [160, 120]], G.vpf);
+    swR = K.switch([100, 120], [160, 120], 1); swR.set(true);
+    const swRg = svgLast(gWire, 3); swRg.forEach(e => G.vpr.appendChild(e));
+    txt.vp = K.text(78, 296, '', CVP, 22, 'start');
+    // 帰還の線（V_in−）
+    W([[200, 180], [150, 180], [150, 330], [300, 330]]);
+    W([[300, 330], [360, 330]], G.r);
+    swF = K.switch([360, 330], [300, 330], -1); swF.set(true);
+    svgLast(gWire, 3).forEach(e => G.fn.appendChild(e));
+    el('text', {x: 330, y: 362, 'text-anchor': 'middle', 'font-size': 17, fill: COL.fuchsia, stroke: 'none'}, G.fn, 't = 0 でオン');
+    el('text', {x: 130, y: 150, 'text-anchor': 'middle', 'font-size': 17, fill: COL.fuchsia, stroke: 'none'}, G.vpr, 't = 0 でオン');
+    // 出力
+    W([[340, 150], [390, 150]]);
+    K.dot(390, 150);
+    W([[390, 150], [390, 330], [360, 330]], G.f);
+    W([[390, 150], [500, 150], [500, 215]], G.n);
+    // 帰還の抵抗（例②・p30）
+    W([[360, 330], [500, 330]], G.nr); W([[500, 305], [500, 345]], G.nr); W([[500, 435], [500, 450]], G.nr);
+    G.nr.appendChild(K.res(500, 260)); G.nr.appendChild(K.res(500, 390));
+    G.nr.appendChild(K.dot(500, 330));
+    const ground2 = el('g', {}, G.nr);
+    el('line', {x1: 484, y1: 466, x2: 516, y2: 466}, ground2); el('line', {x1: 490, y1: 472, x2: 510, y2: 472}, ground2); el('line', {x1: 496, y1: 478, x2: 504, y2: 478}, ground2);
+    W([[500, 450], [500, 466]], ground2);
+    txt.r1 = el('text', {x: 526, y: 266, 'font-size': 20, fill: COL.ink, stroke: 'none'}, G.nr);
+    txt.r2 = el('text', {x: 526, y: 396, 'font-size': 20, fill: COL.ink, stroke: 'none'}, G.nr);
+    // トランジスタ（p30）
+    W([[390, 150], [425, 150]], G.r);
+    el('line', {x1: 430, y1: 122, x2: 430, y2: 178, 'stroke-width': 5}, G.r);
+    W([[430, 138], [470, 108], [470, 20]], G.r);
+    W([[430, 162], [470, 192], [470, 200], [620, 200], [620, 255]], G.r);
+    W([[500, 200], [500, 215]], G.r);
+    G.r.appendChild(K.dot(500, 200));
+    { const ux = 40 / 50, uy = 30 / 50, tx = 430 + 40 * 0.8, ty = 162 + 30 * 0.8, hd = 14;
+      el('polygon', {points: `${tx + ux * 4},${ty + uy * 4} ${tx - ux * hd - uy * hd * 0.5},${ty - uy * hd + ux * hd * 0.5} ${tx - ux * hd + uy * hd * 0.5},${ty - uy * hd - ux * hd * 0.5}`, fill: COL.ink, stroke: 'none'}, G.r); }
+    el('text', {x: 478, y: 128, 'font-size': 17, fill: COL.sub, stroke: 'none'}, G.r, 'C');
+    el('text', {x: 478, y: 186, 'font-size': 17, fill: COL.sub, stroke: 'none'}, G.r, 'E');
+    el('text', {x: 420, y: 178, 'font-size': 17, fill: COL.sub, stroke: 'none', 'text-anchor': 'end'}, G.r, 'B');
+    G.r.appendChild(K.res(620, 300));
+    W([[620, 345], [620, 450]], G.r);
+    const g3 = el('g', {}, G.r);
+    el('line', {x1: 604, y1: 466, x2: 636, y2: 466}, g3); el('line', {x1: 610, y1: 472, x2: 630, y2: 472}, g3); el('line', {x1: 616, y1: 478, x2: 624, y2: 478}, g3);
+    W([[620, 450], [620, 466]], g3);
+    txt.rl = el('text', {x: 646, y: 306, 'font-size': 20, fill: COL.ink, stroke: 'none'}, G.r);
+    // 電源 V0（p30）
+    W([[-60, 271], [-60, 20], [470, 20]], G.r);
+    const gb = el('g', {}, G.r);
+    el('line', {x1: -86, y1: 271, x2: -34, y2: 271}, gb); el('line', {x1: -73, y1: 289, x2: -47, y2: 289, 'stroke-width': 6}, gb);
+    W([[-60, 289], [-60, 340]], G.r);
+    const g4 = el('g', {}, G.r);
+    el('line', {x1: -76, y1: 356, x2: -44, y2: 356}, g4); el('line', {x1: -70, y1: 362, x2: -50, y2: 362}, g4); el('line', {x1: -64, y1: 368, x2: -56, y2: 368}, g4);
+    W([[-60, 340], [-60, 356]], g4);
+    txt.v0 = el('text', {x: -96, y: 296, 'font-size': 22, fill: COL.blue, stroke: 'none', 'text-anchor': 'end'}, G.r);
+    K.text(298, 238, 'オペアンプ', COL.fuchsia, 18, 'start');
+    return {
+      nodeW: {
+        p: [[[60, 271], [60, 120], [100, 120]], [[100, 120], [160, 120], [200, 120]]],
+        n: [[[200, 180], [150, 180], [150, 330], [300, 330]], [[300, 330], [360, 330], [500, 330]], [[500, 305], [500, 345]]],
+        o: [[[340, 150], [390, 150]], [[390, 150], [390, 330], [360, 330]], [[390, 150], [500, 150], [500, 215]], [[390, 150], [425, 150]]],
+        e: [[[470, 192], [470, 200], [620, 200], [620, 255]], [[500, 200], [500, 215]]],
+        c: [[[-60, 271], [-60, 20], [470, 20], [470, 108]]],
+        gnd: [[[60, 289], [60, 340]], [[270, 185], [270, 232]], [[500, 435], [500, 466]], [[620, 345], [620, 466]], [[-60, 289], [-60, 356]]],
+      },
+      hits: [['e:Vp', [30, 258, 60, 44]], ['e:A', [205, 100, 112, 100]], ['e:R1', [484, 215, 32, 90]], ['e:R2', [484, 345, 32, 90]],
+        ['e:Q', [432, 96, 50, 108]], ['e:B', [396, 136, 30, 28]], ['e:E', [508, 186, 100, 28]], ['e:RL', [604, 255, 32, 90]], ['e:V0', [-90, 258, 60, 44]]],
+      arrows: {
+        'v:Vp': [[22, 322], [22, 238], 'L'],
+        'i:A': [[346, 128], [384, 128], 'T'],
+        'i:R1': [[468, 232], [468, 288], 'L'], 'v:R1': [[448, 302], [448, 218], 'L'],
+        'i:R2': [[468, 362], [468, 418], 'L'], 'v:R2': [[448, 432], [448, 348], 'L'],
+        'i:Q': [[492, 40], [492, 96], 'R'], 'v:Q': [[512, 190], [512, 112], 'R'],
+        'i:B': [[396, 134], [424, 134], 'T'], 'v:B': [[410, 172], [460, 214], 'B'],
+        'i:E': [[520, 182], [600, 182], 'T'],
+        'i:RL': [[648, 270], [648, 330], 'R'], 'v:RL': [[690, 344], [690, 256], 'R'],
+        'i:V0': [[-28, 318], [-28, 262], 'R'], 'v:V0': [[-128, 322], [-128, 238], 'L'],
+      },
+      nodeTag: {p: [168, 120, 0, -16], n: [150, 222, -14, 8, 'end'], o: [372, 150, 0, -16], e: [560, 200, 0, -16], c: [200, 20, 0, -16], gnd: [60, 380, 0, 34]},
+      loops: {
+        main: [[-38, 42], [450, 42], [450, 215], [598, 215], [598, 432], [-38, 432]],
+      },
+      sw: {},
+    };
+  },
+  onRun(S, a) {
+    const p = S.p, r = p.mode === 'r', f = p.mode === 'f', n = p.mode === 'n';
+    const vis = (g, on) => { g.style.display = on ? '' : 'none'; };
+    vis(G.fn, !r); vis(G.f, f); vis(G.n, n); vis(G.nr, !f); vis(G.r, r); vis(G.vpf, !r); vis(G.vpr, r);
+    ['e:R1', 'e:R2'].forEach(h => a.hitEl[h].style.display = f ? 'none' : '');
+    ['e:Q', 'e:B', 'e:E', 'e:RL', 'e:V0'].forEach(h => a.hitEl[h].style.display = r ? '' : 'none');
+    document.querySelectorAll('#sch .hitw').forEach(h => {
+      const key = h.dataset.key.slice(2), idx = [...document.querySelectorAll(`#sch .hitw[data-key="n:${key}"]`)].indexOf(h);
+      h.style.display = wireHidden(key, idx) ? 'none' : '';
+    });
+    txt.vs.innerHTML = `<tspan font-style="italic" font-family="${SERIF}">V</tspan><tspan font-size="14" dy="5">S+</tspan><tspan dy="-5"> = ${p.VSp} V</tspan>`;
+    txt.vp.textContent = `${p.Vp.toFixed(1)} V`;
+    txt.r1.textContent = fmtSI(p.R1, 'Ω', 3).replace(/\.0+ /, ' ');
+    txt.r2.textContent = fmtSI(p.R2, 'Ω', 3).replace(/\.0+ /, ' ');
+    txt.rl.textContent = fmtSI(p.RL, 'Ω', 3).replace(/\.0+ /, ' ');
+    txt.v0.textContent = `${p.V0} V`;
+  },
+  state(S, k, MET) {
+    const p = S.p, vo = S.vo[k], vn = S.vn[k], F = (x, u) => fmtSI(x, u, 4);
+    const VP = `<span class="eq">V<sub>in+</sub></span>`, VN = `<span class="eq">V<sub>in−</sub></span>`, VO = `<span class="eq">V<sub>out</sub></span>`;
+    let html;
+    if (S.sat[k]) html = `<span class="warn">飽和</span>：出力 ${VO} が ${vo > p.VSp / 2 ? `電源 <span class="eq">V<sub>S+</sub></span> = ${p.VSp} V` : '0 V'} に張り付いて、それ以上${vo > p.VSp / 2 ? '上がれない' : '下がれない'}。${VN} = ${F(vn, 'V')} が ${VP} = ${F(p.Vp, 'V')} に届かない。`;
+    else if (S.slew[k]) html = `<span class="sw-on">${p.Vp > vn ? VP + ' &gt; ' + VN : VP + ' &lt; ' + VN}</span>（${F(p.Vp, 'V')} と ${F(vn, 'V')}）なので、出力 ${VO} が${p.Vp > vn ? '上がる' : '下がる'}。速さはスルーレート ${+(p.SR / 1e6).toPrecision(3)} V/μs で頭打ち。`;
+    else html = `<span class="sw-off" style="color:${COL.green}">${VP} = ${VN}</span>（差 ${F(p.Vp - vn, 'V')}）：出力 ${VO} = ${F(vo, 'V')} で止まる。`;
+    if (p.mode === 'n') html += ` 帰還の電流 <span class="eq">I</span> = ${F(S.ir[k], 'A')}（R1・R2 に同じ電流。オペアンプの入力には流れない）。`;
+    if (p.mode === 'r') html += ` 負荷の電圧 <span class="eq">v<sub>R</sub></span> = ${F(S.ve[k], 'V')}、<span class="eq">I<sub>c</sub></span> = ${F(S.ic[k], 'A')}（電源 ${p.V0} V からトランジスタが流す）、<span class="eq">I<sub>b</sub></span> = ${F(S.ib[k], 'A')}（オペアンプが流す）。`;
+    const loops = [];
+    if (p.mode === 'r' && S.ic[k] > 1e-6) loops.push(['main', S.ic[k] / Math.max(1e-12, MET.absI)]);
+    return {loops, html};
+  },
+  metricsHtml(S, m) {
+    const p = S.p, F = (x, u, d = 4) => fmtSI(x, u, d), us = (t) => (t * 1e6).toFixed(3) + ' μs';
+    const R = (nm, sim, eq, val, u, tol = 0.01, fmt) => `<tr><td>${nm}</td><td class="num">${fmt ? fmt(sim) : F(sim, u)}</td><td class="eq">${eq}</td><td class="num">${fmt ? fmt(val) : F(val, u)}</td><td>${pctDiff(sim, val)} ${mark(sim, val, tol)}</td></tr>`;
+    // 飽和しているときは、式（飽和していないときの式）と合わない行を「ずれる」ではなく「目安」にする
+    const mark = (sim, val, tol) => { const o = okMark(sim, val, tol); return m.sat && /ずれる/.test(o) ? '<span class="small">目安（飽和中）</span>' : o; };
+    const I = (nm, sim, txtv) => `<tr><td>${nm}</td><td class="num">${sim}</td><td colspan="3">${txtv}</td></tr>`;
+    const k = (p.R1 + p.R2) / p.R2;
+    let rows = `<tr><th>量</th><th>シミュレーション</th><th>授業の式</th><th>式の値</th><th>差</th></tr>`;
+    if (m.sat) rows += `<tr><td colspan="5"><span class="ng">出力が飽和しています</span>：式の値 ${F(p.mode === 'f' ? p.Vp : p.Vp * k + (p.mode === 'r' ? m.vo - m.ve : 0), 'V', 3)} がオペアンプの電源 <span class="eq">V<sub>S+</sub></span> = ${p.VSp} V を超えるので、出力は ${p.VSp} V で止まり、<span class="eq">V<sub>in−</sub></span> は <span class="eq">V<sub>in+</sub></span> まで上がれません。下の式は「飽和していない」ときの式なので、合わない行は「目安」としています。</td></tr>`;
+    rows += R('マイナスの入力 <span class="eq">V<sub>in−</sub></span>（p27・p29）', m.vn, 'V<sub>in−</sub> = V<sub>in+</sub>', p.Vp, 'V');
+    if (p.mode === 'f') rows += R('出力 <span class="eq">V<sub>out</sub></span>（p27）', m.vo, 'V<sub>out</sub> = V<sub>in−</sub> = V<sub>in+</sub>', p.Vp, 'V');
+    if (p.mode === 'n') {
+      rows += R('R2 の電流 <span class="eq">I</span>（p29）', m.ir, 'I = V<sub>fb</sub> / R<sub>2</sub> = V<sub>in+</sub> / R<sub>2</sub>', p.Vp / p.R2, 'A');
+      rows += R('出力 <span class="eq">V<sub>out</sub></span>（p29）', m.vo, 'V<sub>out</sub> = (R<sub>1</sub> + R<sub>2</sub>) I = V<sub>in+</sub>(R<sub>1</sub> + R<sub>2</sub>) / R<sub>2</sub>', p.Vp * k, 'V');
+    }
+    if (p.mode === 'r') {
+      rows += R('負荷の電圧 <span class="eq">v<sub>R</sub></span>（p30）', m.ve, 'v<sub>R</sub> = V<sub>in+</sub>(R<sub>1</sub> + R<sub>2</sub>) / R<sub>2</sub>（例② と同じ）', p.Vp * k, 'V');
+      rows += R('帰還の電流 <span class="eq">I</span>', m.ir, 'I = V<sub>in+</sub> / R<sub>2</sub>', p.Vp / p.R2, 'A');
+      rows += R('エミッタの電流 <span class="eq">I<sub>e</sub></span>', m.ie, 'I<sub>e</sub> = v<sub>R</sub> / R<sub>L</sub> + I（キルヒホッフの電流則）', m.ve / p.RL + m.ir, 'A');
+      rows += R('コレクタ電流 <span class="eq">I<sub>c</sub></span>', m.ic, 'I<sub>c</sub> = I<sub>e</sub> − I<sub>b</sub>', m.ie - m.ib, 'A');
+      rows += R('オペアンプの出力 <span class="eq">V<sub>out</sub></span>（ベース）', m.vo, 'V<sub>out</sub> = v<sub>R</sub> + V<sub>BE</sub>（V<sub>BE</sub> はシミュレーションの値）', m.ve + (m.vo - m.ve), 'V');
+      rows += I('<span class="eq">V<sub>BE</sub></span>・<span class="eq">h = I<sub>c</sub>/I<sub>b</sub></span>', `${F(m.vo - m.ve, 'V')}・${(m.ic / m.ib).toFixed(1)}`, `負荷の電流が大きいほど <span class="eq">V<sub>BE</sub></span> は大きく、<span class="eq">h</span> は小さくなる（2N2222 のモデル）。それでも <span class="eq">V<sub>in−</sub> = V<sub>in+</sub></span> になるように <span class="eq">V<sub>out</sub></span> が自動で決まるので、<span class="eq">v<sub>R</sub></span> は負荷によらない（ツェナーだけのリニアレギュレータ p22 との違い）。`);
+    }
+    const dx = m.vo - m.vo0;
+    const tail = p.SR / (2 * Math.PI * OPA_FT * (p.mode === 'f' ? 1 : p.R2 / (p.R1 + p.R2)));  // 終わりの部分（スルーレートで頭打ちにならない所）の電圧の幅の目安
+    if (isFinite(m.t10) && !m.sat && tail > 0.1 * Math.abs(dx)) rows += I(`出力 <span class="eq">V<sub>out</sub></span> が 10 % → 90 % 変わる時間`, us(m.t90 - m.t10), `参考：0.8 |ΔV<sub>out</sub>| / SR = ${us(0.8 * Math.abs(dx) / p.SR)}。変化 ${F(Math.abs(dx), 'V', 3)} が小さい（または SR が大きい）ので、スルーレートで一定の速さになる部分が短く、この式より長くかかる（終わりは利得帯域幅 f<sub>T</sub> で決まる）。`);
+    else if (isFinite(m.t10) && !m.sat) rows += R(`出力 <span class="eq">V<sub>out</sub></span> が 10 % → 90 % 変わる時間（${F(m.vo0, 'V', 3)} → ${F(m.vo, 'V', 3)}）`, m.t90 - m.t10, '0.8 |ΔV<sub>out</sub>| / SR（スルーレートで一定の速さ）', 0.8 * Math.abs(dx) / p.SR, 's', 0.02, us);
+    if (p.mode === 'r' && isFinite(m.tR10)) rows += I('<span class="eq">v<sub>R</sub></span> が 10 % → 90 % 変わる時間', us(m.tR90 - m.tR10), `スイッチオン（t = 0）から ${us(m.tR10)} → ${us(m.tR90)}。`);
+    const slide = p.mode === 'r' && p.Vp === 5 && p.VSp === 10 && p.SR === 10e6 && p.R1 === 1e3 && p.R2 === 2e3 && p.V0 === 15 && p.RL === 10;
+    if (slide) {
+      const S2 = (nm, sim, v, u, fmt) => `<tr><td>${nm}</td><td class="num">${fmt ? fmt(sim) : F(sim, u)}</td><td>p30 と同じ回路を ngspice で解いた値</td><td class="num">${fmt ? fmt(v) : F(v, u)}</td><td>${pctDiff(sim, v)} ${okMark(sim, v, 0.02)}</td></tr>`;
+      rows += S2('<span class="eq">V<sub>out</sub></span>（オペアンプの出力）', m.vo, SLIDE30.vo, 'V');
+      rows += S2('<span class="eq">I<sub>c</sub></span>', m.ic, SLIDE30.ic, 'A');
+      rows += S2('<span class="eq">I<sub>b</sub></span>', m.ib, SLIDE30.ib, 'A');
+      rows += S2('<span class="eq">I<sub>e</sub></span>', m.ie, SLIDE30.ie, 'A');
+      rows += S2('<span class="eq">v<sub>R</sub></span> の 10 % → 90 % の時間', m.tR90 - m.tR10, SLIDE30.tr, 's', us);
+    }
+    const sub = `t = ${us(S.t[S.t.length - 1])} の値。` + (m.steady ? '' : ' <span class="ng">まだ落ち着いていません</span>');
+    return {rows, sub};
+  },
+});
+
+/** svg の子の最後の n 個（switch の部品をグループに移すため） */
+function svgLast(g, n) { return [...g.children].slice(-n); }
+/** 今の回路で使わない線（ホバーで光らせない・クリックできない） */
+function wireHidden(n, idx) {
+  if (n === 'e' || n === 'c') return mode !== 'r';
+  if (n === 'n') return idx > 0 && mode === 'f';
+  if (n === 'o') return (idx === 1 && mode !== 'f') || (idx === 2 && mode !== 'n') || (idx === 3 && mode !== 'r');
+  if (n === 'gnd') return (idx === 2 && mode === 'f') || ((idx === 3 || idx === 4) && mode !== 'r');
+  return false;
+}
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>マトリクスコンバータのシミュレーター — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<header>
+  <nav class="hnav"><a href="../index.html">← 科目のページへ戻る</a><a href="index.html">回路を選ぶ（シミュレーターの一覧）</a></nav>
+  <h1>マトリクスコンバータ（三相 → 三相）のシミュレーター</h1>
+  <div class="subtitle">パワーエレクトロニクス 第13回 交流-交流変換 p40〜44 / 大阪工業大学</div>
+</header>
+<main>
+  <div class="notice">
+    9 個の<b>双方向スイッチ</b>で、出力の 3 本の線のそれぞれを、入力の u・v・w のどれかに次々とつなぎかえます（p42〜44）。つなぐ時間の割合（パルス幅）を PWM で変えると、
+    <b>出力の電圧は入力の交流波形の切れ端</b>なのに、その平均は好きな周波数・振幅の正弦波になります（p44 の図）。出力の周波数は入力より高くもできます（p41）。
+    回路図の<b>線をクリックすると電位</b>（入力の中性点 N が 0 V）、<b>素子をクリックすると電流</b>が出ます。
+  </div>
+
+  <div class="top">
+    <section class="card">
+      <div class="card-h">
+        <span class="ttl">回路</span>
+        <span class="small">素子をクリックしたとき：</span>
+        <span class="seg" id="emode"><button data-m="i" class="on">電流</button><button data-m="v">両端の電圧</button></span>
+      </div>
+      <svg id="sch" viewBox="-110 -60 1010 690" aria-label="マトリクスコンバータの回路図"></svg>
+      <div id="state"></div>
+    </section>
+
+    <section class="card params">
+      <div class="card-h"><span class="ttl">回路の値</span></div>
+      <div class="card-b" id="params"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-h">
+      <span class="ttl">波形</span>
+      <span class="seg" id="win">
+        <button data-w="all">起動から最後まで</button><button data-w="first">起動直後</button><button data-w="last" class="on">定常状態</button>
+      </span>
+    </div>
+    <div class="ctl">
+      <button id="play">▶ 再生</button>
+      <label>速さ <select id="speed"><option value="0.05">×0.05</option><option value="0.1">×0.1</option><option value="0.25">×0.25</option><option value="0.5">×0.5</option><option value="1" selected>×1</option></select></label>
+      <label id="nper">出力の周期の数 <select id="nP"><option>1</option><option selected>2</option><option>3</option></select></label>
+      <label>グラフ <select id="lay"><option value="vi">電圧と電流の2段</option><option value="each">1本ずつ別の段</option></select></label>
+    </div>
+    <div class="scrubrow"><input type="range" id="scrub" min="0" max="10000" value="0" aria-label="時刻"><span class="tc" id="tc"></span></div>
+    <div id="legend"></div>
+    <div id="plotwrap"><canvas id="plot"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">定常状態の値と、授業の式の比較</span><span class="small" id="msub"></span></div>
+    <div class="card-b" style="overflow-x:auto"><table class="m" id="metrics"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">このシミュレーターの前提</span></div>
+    <div class="card-b">
+      <ul class="notes">
+        <li>入力は三相（線間電圧の振幅 <span class="eq">V<sub>0</sub></span>、相電圧の振幅 <span class="eq">V<sub>im</sub> = V<sub>0</sub>/√3</span>、周波数 <span class="eq">f<sub>i</sub></span>）、出力は Y 結線の R-L 負荷（中性点 n は浮いている）。スイッチは理想の双方向スイッチ（p41）です。</li>
+        <li>スイッチングの 1 周期 <span class="eq">T<sub>s</sub> = 1/f<sub>sw</sub></span> ごとに、出力 A・B・C のそれぞれを、u → v → w の順に <span class="eq">m<sub>uA</sub>T<sub>s</sub></span>・<span class="eq">m<sub>vA</sub>T<sub>s</sub></span>・<span class="eq">m<sub>wA</sub>T<sub>s</sub></span> の時間ずつつなぎます（<span class="eq">m<sub>uA</sub> + m<sub>vA</sub> + m<sub>wA</sub> = 1</span>。同じ出力に 2 つの入力を同時につなぐと入力が短絡し、どれにもつながないと負荷のコイルの電流の行き場がなくなるので、いつもちょうど 1 つ）。</li>
+        <li>実際の装置は、入力に小さな LC フィルタを入れて入力の電流をなめらかにし、スイッチの切り替えの瞬間の短絡・開放を避ける手順（転流シーケンス）が必要ですが、ここでは省いています。入力の電流は「スイッチングの 1 周期の平均」も表示します。</li>
+        <li>波形のいちばん上の帯は<b>出力 A の接続だけ</b>を表します（「A←u」が塗られている間、出力 A は入力 u につながっている）。B・C も同じように、120° ずれて切り替わります。</li>
+        <li>入力の電流の式（力率 1）は「スイッチングの 1 周期の間、出力の電流はほぼ一定」とした周期平均の近似です。スイッチングが遅い・コイルが小さい・出力の周波数が高いと、1 周期の間に出力の電流が変わるので、式から数 % ずれます（表では「目安」）。</li>
+        <li>計算は 4 次のルンゲ・クッタ法（スイッチの切り替わりの時刻で区切る）。</li>
+      </ul>
+      <details style="margin-top:8px">
+        <summary style="cursor:pointer;font-weight:700">詳しく知りたい人向け：つなぐ割合の決め方（Venturini の方法）</summary>
+        <ul class="notes">
+        <li>つなぐ割合は Venturini（ベンチュリーニ）の方法：<span class="eq">m<sub>Kj</sub> = ⅓{1 + 2v<sub>K</sub>v<sub>j</sub>/V<sub>im</sub>² + (4q/3√3) sin(ω<sub>i</sub>t + β<sub>K</sub>) sin 3ω<sub>i</sub>t}</span>。こうすると 1 周期の平均が目標 <span class="eq">v<sub>j</sub></span> になり、入力の電流（の平均）は入力の電圧と同じ位相の正弦波になります（p41「力率が良くなる」）。電圧の比 q は最大 √3/2 ≈ 0.866 です。</li>
+        <li>目標 <span class="eq">v<sub>j</sub> = qV<sub>im</sub>{sin(ω<sub>o</sub>t + γ<sub>j</sub>) + (1/6) sin 3ω<sub>o</sub>t + (1/2√3) cos 3ω<sub>i</sub>t}</span> には 3 倍の周波数の成分が入っていますが、3 相とも同じなので、負荷の相電圧（中性点 n から見た電圧）には出てきません。</li>
+        </ul>
+      </details>
+    </div>
+  </section>
+</main>
+<footer>パワーエレクトロニクス ｜ 神野 崇馬 ｜ 試作版</footer>
+<div id="tip"></div>
+
+<script src="common.js"></script>
+<script>
+// ==SIM-BEGIN==
+const MX_BETA = [-2 * Math.PI / 3, -4 * Math.PI / 3, 0]; // 入力の相電圧 vK = Vim cos(ωi t + βK)（u = Vim sin(ωi t − 30°)）
+const MX_GAM = [0, -2 * Math.PI / 3, -4 * Math.PI / 3];  // 出力 A・B・C
+function mxVin(p, t, K) { return p.V0 / Math.sqrt(3) * Math.cos(2 * Math.PI * p.fi * t + MX_BETA[K]); }
+/** 出力 j の目標（入力の中性点から見た電圧） */
+function mxRef(p, t, j) {
+  const Vim = p.V0 / Math.sqrt(3), wo = 2 * Math.PI * p.fo, wi = 2 * Math.PI * p.fi;
+  return p.q * Vim * (Math.sin(wo * t + MX_GAM[j]) + Math.sin(3 * wo * t) / 6 + Math.cos(3 * wi * t) / (2 * Math.sqrt(3)));
+}
+/** つなぐ割合 m[K][j]（時刻 t の値） */
+function mxDuty(p, t) {
+  const Vim = p.V0 / Math.sqrt(3), wi = 2 * Math.PI * p.fi, c3 = 4 * p.q / (3 * Math.sqrt(3)) * Math.sin(3 * wi * t);
+  const m = [[], [], []];
+  for (let K = 0; K < 3; K++) for (let j = 0; j < 3; j++) {
+    const v = 1 + 2 * mxVin(p, t, K) * mxRef(p, t, j) / (Vim * Vim) + c3 * Math.sin(wi * t + MX_BETA[K]);
+    m[K][j] = Math.max(0, Math.min(1, v / 3));
+  }
+  // 丸めで和が 1 からずれないように w で調整
+  for (let j = 0; j < 3; j++) m[2][j] = Math.max(0, 1 - m[0][j] - m[1][j]);
+  return m;
+}
+/** 時刻 t で出力 j がつながっている入力（0 u / 1 v / 2 w）。各スイッチング周期の中央の割合を使う */
+function mxConn(p, t) {
+  const Ts = 1 / p.fsw, k = Math.floor(t / Ts + 1e-9), tau = t - k * Ts, m = mxDuty(p, (k + 0.5) * Ts);
+  return [0, 1, 2].map(j => tau < m[0][j] * Ts ? 0 : tau < (m[0][j] + m[1][j]) * Ts ? 1 : 2);
+}
+/**
+ * マトリクスコンバータ。p = {V0, fi, fo, q, fsw, R, L}
+ * 状態変数：出力 A・B・C の電流。離散状態 s = cA + 3 cB + 9 cC（c = つながっている入力）。
+ */
+function matrixModel(p) {
+  const Ts = 1 / p.fsw, T = 1 / p.fo, R = p.R, L = p.L;
+  const enc = (c) => c[0] + 3 * c[1] + 9 * c[2];
+  const periods = Math.max(3, Math.min(60, Math.ceil(8 * (L / R) * p.fo) + 3));
+  return {
+    T, periods, h: Math.min(Ts / 8, 1 / (p.fi * 720)), x0: [0, 0, 0], s0: enc(mxConn(p, 0)),
+    f: (t, x, s) => {
+      const v = [s % 3, Math.floor(s / 3) % 3, Math.floor(s / 9)].map(K => mxVin(p, t, K));
+      const vn = (v[0] + v[1] + v[2]) / 3;
+      return [0, 1, 2].map(j => (v[j] - vn - R * x[j]) / L);
+    },
+    breaks: (t0, t1) => {
+      const r = [];
+      for (let k = Math.floor(t0 / Ts); k * Ts < t1; k++) {
+        const m = mxDuty(p, (k + 0.5) * Ts);
+        r.push(k * Ts);
+        for (let j = 0; j < 3; j++) r.push((k + m[0][j]) * Ts, (k + m[0][j] + m[1][j]) * Ts);
+      }
+      return r.filter(b => b >= t0 && b < t1).sort((a, b) => a - b);
+    },
+    onBreak: (t) => {
+      // 切り替わりの直後の接続（同じ時刻に複数の切り替わりがあってもよい）
+      const Ts_ = Ts, k = Math.floor(t / Ts_ + 1e-9), tau = t - k * Ts_ + 1e-9 * Ts_, m = mxDuty(p, (k + 0.5) * Ts_);
+      return enc([0, 1, 2].map(j => tau < m[0][j] * Ts_ ? 0 : tau < (m[0][j] + m[1][j]) * Ts_ ? 1 : 2));
+    },
+  };
+}
+function simulateMatrix(p) { const S = simEv(matrixModel(p)); S.p = Object.assign({}, p); return S; }
+function mxC(S, k, j) { const s = S.s[k]; return j === 0 ? s % 3 : j === 1 ? Math.floor(s / 3) % 3 : Math.floor(s / 9); }
+/** 出力 j の線の電位（入力の中性点 N から） */
+function mxVo(S, k, j) { return mxVin(S.p, S.t[k], mxC(S, k, j)); }
+function mxVn(S, k) { return (mxVo(S, k, 0) + mxVo(S, k, 1) + mxVo(S, k, 2)) / 3; }
+/** 入力 K の電流（電源から出る向き） */
+function mxIin(S, k, K) { let s = 0; for (let j = 0; j < 3; j++) if (mxC(S, k, j) === K) s += S.x[j][k]; return s; }
+/** 入力 K の電流の、スイッチング 1 周期の平均（割合 × 出力の電流） */
+function mxIinAvg(S, k, K) {
+  // 周期の境目では同じ時刻の点が 2 つある：前の点は前の周期の終わりとして扱う
+  const end = k + 1 < S.t.length && S.t[k + 1] === S.t[k];
+  const m = mxDuty(S.p, (Math.floor(S.t[k] * S.p.fsw + (end ? -1e-9 : 1e-9)) + 0.5) / S.p.fsw);
+  let s = 0; for (let j = 0; j < 3; j++) s += m[K][j] * S.x[j][k]; return s;
+}
+function matrixMetrics(S) {
+  const p = S.p, T = S.T, Ti = 1 / p.fi;
+  // 入力側は入力の周期の整数倍で
+  const spanI = Math.max(1, Math.floor(T / Ti)) * Ti;
+  const VA = acStats(S, (S, k) => mxVo(S, k, 0) - mxVn(S, k), T, p.fo), IA = acStats(S, (S, k) => S.x[0][k], T, p.fo);
+  const Iu = acStats(S, (S, k) => mxIin(S, k, 0), spanI, p.fi), Iua = acStats(S, (S, k) => mxIinAvg(S, k, 0), spanI, p.fi);
+  const Pin = acStats(S, (S, k) => { let s = 0; for (let K = 0; K < 3; K++) s += mxVin(p, S.t[k], K) * mxIin(S, k, K); return s; }, spanI, 0).avg;
+  const Pout = acStats(S, (S, k) => p.R * (S.x[0][k] ** 2 + S.x[1][k] ** 2 + S.x[2][k] ** 2), T, 0).avg;
+  // 入力 u の電圧 Vim sin(ωi t − 30°) と、平均の入力電流の基本波 c1 sin(ωi t + ph) の位相差
+  const dph = Iua.ph + Math.PI / 6;
+  const thdI = Math.sqrt(Math.max(0, IA.rms ** 2 - (IA.c1 / Math.SQRT2) ** 2)) / (IA.c1 / Math.SQRT2);
+  return {VA, IA, Iu, Iua, Pin, Pout, cosi: Math.cos(dph), thdI};
+}
+// ==SIM-END==
+</script>
+<script>
+(() => {
+'use strict';
+const PH = ['u', 'v', 'w'], OUT = ['A', 'B', 'C'], PCOL = [COL.orange, COL.green, '#e040c8'], OCOL = [COL.blue, COL.teal, COL.violet];
+const XS = 70, XN = 0, YI = [40, 140, 240], XC = [470, 620, 770], DX = 56, DY = 50, YBOT = 360, YR = 400, YL1 = 460, YL2 = 540, YNb = 580;
+const r3 = (x) => String(+x.toPrecision(3));
+let sws = {};
+const probes = {
+  'n:N': {b: 'GND', s: '', color: COL.sub, q: 'V', what: '入力の中性点 N（0 V）', f: () => 0},
+  'n:n': {b: 'v', s: 'n', color: COL.sub, q: 'V', what: '負荷の中性点 n の電位（浮いている。3 つの出力の線の電位の平均）', f: mxVn},
+};
+PH.forEach((nm, K) => {
+  probes['n:' + nm] = {b: 'v', s: nm, up: true, color: PCOL[K], q: 'V', what: `入力 ${nm} の線の電位（相電圧）`, f: (S, k) => mxVin(S.p, S.t[k], K)};
+  probes['i:S' + nm] = {b: 'i', s: nm, up: true, color: PCOL[K], q: 'I', what: `入力 ${nm} の電流（電源から右へ出る向きが正）`, f: (S, k) => mxIin(S, k, K)};
+  probes['v:S' + nm] = {b: 'v', s: nm, up: true, color: PCOL[K], q: 'V', what: `入力 ${nm} の電源の電圧（右が＋）`, f: (S, k) => mxVin(S.p, S.t[k], K)};
+  probes['x:ia' + nm] = {b: 'ī', s: nm, up: true, color: PCOL[K], q: 'I', what: `入力 ${nm} の電流の、スイッチング 1 周期の平均`, f: (S, k) => mxIinAvg(S, k, K)};
+});
+OUT.forEach((nm, j) => {
+  probes['n:' + nm] = {b: 'v', s: nm, up: true, color: OCOL[j], q: 'V', what: `出力 ${nm} の線の電位（入力の中性点 N から。p44 の「相電圧」）`, f: (S, k) => mxVo(S, k, j)};
+  probes['n:m' + nm] = {b: 'v', s: 'm' + nm, up: true, color: OCOL[j], q: 'V', what: `出力 ${nm} の R と L の間の電位`, f: (S, k) => mxVo(S, k, j) - S.p.R * S.x[j][k]};
+  probes['i:R' + nm] = {b: 'i', s: nm, up: true, color: COL.ir, q: 'I', what: `出力 ${nm} の電流（下向きが正）`, f: (S, k) => S.x[j][k]};
+  probes['v:R' + nm] = {b: 'v', s: 'R' + nm, up: true, color: COL.green, q: 'V', what: `出力 ${nm} の抵抗の両端の電圧（上が＋）`, f: (S, k) => S.p.R * S.x[j][k]};
+  probes['i:L' + nm] = {b: 'i', s: nm, up: true, color: COL.ir, q: 'I', what: `出力 ${nm} の電流（下向きが正）`, f: (S, k) => S.x[j][k]};
+  probes['v:L' + nm] = {b: 'v', s: 'L' + nm, up: true, color: COL.teal, q: 'V', what: `出力 ${nm} のコイルの両端の電圧（上が＋）`, f: (S, k) => mxVo(S, k, j) - mxVn(S, k) - S.p.R * S.x[j][k]};
+  probes['x:ref' + nm] = {b: 'v̄', s: nm, up: true, color: COL.ink, q: 'V', what: `出力 ${nm} の電位の、スイッチング 1 周期の平均（目標 v_${nm}）`, f: (S, k) => mxRef(S.p, S.t[k], j)};
+  probes['x:ph' + nm] = {b: 'v', s: nm + 'n', up: true, color: OCOL[j], q: 'V', what: `負荷の相電圧（出力 ${nm} − 中性点 n）`, f: (S, k) => mxVo(S, k, j) - mxVn(S, k)};
+  PH.forEach((pn, K) => {
+    probes['i:W' + pn + nm] = {b: 'i', s: pn + nm, up: true, color: COL.fuchsia, q: 'I', what: `双方向スイッチ ${pn}${nm}（入力 ${pn} ↔ 出力 ${nm}）の電流（入力 → 出力が正）`, f: (S, k) => mxC(S, k, j) === K ? S.x[j][k] : 0};
+    probes['v:W' + pn + nm] = {b: 'v', s: pn + nm, up: true, color: COL.fuchsia, q: 'V', what: `スイッチ ${pn}${nm} の両端の電圧（入力の側が＋）`, f: (S, k) => mxVin(S.p, S.t[k], K) - mxVo(S, k, j)};
+  });
+});
+
+SimApp({
+  pdef: [
+    {k: 'V0', b: 'V', s: '0', up: true, title: '入力の線間電圧の振幅', min: 10, max: 400, step: 1, log: false, unit: 'V', def: 141},
+    {k: 'fi', b: 'f', s: 'i', title: '入力の周波数', min: 10, max: 100, step: 1, log: false, unit: 'Hz', def: 50},
+    {k: 'fo', b: 'f', s: 'o', title: '出力の周波数', min: 1, max: 200, step: 1, log: false, unit: 'Hz', def: 30},
+    {k: 'q', b: 'q', s: '', title: '電圧の比（出力の相電圧の振幅 / 入力の相電圧の振幅）', min: 0, max: 0.866, step: 0.002, log: false, unit: '', def: 0.8, fmt: r3},
+    {k: 'fsw', b: 'f', s: 'sw', title: 'スイッチング周波数', min: 300, max: 10e3, log: true, unit: 'Hz', def: 2e3},
+    {k: 'R', b: 'R', s: '', min: 1, max: 100, log: true, unit: 'Ω', def: 10},
+    {k: 'L', b: 'L', s: '', min: 1e-3, max: 200e-3, log: true, unit: 'H', def: 20e-3},
+  ],
+  presets: [
+    {name: 'p44 の図に近い（50 Hz → 30 Hz）', v: {V0: 141, fi: 50, fo: 30, q: 0.8, fsw: 2e3, R: 10, L: 20e-3}},
+    {name: '入力より高い周波数（100 Hz、p41）', v: {V0: 141, fi: 50, fo: 100, q: 0.8, fsw: 5e3, R: 10, L: 20e-3}},
+    {name: '低い周波数（5 Hz）', v: {V0: 141, fi: 50, fo: 5, q: 0.5, fsw: 2e3, R: 10, L: 20e-3}},
+    {name: 'スイッチングが遅い（500 Hz）', v: {V0: 141, fi: 50, fo: 30, q: 0.8, fsw: 500, R: 10, L: 20e-3}},
+  ],
+  simulate: (P) => simulateMatrix({V0: P.V0, fi: P.fi, fo: P.fo, q: P.q, fsw: P.fsw, R: P.R, L: P.L}),
+  metrics: matrixMetrics,
+  initWin: 'last',
+  gatePane: (() => {
+    // 帯は出力 A の接続だけ。上に見出しを付ける
+    const base = gateRowsPane(PH.map((nm, K) => ({label: 'A←' + nm, color: PCOL[K], on: (S, k) => mxC(S, k, 0) === K}))), TH = 14;
+    return {h: base.h + TH, draw(c, S, g) {
+      c.font = '11px sans-serif'; c.textAlign = 'left'; c.fillStyle = COL.sub;
+      c.fillText('出力 A の接続（A←u：出力 A を入力 u につないでいる間）', g.ML + 2, g.y0 + 11);
+      base.draw(c, S, Object.assign({}, g, {y0: g.y0 + TH}));
+    }};
+  })(),
+  probes,
+  defaultProbes: ['n:A', 'x:refA', 'i:RA'],
+  extraButtons: [{key: 'x:refA', label: 'A の平均（目標）'}, {key: 'x:phA', label: '負荷の相電圧 v<sub>An</sub>'}, {key: 'x:iau', label: '入力 u の電流の平均'}],
+  build(K) {
+    const {W, el, gWire} = K;
+    const nodeW = {N: [[[XN, YI[0]], [XN, YI[2]]]], n: [[[XC[0], YNb], [XC[2], YNb]]]};
+    PH.forEach((nm, Ki) => {
+      W([[XN, YI[Ki]], [XS - 28, YI[Ki]]]);
+      nodeW[nm] = [[[XS + 28, YI[Ki]], [XC[2] - DX, YI[Ki]]]];
+      XC.forEach((x, j) => nodeW[nm].push([[x - DX, YI[Ki]], [x - DX, YI[Ki] + 8]]));
+    });
+    OUT.forEach((nm, j) => {
+      nodeW[nm] = [[[XC[j], YI[0] + DY - 8], [XC[j], YR - 45]]];
+      nodeW['m' + nm] = [[[XC[j], YR + 45], [XC[j], YL1]]];
+      nodeW.n.push([[XC[j], YL2], [XC[j], YNb]]);
+    });
+    for (const nn in nodeW) nodeW[nn].forEach(p => W(p));
+    // 入力の線が、出力の縦の線をまたぐところ
+    PH.forEach((nm, Ki) => XC.forEach((x, j) => { if (YI[Ki] > YI[0] + DY - 8 && x < XC[2] - DX) K.hop(x, YI[Ki]); }));
+    PH.forEach((nm, Ki) => {
+      K.acsrc(XS, YI[Ki], 26);
+      K.text(XS + 60, YI[Ki] - 10, nm, PCOL[Ki], 24);
+      XC.forEach((x, j) => {
+        sws[nm + OUT[j]] = K.switch([x - DX, YI[Ki] + 8], [x, YI[Ki] + DY - 8], -1);
+        el('rect', {x: x - DX - 14, y: YI[Ki] - 8, width: DX + 28, height: DY + 14, rx: 8, fill: 'none', stroke: COL.red, 'stroke-width': 1.4, 'stroke-dasharray': '4 4', opacity: 0.6}, gWire);
+        K.dot(x - DX, YI[Ki]);
+      });
+    });
+    K.dot(XN, YI[1]);
+    K.text(XN - 14, YI[1] + 8, 'N', COL.ink, 24, 'end');
+    K.text(XC[1], -26, '双方向スイッチ 9 個（行列＝マトリクスの配置）', COL.fuchsia, 20);
+    OUT.forEach((nm, j) => {
+      K.text(XC[j] + 16, YBOT - 30, nm, OCOL[j], 24, 'start');
+      K.res(XC[j], YR);
+      K.coil([XC[j], YL1], [XC[j], YL2], 3, 1);
+      K.name(XC[j] + 24, YR + 10, 'R', 'start', 28);
+      K.name(XC[j] + 28, YL2 - 14, 'L', 'start', 28);
+    });
+    K.dot(XC[1], YNb);
+    K.text(XC[1], YNb + 34, 'n（負荷の中性点）', COL.sub, 18);
+    const hits = [], arrows = {};
+    PH.forEach((nm, Ki) => {
+      hits.push(['e:S' + nm, [XS - 30, YI[Ki] - 30, 60, 60]]);
+      arrows['i:S' + nm] = [[XS + 40, YI[Ki] + 20], [XS + 110, YI[Ki] + 20], 'B'];
+      arrows['v:S' + nm] = [[XS + 30, YI[Ki] - 40], [XS - 30, YI[Ki] - 40], 'T'];
+      XC.forEach((x, j) => {
+        hits.push(['e:W' + nm + OUT[j], [x - DX + 4, YI[Ki] + 10, DX - 8, DY - 18]]);
+        arrows['i:W' + nm + OUT[j]] = [[x - DX - 6, YI[Ki] + 22], [x - 14, YI[Ki] + DY + 2], 'L'];
+        arrows['v:W' + nm + OUT[j]] = [[x - 14, YI[Ki] + DY + 2], [x - DX - 6, YI[Ki] + 22], 'L'];
+      });
+    });
+    OUT.forEach((nm, j) => {
+      hits.push(['e:R' + nm, [XC[j] - 22, YR - 46, 44, 92]], ['e:L' + nm, [XC[j] - 24, YL1 + 2, 48, YL2 - YL1 - 4]]);
+      arrows['i:R' + nm] = [[XC[j] - 34, YR - 30], [XC[j] - 34, YR + 30], 'L'];
+      arrows['v:R' + nm] = [[XC[j] - 34, YR + 40], [XC[j] - 34, YR - 40], 'L'];
+      arrows['i:L' + nm] = [[XC[j] - 34, YL1 + 10], [XC[j] - 34, YL2 - 10], 'L'];
+      arrows['v:L' + nm] = [[XC[j] - 34, YL2 - 4], [XC[j] - 34, YL1 + 4], 'L'];
+    });
+    const nodeTag = {N: [XN, YI[0], -14, -10, 'end'], n: [XC[0] + 40, YNb, 0, 34]};
+    PH.forEach((nm, Ki) => { nodeTag[nm] = [XS + 140, YI[Ki], 0, -12]; });
+    OUT.forEach((nm, j) => { nodeTag[nm] = [XC[j], YBOT, -14, 8, 'end']; nodeTag['m' + nm] = [XC[j], (YR + 45 + YL1) / 2, -14, 8, 'end']; });
+    return {nodeW, hits, arrows, loops: {}, sw: sws, nodeTag};
+  },
+  state(S, k, MET) {
+    const p = S.p, c = [0, 1, 2].map(j => mxC(S, k, j));
+    const st = {};
+    PH.forEach((nm, K) => OUT.forEach((on, j) => { st[nm + on] = c[j] === K; }));
+    const m = mxDuty(p, (Math.floor(S.t[k] * p.fsw + 1e-9) + 0.5) / p.fsw);
+    let html = `いまの接続：${OUT.map((on, j) => `<b style="color:${OCOL[j]}">${on}</b> ← ${PH[c[j]]}`).join('、')}。` +
+      `このスイッチング周期の割合（出力 A）：<span class="eq">m<sub>uA</sub></span> = ${m[0][0].toFixed(2)}、<span class="eq">m<sub>vA</sub></span> = ${m[1][0].toFixed(2)}、<span class="eq">m<sub>wA</sub></span> = ${m[2][0].toFixed(2)}`;
+    return {sw: st, loops: [], html};
+  },
+  metricsHtml(S, m) {
+    const p = S.p, Vim = p.V0 / Math.sqrt(3), Vt = p.q * Vim, Z = Math.hypot(p.R, 2 * Math.PI * p.fo * p.L);
+    let rows = `<tr><th>量</th><th>シミュレーション</th><th>授業の式</th><th>式の値</th><th>差</th></tr>`;
+    const gray = (why) => `<span style="color:var(--sub);font-weight:700">目安</span><span class="small">（${why}）</span>`;
+    // 出力がほぼ 0（q = 0）なら THD・入力の変位率は 0 ÷ 0 で決まらない
+    const noI = !(m.IA.c1 > 1e-6 * p.V0 / Z);
+    // 入力の電流の式は「スイッチングの 1 周期の間、出力の電流はほぼ一定」とした周期平均の近似。
+    // 1 周期 Ts の間に出力の電流が変わる（Ts が L/R や出力の周期に比べて短くない）と近似が崩れる
+    const Ts = 1 / p.fsw, roughAvg = Math.max(Ts / (p.L / p.R), 2 * Math.PI * p.fo * Ts) > 0.5;
+    const avgWhy = 'スイッチングの 1 周期の間に出力の電流が変わるので、周期平均の近似が崩れる';
+    const avgMark = (a, b, tol) => roughAvg && Math.abs(a - b) > tol * Math.abs(b) ? gray(avgWhy) : okMark(a, b, tol);
+    rows += `<tr><td>負荷の相電圧 <span class="eq">v<sub>An</sub></span> の基本波（${r3(p.fo)} Hz）の振幅</td><td class="num">${fmtSI(m.VA.c1, 'V', 4)}</td><td class="eq">q V<sub>im</sub> = q V<sub>0</sub>/√3</td><td class="num">${fmtSI(Vt, 'V', 4)}</td><td>${pctDiff(m.VA.c1, Vt)} ${okMark(m.VA.c1, Vt, 0.02)}</td></tr>`;
+    rows += `<tr><td>出力の電流 <span class="eq">i<sub>A</sub></span> の基本波の振幅</td><td class="num">${fmtSI(m.IA.c1, 'A', 4)}</td><td class="eq">q V<sub>im</sub> / √(R² + (2πf<sub>o</sub>L)²)</td><td class="num">${fmtSI(Vt / Z, 'A', 4)}</td><td>${pctDiff(m.IA.c1, Vt / Z)} ${okMark(m.IA.c1, Vt / Z, 0.02)}</td></tr>`;
+    rows += `<tr><td>出力の電流の THD</td><td class="num">${noI || !isFinite(m.thdI) ? '—' : (m.thdI * 100).toFixed(2) + ' %'}</td><td colspan="3">${noI ? '出力の電流が 0 なので決まらない。' : ''}スイッチングの周波数が高いほど、コイルが大きいほど小さい</td></tr>`;
+    const Iiexp = m.Pout / (1.5 * Vim); // 入力の力率が 1 なら P = (3/2) V_im I_i
+    rows += `<tr><td>入力 u の電流（周期平均）の基本波の振幅</td><td class="num">${fmtSI(m.Iua.c1, 'A', 4)}</td><td class="eq">P<sub>out</sub> / (1.5 V<sub>im</sub>)（入力の力率 1 のとき）</td><td class="num">${fmtSI(Iiexp, 'A', 4)}</td><td>${pctDiff(m.Iua.c1, Iiexp)} ${avgMark(m.Iua.c1, Iiexp, 0.02)}</td></tr>`;
+    rows += `<tr><td>入力の変位率 <span class="eq">cos φ<sub>i</sub></span>（周期平均の電流）</td><td class="num">${noI ? '—' : m.cosi.toFixed(4)}</td><td class="eq">1（Venturini の方法）</td><td class="num">1</td><td>${noI ? '—<span class="small">（電流が流れないので決まらない）</span>' : pctDiff(m.cosi, 1) + ' ' + avgMark(m.cosi, 1, 0.01)}</td></tr>`;
+    rows += `<tr><td>電力（入力 / 出力）</td><td class="num">${fmtSI(m.Pin, 'W', 4)}</td><td class="eq">P<sub>out</sub> = R(i<sub>A</sub>² + i<sub>B</sub>² + i<sub>C</sub>²) の平均</td><td class="num">${fmtSI(m.Pout, 'W', 4)}</td><td>${pctDiff(m.Pin, m.Pout)}</td></tr>`;
+    rows += `<tr><td>入力 u の電流（スイッチのまま）の実効値</td><td class="num">${fmtSI(m.Iu.rms, 'A', 4)}</td><td colspan="3">細かいパルスの列。実際は入力の LC フィルタでなめらかにする</td></tr>`;
+    return {rows, sub: `出力の最後の 1 周期（入力側は入力の周期の整数倍）で計算（出力の ${S.periods} 周期を計算）。`};
+  },
+});
+})();
+</script>
+</body>
+</html>

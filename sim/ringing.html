@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>寄生成分によるリンギングのシミュレーター — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<header>
+  <nav class="hnav"><a href="../index.html">← 科目のページへ戻る</a><a href="index.html">回路を選ぶ（シミュレーターの一覧）</a></nav>
+  <h1>寄生成分によるリンギング（RLC 直列回路）のシミュレーター</h1>
+  <div class="subtitle">パワーエレクトロニクス 第14回 電力変換で生じる電磁ノイズ p48〜53 / 大阪工業大学</div>
+</header>
+<main>
+  <div class="notice">
+    回路図には描かない<b>配線の寄生インダクタンス <span class="eq">L</span></b>・<b>配線の抵抗 <span class="eq">R</span></b>・<b>ダイオードの寄生キャパシタンス <span class="eq">C</span></b> が、スイッチの電圧 <span class="eq">v<sub>sw</sub></span> に対して RLC 直列回路をつくります（p48）。
+    <span class="eq">v<sub>sw</sub></span> が速く切り替わると、<span class="eq">v<sub>C</sub></span> は <span class="eq">f<sub>0</sub> = 1/(2π√(LC))</span> で振動し（リンギング、p51）、最大で <span class="eq">V<sub>0</sub></span> の約 2 倍になります（p50）。
+    <b>立ち上がり時間 <span class="eq">t<sub>r</sub></span></b> を 1 ns → 10 ns → 100 ns と遅くすると、振動が小さくなります（p52・53）。
+    <b>計算する区間</b>で「立ち上がりの後」を選ぶと、切り替わった直後だけを細かく計算して拡大します。波形の上の「全体／はじめ／おわり」は、その区間の中のどこを表示するかの切り替えです。回路図の<b>線をクリックすると電位</b>、<b>素子をクリックすると電流</b>（矢印の向きが正）が波形に出ます。
+  </div>
+
+  <div class="top">
+    <section class="card">
+      <div class="card-h">
+        <span class="ttl">回路</span>
+        <span class="small">素子をクリックしたとき：</span>
+        <span class="seg" id="emode"><button data-m="i" class="on">電流</button><button data-m="v">両端の電圧</button></span>
+      </div>
+      <svg id="sch" viewBox="-140 -118 790 438" aria-label="寄生成分の RLC 直列回路の回路図"></svg>
+      <div id="state"></div>
+    </section>
+
+    <section class="card params">
+      <div class="card-h"><span class="ttl">回路の値</span></div>
+      <div class="card-b" id="params"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-h">
+      <span class="ttl">波形</span>
+      <span class="seg" id="win">
+        <button data-w="all" class="on">全体</button><button data-w="first">はじめ</button><button data-w="last">おわり</button>
+      </span>
+      <span class="small" id="winsub"></span>
+    </div>
+    <div class="ctl">
+      <button id="play">▶ 再生</button>
+      <label>速さ <select id="speed"><option value="0.25">×0.25</option><option value="0.5">×0.5</option><option value="1" selected>×1</option><option value="2">×2</option><option value="4">×4</option></select></label>
+      <label id="nper"><span id="nperlbl">周期の数</span> <select id="nP"><option>2</option><option selected>3</option><option>5</option><option>10</option></select></label>
+      <label>グラフ <select id="lay"><option value="vi">電圧と電流の2段</option><option value="each">1本ずつ別の段</option></select></label>
+    </div>
+    <div class="scrubrow"><input type="range" id="scrub" min="0" max="10000" value="0" aria-label="時刻"><span class="tc" id="tc"></span></div>
+    <div id="legend"></div>
+    <div id="plotwrap"><canvas id="plot"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">定常状態の値と、授業の式の比較</span><span class="small" id="msub"></span></div>
+    <div class="card-b" style="overflow-x:auto"><table class="m" id="metrics"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">このシミュレーターの前提</span></div>
+    <div class="card-b">
+      <ul class="notes">
+        <li>回路は p48 の「寄生成分の等価回路」です。スイッチ（インバーターのレグ、p51 の S<sub>1</sub>・S<sub>2</sub>）が作る電圧を、台形波の電圧源 <span class="eq">v<sub>sw</sub></span> で表しています。<span class="eq">L</span>・<span class="eq">R</span>・<span class="eq">C</span> は理想の素子（周波数で値が変わらない）です。</li>
+        <li><span class="eq">v<sub>sw</sub></span> は周期 <span class="eq">T = 1/f<sub>sw</sub></span>、デューティ比 0.5 で 0 と <span class="eq">V<sub>0</sub></span> を行き来し、立ち上がり・立ち下がりは時間 <span class="eq">t<sub>r</sub></span> の直線です（p14 の台形波で <span class="eq">τ<sub>r</sub> = τ<sub>f</sub></span> としたもの）。スライドの図（LTspice）は <span class="eq">V<sub>0</sub></span> = 10 V、<span class="eq">T</span> = 100 μs です。</li>
+        <li>「周期全体」は <span class="eq">t</span> = 0（電流 0、<span class="eq">v<sub>C</sub></span> = 0）から計算します。「立ち上がりの後」「立ち下がりの後」と比較の表は、同じ波形が繰り返す定常状態で、<span class="eq">t</span> = 0 を切り替わりの始まりにしています。</li>
+        <li><span class="eq">v<sub>C</sub></span> の最大の式は、スライドには無く、このページで p14 の立ち上がり時間の項 <span class="eq">sin(½nω<sub>0</sub>τ<sub>r</sub>) / (½nω<sub>0</sub>τ<sub>r</sub>)</span> の <span class="eq">nω<sub>0</sub></span> を共振の角周波数 <span class="eq">2πf<sub>0</sub></span> に置きかえたものです（<span class="eq">L</span>・<span class="eq">C</span> に直線の立ち上がりをかけたとき、振動の振幅は <span class="eq">V<sub>0</sub>|sin(πf<sub>0</sub>t<sub>r</sub>)| / (πf<sub>0</sub>t<sub>r</sub>)</span>）。<span class="eq">R</span> による減衰は無視しているので、<span class="eq">R</span> を大きくするとずれます。<span class="eq">t<sub>r</sub> = 1/f<sub>0</sub></span>（スライドの値で約 12.6 ns）にすると、振動はほとんど消えます。</li>
+        <li>振動の周波数は厳密には <span class="eq">f<sub>0</sub>√(1 − R²C/(4L))</span> で、<span class="eq">R</span> が小さいときは <span class="eq">f<sub>0</sub></span> と同じです（スライドの値で差は 0.0003 %）。<span class="eq">R ≥ 2√(L/C)</span>（スライドの値で 40 Ω）では振動しません。振動の大きさは時定数 <span class="eq">2L/R</span> で減ります（スライドに式は無い。p50 で約 4 μs で収まっている）。</li>
+        <li>計算：<span class="eq">v<sub>sw</sub></span> が区分的に直線なので、区間ごとに状態方程式（<span class="eq">L di/dt = v<sub>sw</sub> − Ri − v<sub>C</sub></span>、<span class="eq">C dv<sub>C</sub>/dt = i</span>）を厳密に解いています（行列の指数関数）。振動の周期（ns）とスイッチングの周期（μs）が 1 万倍ちがうので、ほかのページの 4 次のルンゲ・クッタ法では時間がかかりすぎるためです（同じ答えになることは確かめてあります）。グラフは振動の 1 周期を 16〜40 点で描いています。</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<footer>パワーエレクトロニクス ｜ 神野 崇馬 ｜ 試作版</footer>
+<div id="tip"></div>
+
+<script src="common.js"></script>
+<script>
+// ==SIM-BEGIN==
+/**
+ * 寄生成分の RLC 直列回路：v_sw（台形波）→ L → R → C → 戻る。状態 x = [i, vC]。
+ * p = {V0, tr, L, R, C, f, D}（SI 単位）。v_sw は周期 T = 1/f、[0, tr] で 0 → V0、[tr, DT] で V0、
+ * [DT, DT + tr] で V0 → 0、残りは 0（p14 の台形波。τ = DT は立ち上がりの中点から立ち下がりの中点まで）。
+ */
+/** e^{Ah}（A = [[−R/L, −1/L], [1/C, 0]]）。e^{At} = e^{−αt}[c(t) I + s(t)(A + αI)]、α = R/(2L) */
+function rgExpm(p, h) {
+  const al = p.R / (2 * p.L), w02 = 1 / (p.L * p.C), q = al * al - w02;
+  let ec, es;   // e^{−αh}·c(h), e^{−αh}·s(h)
+  if (q < -1e-12 * w02) { const wd = Math.sqrt(-q), e = Math.exp(-al * h); ec = e * Math.cos(wd * h); es = e * Math.sin(wd * h) / wd; }
+  else if (q > 1e-12 * w02) { const b = Math.sqrt(q), e1 = Math.exp((b - al) * h), e2 = Math.exp(-(b + al) * h); ec = (e1 + e2) / 2; es = (e1 - e2) / (2 * b); }
+  else { const e = Math.exp(-al * h); ec = e; es = e * h; }
+  return [[ec - al * es, -es / p.L], [es / p.C, ec + al * es]];
+}
+/** 区間の始まりで x、v_sw = u0 + s·τ のとき、τ = h での状態（特解 i = Cs, vC = u − RCs ＋ 同次解） */
+function rgAt(p, x, u0, s, h) {
+  const E = rgExpm(p, h), ip = p.C * s, vp0 = u0 - p.R * p.C * s;
+  const di = x[0] - ip, dv = x[1] - vp0;
+  return [ip + E[0][0] * di + E[0][1] * dv, vp0 + s * h + E[1][0] * di + E[1][1] * dv];
+}
+/** 1 周期の中の区間：[始まり, 終わり, u0, 傾き, 区間の種類（0 立ち上がり / 1 V0 / 2 立ち下がり / 3 0 V）] */
+function rgSegsOne(p) {
+  const T = 1 / p.f, tau = p.D * T, tr = p.tr, V = p.V0;
+  return [[0, tr, 0, V / tr, 0], [tr, tau, V, 0, 1], [tau, tau + tr, V, -V / tr, 2], [tau + tr, T, 0, 0, 3]].filter(g => g[1] > g[0]);
+}
+/** 1 周期ぶん進める */
+function rgPeriod(p, x) { for (const g of rgSegsOne(p)) x = rgAt(p, x, g[2], g[3], g[1] - g[0]); return x; }
+/** 周期的な定常状態（周期の始まりの状態）：x* = M x* + b を解く */
+function rgSteady(p) {
+  const b = rgPeriod(p, [0, 0]), c0 = rgPeriod(p, [1, 0]), c1 = rgPeriod(p, [0, 1]);
+  const m00 = c0[0] - b[0], m10 = c0[1] - b[1], m01 = c1[0] - b[0], m11 = c1[1] - b[1];
+  const a = 1 - m00, bb = -m01, c = -m10, d = 1 - m11, det = a * d - bb * c;
+  return [(d * b[0] - bb * b[1]) / det, (-c * b[0] + a * b[1]) / det];
+}
+/** 振動の周期の目安 2π√(LC) と、ずれ（同次解）が thr まで減る時間 */
+function rgScales(p) {
+  const T0 = 2 * Math.PI * Math.sqrt(p.L * p.C), al = p.R / (2 * p.L), w02 = 1 / (p.L * p.C);
+  const slow = al * al >= w02 ? al - Math.sqrt(al * al - w02) : al;
+  return {T0, slow, tauL: p.R > 0 ? 2 * p.L / p.R : Infinity, dtBase: Math.min(T0, al > 0 ? 2 * Math.PI / (2 * al) : T0)};
+}
+/**
+ * 時刻 tA（状態 xA）から tB まで、点を記録しながら厳密に進める。
+ * 振動している間（同次解の大きさ √((vC − vp)² + (L/C)(i − ip)²) > thr）は dtD ごと、収まったら区間の端だけ。
+ * 点が maxPts を超えたら null。
+ */
+function rgRun(p, xA, tA, tB, dtD, thr, maxPts) {
+  const T = 1 / p.f, segs = rgSegsOne(p), kq = Math.sqrt(p.L / p.C);
+  const tA_ = [], iA = [], vA = [], uA = [], phA = [];
+  let x = xA.slice();
+  const push = (t, xx, u, ph) => { tA_.push(t); iA.push(xx[0]); vA.push(xx[1]); uA.push(u); phA.push(ph); };
+  let k = Math.floor(tA / T + 1e-9);
+  outer:
+  for (; k * T < tB - 1e-15 * T; k++) {
+    for (const g of segs) {
+      const a = Math.max(k * T + g[0], tA), b = Math.min(k * T + g[1], tB);
+      if (b <= a + 1e-18) continue;
+      const ua = g[2] + g[3] * (a - k * T - g[0]), s = g[3], len = b - a;
+      if (!tA_.length || tA_[tA_.length - 1] < a) push(a, x, ua, g[4]);
+      const dev = (xx, tt) => Math.hypot(xx[1] - (ua + s * tt - p.R * p.C * s), kq * (xx[0] - p.C * s));
+      if (dev(x, 0) > thr) {
+        const n = Math.ceil(len / dtD);
+        for (let q = 1; q < n; q++) {
+          const tt = q * len / n, xx = rgAt(p, x, ua, s, tt);
+          push(a + tt, xx, ua + s * tt, g[4]);
+          if (tA_.length > maxPts) return null;
+          if (dev(xx, tt) < thr) break;
+        }
+      } else if (s !== 0) {
+        // 振動していない立ち上がり：直線なので数点で十分
+        for (let q = 1; q < 4; q++) { const tt = q * len / 4; push(a + tt, rgAt(p, x, ua, s, tt), ua + s * tt, g[4]); }
+      }
+      x = rgAt(p, x, ua, s, len);
+      push(b, x, ua + s * len, g[4]);
+      if (tA_.length > maxPts) return null;
+      if (b >= tB) break outer;
+    }
+  }
+  return {t: Float64Array.from(tA_), i: Float64Array.from(iA), v: Float64Array.from(vA), u: Float64Array.from(uA), ph: Uint8Array.from(phA), x};
+}
+/** rgRun を、点が多すぎるときは間隔を広げてやり直す */
+function rgRunCap(p, xA, tA, tB, dtD, thr, maxPts) {
+  for (let it = 0; it < 12; it++) { const r = rgRun(p, xA, tA, tB, dtD, thr, maxPts); if (r) { r.dtD = dtD; return r; } dtD *= 2; }
+  return rgRun(p, xA, tA, tB, dtD, Infinity, Infinity);
+}
+/**
+ * 表示用のシミュレーション。mode: 'per'（t = 0 から数周期）/ 'rise'（定常状態の立ち上がりの後）/ 'fall'（立ち下がりの後）
+ * 戻り値 S：t, i, v, u, ph と、S.T（はじめ／おわりの窓の 1 周期：'per' はスイッチングの周期、ほかは振動の周期）
+ */
+function simulateRinging(p0, mode) {
+  const T = 1 / p0.f, trMax = 0.8 * Math.min(p0.D, 1 - p0.D) * T;
+  const p = Object.assign({}, p0, {tr: Math.min(p0.tr, trMax)});
+  const sc = rgScales(p), tau = p.D * T, maxPts = 900000;
+  let S;
+  if (mode === 'per') {
+    const tDec = Math.log(1e4) / sc.slow;
+    const periods = Math.min(50, Math.max(3, Math.ceil(tDec / T) + 2));
+    S = rgRunCap(p, [0, 0], 0, periods * T, sc.dtBase / 16, 1e-4 * p.V0, maxPts);
+    S.T = T; S.periods = periods; S.steadyReached = tDec < (periods - 1) * T;
+  } else {
+    const x0 = rgSteady(p);
+    let xs = x0, ts = 0, tEndMax = tau;
+    if (mode === 'fall') { xs = rgAt(p, rgAt(p, x0, 0, p.V0 / p.tr, p.tr), p.V0, 0, tau - p.tr); ts = tau; tEndMax = T - tau; }
+    const tSet = Math.max(0, Math.log(p.V0 / (0.003 * p.V0)) / sc.slow);
+    const span = Math.min(tEndMax, Math.max(1.3 * tSet + p.tr, 40 * sc.T0, 3 * p.tr));
+    S = rgRunCap(p, xs, ts, ts + span, sc.dtBase / 40, 1e-5 * p.V0, maxPts);
+    // t = 0 を切り替わりの始まりにする
+    const t = S.t; for (let k = 0; k < t.length; k++) t[k] -= ts;
+    S.T = al_ringT(p, sc); S.periods = Math.max(1, Math.round(span / S.T));
+  }
+  S.p = p; S.trClamped = p0.tr > trMax; S.mode = mode; S.sc = sc;
+  return S;
+}
+/** 「はじめ／おわり」の窓の単位にする振動の周期（減衰振動の周期。振動しないときは 2π√(LC)） */
+function al_ringT(p, sc) {
+  const al = p.R / (2 * p.L), w02 = 1 / (p.L * p.C);
+  return al * al < w02 ? 2 * Math.PI / Math.sqrt(w02 - al * al) : sc.T0;
+}
+/**
+ * 比較の表の値：定常状態で、立ち上がりの後の vC の最大・振動の周波数・減衰の時定数、立ち下がりの後の vC の最小、電流の最大
+ * 振動の区間を振動の周期の 1/400 ごとに調べる（山は 2 次式で補間）
+ */
+function ringingMetrics(S) {
+  const p = S.p, T = 1 / p.f, tau = p.D * T, sc = S.sc;
+  const x0 = rgSteady(p), xr = rgAt(p, x0, 0, p.V0 / p.tr, p.tr);
+  const xt = rgAt(p, xr, p.V0, 0, tau - p.tr), xf = rgAt(p, xt, p.V0, -p.V0 / p.tr, p.tr);
+  let iMax = 0;
+  for (let q = 0; q <= 200; q++) { iMax = Math.max(iMax, Math.abs(rgAt(p, x0, 0, p.V0 / p.tr, p.tr * q / 200)[0]), Math.abs(rgAt(p, xt, p.V0, -p.V0 / p.tr, p.tr * q / 200)[0])); }
+  const scan = (xs, level, len) => {
+    const dt = sc.T0 / 400, n = Math.max(10, Math.ceil(len / dt));
+    const ys = new Float64Array(n + 1), ts = new Float64Array(n + 1);
+    for (let q = 0; q <= n; q++) { const h = len * q / n, xx = rgAt(p, xs, level, 0, h); ts[q] = h; ys[q] = xx[1] - level; iMax = Math.max(iMax, Math.abs(xx[0])); }
+    let mx = -Infinity, mn = Infinity;
+    for (let q = 0; q <= n; q++) { mx = Math.max(mx, ys[q]); mn = Math.min(mn, ys[q]); }
+    // 上向きに 0 を横切る時刻
+    const zc = [];
+    for (let q = 1; q <= n; q++) if (ys[q - 1] < 0 && ys[q] >= 0) zc.push(ts[q - 1] + (ts[q] - ts[q - 1]) * (-ys[q - 1]) / (ys[q] - ys[q - 1]));
+    // 山（極大）の値（2 次式で補間）
+    const pk = [];
+    for (let q = 1; q < n; q++) if (ys[q] > ys[q - 1] && ys[q] >= ys[q + 1] && ys[q] > 0) {
+      const a = ys[q - 1], b = ys[q], c = ys[q + 1], den = a - 2 * b + c;
+      const d = den !== 0 ? 0.5 * (a - c) / den : 0;
+      pk.push([ts[q] + d * (ts[1] - ts[0]), b - 0.25 * (a - c) * d]);
+    }
+    return {mx, mn, zc, pk};
+  };
+  const lenR = Math.min(tau - p.tr, 12 * sc.T0), lenF = Math.min(T - tau - p.tr, 12 * sc.T0);
+  const R = scan(xr, p.V0, lenR), F = scan(xf, 0, lenF);
+  const m = {vMax: p.V0 + Math.max(0, R.mx), vMin: Math.min(0, F.mn), iMax};
+  // 振動の周波数：上向きのゼロクロスの間隔の平均
+  const amp = Math.max(Math.abs(R.mx), Math.abs(R.mn));
+  m.osc = R.zc.length >= 3 && amp > 1e-9 * p.V0;
+  if (m.osc) {
+    m.fr = (R.zc.length - 1) / (R.zc[R.zc.length - 1] - R.zc[0]);
+    if (R.pk.length >= 3) { const a = R.pk[0], b = R.pk[R.pk.length - 1]; m.tauD = (b[0] - a[0]) / Math.log(a[1] / b[1]); }
+  }
+  return m;
+}
+// ==SIM-END==
+</script>
+<script>
+(() => {
+'use strict';
+const YM = 120, H = 240, XL0 = 110, XL1 = 240, XRc = 350, XR = 500;
+let mode = 'per';
+const sinc = (x) => Math.abs(x) < 1e-12 ? 1 : Math.sin(x) / x;
+const f0Of = (p) => 1 / (2 * Math.PI * Math.sqrt(p.L * p.C));
+const ampTh = (p) => p.V0 * Math.abs(sinc(Math.PI * f0Of(p) * p.tr));
+const vm = (S, k) => S.v[k] + S.p.R * S.i[k];
+/** スライダーの表示（common の fmtSI は 1e-9 未満を 0 と表示するので、pF・ns 用に自前で） */
+const fmtP = (unit, sig = 3) => (x) => {
+  const pf = [[1e6, 'M'], [1e3, 'k'], [1, ''], [1e-3, 'm'], [1e-6, 'μ'], [1e-9, 'n'], [1e-12, 'p']];
+  let q = pf[pf.length - 1]; for (const r of pf) if (Math.abs(x) >= r[0] * 0.99995) { q = r; break; }
+  return (x / q[0]).toPrecision(sig).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '') + ' ' + q[1] + unit;
+};
+const modeBtns = [];
+const nperLbl = document.getElementById('nperlbl'), winSub = document.getElementById('winsub');
+
+/** グラフのいちばん上の段：v_sw の形（0〜V0） */
+const swPane = {
+  h: 34,
+  draw(c, S, g) {
+    const {X_, t0w, t1w, y0, ML, pw, i0, i1} = g, ph = 30;
+    c.fillStyle = '#fbeefc'; c.fillRect(ML, y0, pw, ph);
+    const Y = (u) => y0 + ph - 4 - u / S.p.V0 * (ph - 8);
+    c.save(); c.beginPath(); c.rect(ML, y0, pw, ph); c.clip();
+    c.strokeStyle = COL.fuchsia; c.lineWidth = 2; c.beginPath();
+    let col = -2;
+    for (let k = i0; k <= i1; k++) {
+      const x = X_(S.t[k]), cc = Math.floor(x);
+      if (k === i0) c.moveTo(x, Y(S.u[k]));
+      else if (cc !== col || k === i1 || S.u[k] !== S.u[k - 1]) c.lineTo(x, Y(S.u[k]));
+      col = cc;
+    }
+    c.stroke(); c.restore();
+    c.font = '12px sans-serif'; c.textAlign = 'right'; c.fillStyle = COL.fuchsia;
+    c.fillText('vsw', ML - 6, y0 + 19);
+  },
+};
+
+const app = SimApp({
+  pdef: [
+    {k: 'V0', b: 'V', s: '0', up: true, title: 'v_sw の高さ（電源の電圧）', min: 1, max: 100, step: 0.5, log: false, unit: 'V', def: 10},
+    {k: 'tr', b: 't', s: 'r', title: '立ち上がり・立ち下がり時間', min: 0.1e-9, max: 1e-6, log: true, unit: 's', def: 1e-9, fmt: fmtP('s')},
+    {k: 'L', b: 'L', s: '', title: '配線の寄生インダクタンス', min: 1e-9, max: 1e-6, log: true, unit: 'H', def: 40e-9, fmt: fmtP('H')},
+    {k: 'R', b: 'R', s: '', title: '配線の抵抗', min: 0.01, max: 100, log: true, unit: 'Ω', def: 0.1},
+    {k: 'C', b: 'C', s: '', title: 'ダイオードの寄生キャパシタンス', min: 10e-12, max: 10e-9, log: true, unit: 'F', def: 0.1e-9, fmt: fmtP('F')},
+    {k: 'f', b: 'f', s: 'sw', title: 'スイッチング周波数（T = 1/f_sw）', min: 1e3, max: 1e6, log: true, unit: 'Hz', def: 10e3},
+  ],
+  extraParams(el, a) {
+    const d = document.createElement('div');
+    d.className = 'crow';
+    d.style.flexWrap = 'wrap';
+    d.innerHTML = `<span style="min-width:4.6em">計算する区間</span><span class="seg"><button data-v="per">周期全体</button><button data-v="rise">立ち上がりの後</button><button data-v="fall">立ち下がりの後</button></span>`;
+    d.querySelectorAll('button').forEach(b => { modeBtns.push(b); b.onclick = () => setMode(b.dataset.v, a); });
+    el.insertBefore(d, el.firstChild);
+    showMode();
+  },
+  presets: [
+    {name: 'p49：周期全体（tᵣ = 1 ns）', v: {V0: 10, tr: 1e-9, L: 40e-9, R: 0.1, C: 0.1e-9, f: 10e3}, apply: (a) => setMode('per', a, 'all')},
+    {name: 'p50：立ち上がりの後', v: {V0: 10, tr: 1e-9, L: 40e-9, R: 0.1, C: 0.1e-9, f: 10e3}, apply: (a) => setMode('rise', a, 'all')},
+    {name: 'p51：振動のはじめ 10 周期', v: {V0: 10, tr: 1e-9, L: 40e-9, R: 0.1, C: 0.1e-9, f: 10e3}, apply: (a) => { document.getElementById('nP').value = '10'; setMode('rise', a, 'first'); }},
+    {name: 'p52・53：tᵣ = 10 ns', v: {V0: 10, tr: 10e-9, L: 40e-9, R: 0.1, C: 0.1e-9, f: 10e3}, apply: (a) => setMode('rise', a, 'all')},
+    {name: 'p52・53：tᵣ = 100 ns', v: {V0: 10, tr: 100e-9, L: 40e-9, R: 0.1, C: 0.1e-9, f: 10e3}, apply: (a) => setMode('rise', a, 'all')},
+  ],
+  simulate: (P) => simulateRinging({V0: P.V0, tr: P.tr, L: P.L, R: P.R, C: P.C, f: P.f, D: 0.5}, mode),
+  metrics: ringingMetrics,
+  gatePane: swPane,
+  probes: {
+    'n:sw':  {b: 'v', s: 'sw', color: COL.fuchsia, q: 'V', what: '電圧源（スイッチ）の出力の電位 v_sw', f: (S, k) => S.u[k]},
+    'n:m':   {b: 'v', s: 'm', color: COL.teal, q: 'V', what: 'L と R の間の電位', f: vm},
+    'n:out': {b: 'v', s: 'C', color: COL.red, q: 'V', what: 'C の上の電位（= C の電圧 v_C）', f: (S, k) => S.v[k]},
+    'n:gnd': {b: 'GND', s: '', color: COL.sub, q: 'V', what: '基準の節点（0 V）', f: () => 0},
+    'i:V':   {b: 'i', s: '', color: COL.iin, q: 'I', what: '回路の電流（電源の中を上向きが正）', f: (S, k) => S.i[k]},
+    'i:L':   {b: 'i', s: '', color: COL.ink, q: 'I', what: '回路の電流（L を右向きが正）', f: (S, k) => S.i[k]},
+    'i:R':   {b: 'i', s: '', color: COL.ink, q: 'I', what: '回路の電流（R を右向きが正）', f: (S, k) => S.i[k]},
+    'i:C':   {b: 'i', s: '', color: COL.violet, q: 'I', what: 'C の電流（下向き＝充電が正）', f: (S, k) => S.i[k]},
+    'v:V':   {b: 'v', s: 'sw', color: COL.fuchsia, q: 'V', what: '電圧源の電圧 v_sw（上が＋）', f: (S, k) => S.u[k]},
+    'v:L':   {b: 'v', s: 'L', color: COL.blue, q: 'V', what: 'L の両端の電圧（左が＋）', f: (S, k) => S.u[k] - vm(S, k)},
+    'v:R':   {b: 'v', s: 'R', color: COL.green, q: 'V', what: 'R の両端の電圧（左が＋）', f: (S, k) => S.p.R * S.i[k]},
+    'v:C':   {b: 'v', s: 'C', color: COL.red, q: 'V', what: 'C の両端の電圧 v_C（上が＋）', f: (S, k) => S.v[k]},
+  },
+  defaultProbes: ['n:sw', 'n:out', 'i:L'],
+  refLines: [
+    {keys: ['n:out', 'v:C'], val: (S) => S.p.V0 + ampTh(S.p), label: '式の最大', color: COL.orange},
+    {keys: ['n:out', 'v:C'], val: (S) => S.p.V0, label: 'V₀', color: COL.sub},
+  ],
+  build(K) {
+    const {el, W, gWire} = K;
+    const nodeW = {
+      sw: [[[0, YM - 30], [0, 0], [XL0, 0]]],
+      m: [[[XL1, 0], [XRc - 45, 0]]],
+      out: [[[XRc + 45, 0], [XR, 0], [XR, YM - 10]]],
+      gnd: [[[0, YM + 30], [0, H], [XR, H], [XR, YM + 10]], [[0, H], [0, H + 16]]],
+    };
+    for (const n in nodeW) nodeW[n].forEach(pp => W(pp));
+    // 電圧源（○ の中に立ち上がりのある段）
+    el('circle', {cx: 0, cy: YM, r: 30, fill: '#fff'}, gWire);
+    W([[-17, YM + 10], [-5, YM + 10], [2, YM - 10], [17, YM - 10]]);
+    K.name(-42, YM + 12, 'v', 'end', 30, 'sw');
+    el('line', {x1: -16, y1: H + 16, x2: 16, y2: H + 16}, gWire);
+    el('line', {x1: -10, y1: H + 22, x2: 10, y2: H + 22}, gWire);
+    el('line', {x1: -4, y1: H + 28, x2: 4, y2: H + 28}, gWire);
+    K.coil([XL0, 0], [XL1, 0], 4, 1);
+    K.resH(XRc, 0, 90);
+    K.cap(XR, YM);
+    K.dot(XR, 0); K.dot(XR, H);
+    K.name((XL0 + XL1) / 2, 44, 'L');
+    K.name(XRc, 48, 'R');
+    K.name(XR + 40, YM + 12, 'C', 'start');
+    K.text((XL0 + XL1) / 2, -80, '配線の寄生インダクタンス', '#0284c7', 17);
+    K.text(XRc, -80, '配線の抵抗', '#0284c7', 17);
+    K.text(XR + 10, H + 36, 'ダイオードの寄生キャパシタンス', '#0284c7', 17, 'end');
+    const INS = 24;
+    const loopCW = [[INS, INS], [XR - INS, INS], [XR - INS, H - INS], [INS, H - INS]];
+    return {
+      nodeW,
+      hits: [['e:V', [-34, YM - 34, 68, 68]], ['e:L', [XL0 + 2, -24, XL1 - XL0 - 4, 34]], ['e:R', [XRc - 46, -16, 92, 32]], ['e:C', [XR - 36, YM - 22, 72, 44]]],
+      arrows: {
+        'i:V': [[50, YM + 30], [50, YM - 30], 'R'], 'v:V': [[-96, YM + 44], [-96, YM - 44], 'L'],
+        'i:L': [[XL0 + 30, -24], [XL1 - 30, -24], 'T'], 'v:L': [[XL1 - 10, -50], [XL0 + 10, -50], 'T'],
+        'i:R': [[XRc - 30, -24], [XRc + 30, -24], 'T'], 'v:R': [[XRc + 42, -50], [XRc - 42, -50], 'T'],
+        'i:C': [[XR - 50, YM - 30], [XR - 50, YM + 30], 'L'], 'v:C': [[XR - 80, YM + 44], [XR - 80, YM - 44], 'L'],
+      },
+      nodeTag: {sw: [56, 0, 0, -16], m: [(XL1 + XRc - 45) / 2, 0, 0, 40], out: [XR - 40, 0, 0, -16], gnd: [XR / 2, H, 0, 40]},
+      loops: {cw: loopCW, ccw: loopCW.slice().reverse()},
+      sw: {},
+    };
+  },
+  onRun(S) {
+    const T0 = S.T;
+    if (S.mode === 'per') { nperLbl.textContent = 'スイッチング周期の数'; winSub.textContent = `t = 0 で電流 0・vC = 0 から ${S.periods} 周期（T = ${fmtSI(1 / S.p.f, 's', 3)}）`; }
+    else { nperLbl.textContent = '振動の周期の数'; winSub.textContent = `定常状態の${S.mode === 'rise' ? '立ち上がり' : '立ち下がり'}の始まりを t = 0 とする（振動の周期 ${fmtP('s')(T0)}）`; }
+  },
+  state(S, k, MET) {
+    const p = S.p, ph = S.ph[k], i = S.i[k], v = S.v[k], u = S.u[k];
+    const fr = Math.abs(i) / Math.max(1e-15, MET.iMax);
+    const target = ph <= 1 ? p.V0 : 0;
+    const ring = (ph === 1 || ph === 3) && Math.abs(v - target) > 0.002 * p.V0;
+    let html;
+    if (ph === 0) html = `<span class="sw-on">v<sub>sw</sub> が立ち上がり中</span>（<span class="eq">t<sub>r</sub></span> の間に 0 → <span class="eq">V<sub>0</sub></span>）。`;
+    else if (ph === 2) html = `<span class="sw-on">v<sub>sw</sub> が立ち下がり中</span>（<span class="eq">t<sub>r</sub></span> の間に <span class="eq">V<sub>0</sub></span> → 0）。`;
+    else html = `<span class="${ph === 1 ? 'sw-on' : 'sw-off'}">v<sub>sw</sub> = ${ph === 1 ? '<span class="eq">V<sub>0</sub></span>' : '0'}</span>：`;
+    if (ring) html += `L と C の間でエネルギーが行き来して、<span class="eq">v<sub>C</sub></span> が ${ph === 1 ? '<span class="eq">V<sub>0</sub></span>' : '0 V'} のまわりで振動している（リンギング）。`;
+    else if (ph === 1 || ph === 3) html += `振動はおさまり、<span class="eq">v<sub>C</sub></span> = ${ph === 1 ? '<span class="eq">V<sub>0</sub></span>' : '0'}、電流はほぼ 0。`;
+    if (fr > 0.003) html += i > 0 ? ' 電流は 電源 → L → R → C の向き（C を充電）。' : ' 電流は C → R → L → 電源 の向き（C が放電）。';
+    return {loops: fr > 0.003 ? [[i > 0 ? 'cw' : 'ccw', fr]] : [], html};
+  },
+  metricsHtml(S, m) {
+    const p = S.p, f0 = f0Of(p), A = ampTh(p), zeta2 = p.R * p.R * p.C / (4 * p.L);
+    // ok === false（式の前提が崩れている）でも、式と 2 % 以内なら今までどおり「一致」。外れたときだけ理由（note）を出す
+    const row = (nm, sim, eq, val, unit, ok, note = '') => `<tr><td>${nm}</td><td class="num">${sim == null ? '—' : fmtP(unit, 4)(sim)}</td><td class="eq">${eq}</td><td class="num">${val == null ? '—' : fmtP(unit, 4)(val)}</td><td>${sim == null || val == null ? note : pctDiff(sim, val) + ' ' + (ok === false && Math.abs(sim - val) > 0.02 * Math.abs(val) ? note : okMark(sim, val, 0.02))}</td></tr>`;
+    const gray = (why) => `<span style="color:var(--sub);font-weight:700">目安</span><span class="small">（${why}）</span>`;
+    // 減衰を無視した式の前提：半周期（1/(2f₀)）の間の減衰 exp(−(R/2L)·T₀/2) が小さいこと、
+    // 次の切り替え（T/2 後）までに前の振動が消えていること
+    const decHalf = 1 - Math.exp(-(p.R / (2 * p.L)) / (2 * f0)), resid = Math.exp(-(0.5 / p.f) / (2 * p.L / p.R));
+    const ampWhy = zeta2 >= 1 ? '振動しない（R が大きい）ので、減衰を無視した式は合わない'
+      : resid > 0.02 ? 'スイッチングの周期が振動の減衰する時間より短く、前の切り替えの振動が残っている'
+      : decHalf > 0.02 ? `R による減衰（半周期で ${(decHalf * 100).toFixed(0)} %）を無視した式なので、実際は小さくなる` : '';
+    let rows = `<tr><th>量</th><th>シミュレーション</th><th>授業の式</th><th>式の値</th><th>差</th></tr>`;
+    const noOsc = '<span class="ng">振動しない（R ≥ 2√(L/C)）</span>';
+    if (m.osc) {
+      rows += row('振動（リンギング）の周波数（p51）', m.fr, 'f<sub>0</sub> = 1 / (2π√(CL))', f0, 'Hz', zeta2 < 1e-3 ? undefined : false, zeta2 < 1e-3 ? '' : gray(`R が大きく、減衰振動の周波数 f<sub>0</sub>√(1 − R²C/4L) = ${fmtSI(f0 * Math.sqrt(Math.max(0, 1 - zeta2)), 'Hz', 4)} になる`));
+      rows += row('振動の周期（p51 の 0.0126 μs）', 1 / m.fr, '1 / f<sub>0</sub> = 2π√(CL)', 1 / f0, 's', zeta2 < 1e-3 ? undefined : false, zeta2 < 1e-3 ? '' : gray('同上'));
+    } else {
+      rows += row('振動（リンギング）の周波数（p51）', null, 'f<sub>0</sub> = 1 / (2π√(CL))', f0, 'Hz', false, zeta2 >= 1 ? noOsc : '振動がほぼ 0');
+    }
+    rows += row('立ち上がりの後の <span class="eq">v<sub>C</sub></span> の最大（p50・53）', m.vMax, 'V<sub>0</sub> + V<sub>0</sub>|sin(πf<sub>0</sub>t<sub>r</sub>)| / (πf<sub>0</sub>t<sub>r</sub>)', p.V0 + A, 'V', ampWhy ? false : undefined, ampWhy ? gray(ampWhy) : '');
+    rows += row('<span class="eq">v<sub>C</sub></span> の最大 − 最小（p49・52 の山から谷まで）', m.vMax - m.vMin, 'V<sub>0</sub> + 2V<sub>0</sub>|sin(πf<sub>0</sub>t<sub>r</sub>)| / (πf<sub>0</sub>t<sub>r</sub>)', p.V0 + 2 * A, 'V', ampWhy ? false : undefined, ampWhy ? gray('同上') : '');
+    if (m.osc && m.tauD) rows += row('振動が 1/e になる時間（参考：スライドに式なし）', m.tauD, '2L / R', 2 * p.L / p.R, 's');
+    const sub = `定常状態の立ち上がり・立ち下がりの後で計算（R による減衰を無視した式）。` + (S.trClamped ? ` <span class="ng">t<sub>r</sub> が長すぎるので 0.4T にしています</span>` : '') +
+      (S.mode === 'per' && !S.steadyReached ? ` <span class="ng">表示の ${S.periods} 周期ではまだ振動が収まっていません</span>` : '');
+    return {rows, sub};
+  },
+});
+
+function showMode() { modeBtns.forEach(b => b.classList.toggle('on', b.dataset.v === mode)); }
+function setMode(m, a, win) {
+  mode = m; showMode();
+  if (win || m === 'per') { const b = document.querySelector(`#win button[data-w="${win || 'all'}"]`); if (b) b.click(); }
+  else document.querySelector('#win button[data-w="all"]').click();
+  a.schedule();
+}
+})();
+</script>
+</body>
+</html>

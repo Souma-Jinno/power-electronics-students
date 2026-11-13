@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>第2回 演習問題 — パワーエレクトロニクス</title>
+  <style>
+
+    :root {
+      --accent: #1a73e8;
+      --accent-light: #e8f0fe;
+      --text: #202124;
+      --text-secondary: #5f6368;
+      --surface: #ffffff;
+      --bg: #f8f9fa;
+      --border: #dadce0;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
+      --shadow-hover: 0 4px 12px rgba(26,115,232,0.18);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Sans', 'Noto Sans JP', 'Meiryo', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    a { color: inherit; text-decoration: none; }
+    header {
+      background: var(--accent);
+      color: #fff;
+      padding: 18px 20px 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+    }
+    header .subtitle {
+      font-size: 0.78rem;
+      opacity: 0.85;
+      margin-top: 2px;
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+    footer {
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      padding: 20px 16px;
+      border-top: 1px solid var(--border);
+      margin-top: 24px;
+    }
+
+    header h1 { font-size: 1.05rem; font-weight: 700; line-height: 1.4; }
+    header .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.8rem;
+      opacity: 0.88;
+      margin-bottom: 8px;
+    }
+    header .back-link:hover { opacity: 1; }
+    .lesson-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .lesson-num {
+      font-size: 0.8rem;
+      color: var(--accent);
+      font-weight: 700;
+      border: 1.5px solid var(--accent);
+      border-radius: 6px;
+      padding: 2px 10px;
+    }
+    .cat-badge {
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 20px;
+      background: #d8f5f6;
+      color: #0d7377;
+    }
+    .ch-count {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+    }
+    .video-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+    .ch-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px 10px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .ch-num {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--accent-light);
+      padding: 2px 9px;
+      border-radius: 5px;
+      white-space: nowrap;
+    }
+    .ch-title {
+      font-size: 0.93rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    video {
+      display: block;
+      background: #000;
+    }
+    .render-note {
+      padding: 20px 16px;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+    .back-bottom {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      padding: 10px 20px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      transition: opacity 0.15s;
+    }
+    .back-bottom:hover { opacity: 0.88; }
+  </style>
+  <script>
+    window.MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+  <style>
+    .notice {
+      background: var(--accent-light); border-left: 4px solid var(--accent);
+      border-radius: 8px; padding: 12px 16px; margin: 16px 0 24px;
+      font-size: 0.86rem; color: var(--text);
+    }
+    .notice ul, .aims ul { margin: 6px 0 0; padding-left: 1.2em; }
+    .notice li, .aims li { margin: 3px 0; }
+    /* 理解度の箱。提出についての青枠と並ぶので、こちらは枠線だけにして
+       区別をつける（2026-09-25）。 */
+    .aims {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px 18px; margin: 0 0 28px;
+      font-size: 0.86rem; color: var(--text-secondary);
+    }
+    .aims > p { margin: 0 0 4px; color: var(--text); font-weight: 600; }
+    .aims h3 { font-size: 0.88rem; margin: 14px 0 2px; color: var(--text); }
+    .aims h3:first-of-type { margin-top: 10px; }
+    .q { margin: 32px 0; }
+    .q h2 { font-size: 1.05rem; margin-bottom: 8px; }
+    .q .lead { margin: 0 0 14px; }
+    .q figure { margin: 0 0 14px; text-align: center; }
+    .q figure img { max-width: 100%; height: auto; }
+    .q ol { padding-left: 1.4em; }
+    .q ol li { margin: 10px 0; }
+  </style>
+  <style>
+    /* 小問の番号は (1)(2)… で出す */
+    ol, .q ol { list-style: none; counter-reset: sub; padding-left: 2.2em; }
+    ol > li { counter-increment: sub; position: relative; }
+    ol > li::before { content: "(" counter(sub) ")"; position: absolute; left: -2.2em; }
+    .q h3 { font-size: 0.95rem; margin: 24px 0 8px; }
+    .q .eq { margin: 4px 0 14px; overflow-x: auto; }
+    .q ul { padding-left: 1.4em; }
+    .q ul > li { margin: 12px 0; }
+    .q li > .lead:last-child { margin-bottom: 0; }
+    /* 元の図は 1000〜1900px あり、幅いっぱいだと大きすぎるので抑える */
+    .q figure img { max-width: min(100%, 600px); }
+  </style>
+<script>
+if (!/github\.io$/.test(location.hostname)) document.addEventListener("DOMContentLoaded", () => {
+  const b = document.createElement("div");
+  b.textContent = "確認用（Mac mini の作業中の版）。学生に見えるのは git push した後です";
+  b.style.cssText = "background:#fff3cd;color:#664d03;border-bottom:1px solid #e0c36a;padding:6px 12px;font-size:14px;text-align:center";
+  document.body.prepend(b);
+});
+</script>
+</head>
+<body>
+  <header>
+    <a class="back-link" href="../index.html">← 科目のページへ戻る</a>
+    <h1>第2回 演習問題</h1>
+    <div class="subtitle">半導体の物理 / パワーエレクトロニクス / 大阪工業大学</div>
+  </header>
+  <main>
+    <div class="lesson-meta">
+      <span class="lesson-num">第2回</span>
+      <span class="cat-badge">演習問題</span>
+      <span class="ch-count">全3問</span>
+    </div>
+    <div class="notice">
+      <strong>提出について</strong>
+      <ul><li>解答用紙は各自で準備すること。コピー用紙でも構いません。</li><li>解答用紙の左上に第何回目の授業の演習問題かを記入し、右上には自分の学生番号と名前を記入する。</li><li>解答用紙を写真で撮って、Google Classroom の演習問題の該当先に提出する。</li></ul>
+    </div>
+    <div class="aims">
+      <p>この演習問題は、下記の理解度を確認することを目的としています。</p>
+    <h3>問題1：pn接合の形成過程</h3>
+    <ul><li>接合前の p型・n型半導体のバンド図を描き、それを使って接合直後のキャリアの動きと、その結果できる領域を説明できるか。</li><li>平衡状態でバンドが曲がる理由と、フェルミ準位が空間的に一定になる理由を説明できるか。</li></ul>
+    <h3>問題2：バイポーラトランジスタのバンド構造</h3>
+    <ul><li>n型・p型・n型の接合について、熱平衡状態のバンド構造を描けるか。</li></ul>
+    <h3>問題3：バイポーラトランジスタの順方向バイアス</h3>
+    <ul><li>E-B 間に順方向バイアス、B-C 間に逆バイアスをかける電圧源の向きを判断できるか。</li><li>バイアスをかけたときのエネルギーバンド図を、$E_{c},E_{F},E_{v}$ と $V_{d}$、$V$ を使って描けるか。</li></ul>
+    </div>
+    <section class="q">
+      <h2>問題１：pn接合の形成過程</h2>
+      <p class="lead">p型半導体とn型半導体を接合して平衡状態になるまでの過程を説明するために、以下の(1)、(2)の問いに答えなさい。</p>
+      <ol>
+        <li>接合した直後に何が起こるかを、エネルギーバンド図を描いて説明しなさい。バンド図は、接合する直前のp型半導体とn型半導体のそれぞれについて、伝導帯の下端$E_c$、価電子帯の上端$E_v$、フェルミ準位$E_F$の位置関係が分かるように描き、それを使ってキャリア（電子と正孔）がどちらへ動くかを示すこと。また、その結果として接合界面付近に形成される領域を何と呼ぶか。</li>
+        <li>最終的な平衡状態におけるpn接合のエネルギーバンド図を描きなさい。なぜバンドが曲がるのか、そしてなぜフェルミ準位は空間的に一定になるのかを説明しなさい。</li>
+      </ol>
+      <p class="lead">(1)、(2)のバンド図には、電子（●）、正孔（○）、ドナーイオン（⊕）、アクセプタイオン（⊖）も描き込むこと。どこに、どれだけあるかが分かるように描く。書き方の例（真性半導体）を下に示す。</p>
+      <figure><img src="img/pe02_band_example.png" alt="書き方の例：真性半導体のバンド図に、伝導帯の電子●と価電子帯の正孔○を描いたもの。右に記号の凡例"></figure>
+      <p class="lead">(1)、(2)のバンド図は、下の枠を解答用紙に写して描き込んでよい。</p>
+      <figure><img src="img/pe02_band_template_pn.png" alt="解答用の枠：上に p型半導体・n型半導体の箱、境界の点線、縦軸は電子のエネルギー"></figure>
+    </section>
+    <section class="q">
+      <h2>問題２：バイポーラトランジスタのバンド構造</h2>
+      <p class="lead">下図は、トランジスタなどに用いられるバイポーラトランジスタの構造である。<br>この時の熱平衡状態におけるバンド構造を図示せよ。*n型・p型・n型半導体の接合のみで良い。</p>
+      <figure><img src="img/pe02_q2_npn_structure.png" alt="E・B・C の端子がついた n・p・n の3層構造"></figure>
+      <p class="lead">下の枠を解答用紙に写して、バンド図を描き込んでよい。</p>
+      <figure><img src="img/pe02_band_template_npn.png" alt="解答用の枠：上に n（E）・p（B）・n（C）の箱、境界の点線、縦軸は電子のエネルギー"></figure>
+    </section>
+    <section class="q">
+      <h2>問題３：バイポーラトランジスタの順方向バイアス</h2>
+      <p class="lead">バイポーラトランジスタはE(エミッタ)-B(ベース)間に順方向バイアス、B(ベース)-C(コレクタ)間に逆バイアスをかけると、電子をE(エミッタ)からC(コレクタ)に流すことができる。この時の電圧源はどのような向きで接続すれば良いか。下図の四角に電圧源を向きがわかるように記入せよ。</p>
+      <figure><img src="img/pe02_q3_bias_circuit.png" alt="npn の E-B 間と B-C 間に、電圧源を記入する空欄の四角が2つある回路"></figure>
+      <p class="lead">この時のエネルギーバンド図を図示せよ。エネルギーバンドは$E_{c},E_{F},E_{v}$がわかるように明記せよ。ここで、拡散電位を$V_{d}$、印加した二つの電圧源の電圧を$V$とする。</p>
+      <p class="lead">問題２と同じく、下の枠を使ってよい。</p>
+      <figure><img src="img/pe02_band_template_npn.png" alt="解答用の枠：上に n（E）・p（B）・n（C）の箱、境界の点線、縦軸は電子のエネルギー"></figure>
+    </section>
+  </main>
+  <footer>パワーエレクトロニクス（2026年度） ｜ 神野 崇馬</footer>
+</body>
+</html>

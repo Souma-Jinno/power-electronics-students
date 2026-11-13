@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>リニアレギュレータのシミュレーター — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<header>
+  <nav class="hnav"><a href="../index.html">← 科目のページへ戻る</a><a href="index.html">回路を選ぶ（シミュレーターの一覧）</a></nav>
+  <h1>リニアレギュレータ（基準電圧源・ツェナーダイオードとトランジスタ）のシミュレーター</h1>
+  <div class="subtitle">パワーエレクトロニクス 第7回 直流-直流変換（３） p9〜10・p16〜18・p21〜22 / 大阪工業大学</div>
+</header>
+<main>
+  <div class="notice">
+    回路図の<b>線（節点）をクリック</b>すると、その点の電位（GND を 0 V とする）が下のグラフに出ます。
+    <b>素子をクリック</b>すると、その素子の電流が出ます（矢印の向きが正）。トランジスタは、<b>本体</b>がコレクタ電流 <span class="eq">I<sub>c</sub></span>（両端の電圧は <span class="eq">V<sub>CE</sub></span>）、<b>ベースの足</b>がベース電流 <span class="eq">I<sub>b</sub></span>（両端の電圧は <span class="eq">V<sub>BE</sub></span>）、<b>エミッタの足</b>が出力の電流 <span class="eq">I<sub>out</sub></span> です。
+    入力の電圧 <span class="eq">V<sub>0</sub></span> に<b>リプル</b>（整流した後の脈動を想定した 120 Hz の正弦波）をのせると、出力がほとんど揺れないこと（p4「ノイズが小さい」）と、入力が下がりすぎるとトランジスタが飽和して出力が崩れることが見られます。
+  </div>
+
+  <div class="top">
+    <section class="card">
+      <div class="card-h">
+        <span class="ttl">回路</span>
+        <span class="small">素子をクリックしたとき：</span>
+        <span class="seg" id="emode"><button data-m="i" class="on">電流</button><button data-m="v">両端の電圧</button></span>
+      </div>
+      <svg id="sch" viewBox="-120 -92 820 430" aria-label="リニアレギュレータの回路図"></svg>
+      <div id="state"></div>
+    </section>
+
+    <section class="card params">
+      <div class="card-h"><span class="ttl">回路の値</span></div>
+      <div class="card-b" id="params"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-h">
+      <span class="ttl">波形</span>
+      <span class="seg" id="win">
+        <button data-w="all">最初から最後まで</button><button data-w="first">最初</button><button data-w="last" class="on">最後</button>
+      </span>
+    </div>
+    <div class="ctl">
+      <button id="play">▶ 再生</button>
+      <label>速さ <select id="speed"><option value="0.25">×0.25</option><option value="0.5">×0.5</option><option value="1" selected>×1</option><option value="2">×2</option><option value="4">×4</option></select></label>
+      <label id="nper">リプルの周期の数 <select id="nP"><option>1</option><option selected>2</option><option>3</option></select></label>
+      <label>グラフ <select id="lay"><option value="vi">電圧と電流の2段</option><option value="each">1本ずつ別の段</option></select></label>
+    </div>
+    <div class="scrubrow"><input type="range" id="scrub" min="0" max="10000" value="0" aria-label="時刻"><span class="tc" id="tc"></span></div>
+    <div id="legend"></div>
+    <div id="plotwrap"><canvas id="plot"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">定常状態の値と、授業の式の比較</span><span class="small" id="msub"></span></div>
+    <div class="card-b" style="overflow-x:auto"><table class="m" id="metrics"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">このシミュレーターの前提</span></div>
+    <div class="card-b">
+      <ul class="notes">
+        <li>コイルもコンデンサも無いので、各時刻の値はその時刻の入力の電圧 <span class="eq">V<sub>0</sub>(t) = V<sub>0</sub> + ΔV<sub>0</sub> sin(2π·120 t)</span> だけで決まります（起動の過渡はありません）。<span class="eq">ΔV<sub>0</sub> = 0</span> なら、どの時刻も同じ値です。表は最後の 1 周期（1/120 s）の平均です。</li>
+        <li><b>授業の計算（VBE・h 一定）</b>：p16〜18 と同じく <span class="eq">V<sub>BE</sub></span> を一定、<span class="eq">h = I<sub>c</sub> / I<sub>b</sub></span> を一定とします（<span class="eq">I<sub>out</sub> = I<sub>c</sub> + I<sub>b</sub></span>）。<span class="eq">V<sub>CE</sub></span> が 0.2 V より小さくなる所は飽和（p13）として、<span class="eq">V<sub>out</sub> = V<sub>0</sub> − 0.2 V</span> で止めます（このモデルでは飽和したときのベース電流は正しくありません）。ツェナーは <span class="eq">V<sub>Z</sub> = 4.7 V</span>（1N750 の公称値）で一定、逆向きには電流を流さない、とします。</li>
+        <li><b>2N2222・1N750 のモデル</b>：p21〜22 の LTspice と同じ素子の値（LTspice の標準ライブラリ。2N2222：IS = 10<sup>−14</sup> A、BF = 200、BR = 3、IKF = 0.3 A、VAF = 100 V、RB = 10 Ω、RC = 0.3 Ω、RE = 0.2 Ω。1N750：BV = 4.7 V、IBV = 20.245 mA、NBV = 1.7、RS = 0.25 Ω）で、直流の式（ガンメル・プーンのモデルの簡略形、27 °C）を解いています。電流が大きいほど <span class="eq">V<sub>BE</sub></span> が大きくなり、<span class="eq">h</span> は小さくなります（BF = 200 でも、0.37 A では約 97）。</li>
+        <li>p21 の LTspice の値（<span class="eq">V<sub>Z</sub></span> = 4.6604 V）と、このモデルの値（4.669 V）は約 9 mV 違います。ツェナーのモデルの細部（LTspice が降伏の式に使う補正）の違いで、<span class="eq">V<sub>out</sub></span> では 0.2 % の差です。負荷を変えたときの変化の幅（p22：<span class="eq">V<sub>out</sub></span> 約 0.2 V、<span class="eq">V<sub>Z</sub></span> 約 0.02 V、<span class="eq">V<sub>BE</sub></span> 約 0.18 V）は一致します。</li>
+        <li>基準電圧源は理想の電池です。p9 の「電流は供給できない」は「負荷の電流を流す役ではない」という意味で、このシミュレーターではベース電流 <span class="eq">I<sub>b</sub></span> だけが基準電圧源を流れます。効率の式（p18）は <span class="eq">η = V<sub>out</sub>I<sub>out</sub> / (V<sub>0</sub> × 入力の電流)</span> で、シミュレーションの η は（出力の電力）／（電源 <span class="eq">V<sub>0</sub></span> と基準電圧源が出す電力の和）です。</li>
+        <li>スライド p9・p10 の <span class="eq">V<sub>CE</sub></span> の矢印は矢じりがエミッタ側ですが、高電位はコレクタ側なので、この図では p16 と同じくコレクタ側に矢じりを描いています。</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<footer>パワーエレクトロニクス ｜ 神野 崇馬 ｜ 試作版</footer>
+<div id="tip"></div>
+
+<script>
+// ==SIM-BEGIN==
+const VT27 = 0.025865; // 27 °C の熱電圧 kT/q [V]
+/** 2N2222（LTspice standard.bjt）の直流モデルの値 */
+const Q2N2222 = {IS: 1e-14, BF: 200, BR: 3, IKF: 0.3, VAF: 100, RB: 10, RC: 0.3, RE: 0.2};
+/** 1N750（LTspice standard.dio）の降伏側の値：Iz = IBV exp((v − BV)/(NBV VT))、直列抵抗 RS */
+const D1N750 = {BV: 4.7, IBV: 20.245e-3, NBV: 1.7, RS: 0.25};
+const limv = (x, a) => Math.max(-a, Math.min(a, x));
+/** npn の内部の接合の電圧 u = vBE、w = vBC から、コレクタ・ベース・エミッタの電流（ガンメル・プーンの簡略形） */
+function bjtI(Q, u, w) {
+  const If = Q.IS * (Math.exp(Math.min(u, 1.2) / VT27) - 1), Ir = Q.IS * (Math.exp(Math.min(w, 1.2) / VT27) - 1);
+  const q1 = 1 / (1 - w / Q.VAF), q2 = If / Q.IKF, qb = q1 / 2 * (1 + Math.sqrt(1 + 4 * Math.max(q2, 0)));
+  const ic = (If - Ir) / qb - Ir / Q.BR, ib = If / Q.BF + Ir / Q.BR;
+  return {ic, ib, ie: ic + ib};
+}
+/** ツェナーの端子の電圧 v（カソードが＋）→ 降伏の電流（カソード → アノードが正）。RS を含めてニュートン法 */
+function zenerI(Z, v) {
+  if (v <= 0) return 0;
+  let i = Math.max(1e-12, Z.IBV * Math.exp(Math.min(0, (v - Z.BV) / (Z.NBV * VT27))));
+  for (let it = 0; it < 60; it++) {
+    const vj = v - Z.RS * i, g = Z.IBV * Math.exp((vj - Z.BV) / (Z.NBV * VT27));
+    const F = i - g, dF = 1 + Z.RS * g / (Z.NBV * VT27);
+    let di = -F / dF;
+    if (i + di <= 0) di = -i / 2;
+    i += di;
+    if (Math.abs(di) < 1e-15 + 1e-12 * i) break;
+  }
+  return i;
+}
+/**
+ * エミッタフォロワ（npn のコレクタは V0、エミッタに負荷 RL）の動作点。
+ * base = {kind: 'v', Vb}（ベースの電位を与える）か {kind: 'z', Rz, Z}（V0 から Rz を通してベースへ、ベースはツェナーで接地）
+ * 戻り値: Vb, Ve, Ic, Ib, Ie, Iz, u, w（内部の vBE・vBC。次の計算の初期値に使う）
+ */
+function emFollower(Q, V0, RL, base, guess) {
+  if (base.kind === 'z') {
+    // ベースの電位 Vb を二分法で：(V0 − Vb)/Rz − Ib − Iz は Vb について単調に減る
+    let lo = 0, hi = Math.max(V0, 0), g = guess, o = null;
+    for (let it = 0; it < 60; it++) {
+      const m = (lo + hi) / 2;
+      o = emFollower(Q, V0, RL, {kind: 'v', Vb: m}, g);
+      g = o;
+      if ((V0 - m) / base.Rz - o.Ib - zenerI(base.Z, m) > 0) lo = m; else hi = m;
+    }
+    o = emFollower(Q, V0, RL, {kind: 'v', Vb: (lo + hi) / 2}, g);
+    o.Iz = zenerI(base.Z, o.Vb);
+    return o;
+  }
+  let u = guess ? guess.u : 0.7, w = guess ? guess.w : -3;
+  const res = (u, w) => {
+    const c = bjtI(Q, u, w);
+    const Ve = c.ie * RL, Vbi = Ve + Q.RE * c.ie + u, Vb = Vbi + Q.RB * c.ib, Vc = Vbi - w + Q.RC * c.ic;
+    return [Vc - V0, Vb - base.Vb, c, Ve, Vb];
+  };
+  for (let it = 0; it < 200; it++) {
+    const [f1, f2] = res(u, w), d = 1e-7;
+    const [a1, a2] = res(u + d, w), [b1, b2] = res(u, w + d);
+    const J11 = (a1 - f1) / d, J12 = (b1 - f1) / d, J21 = (a2 - f2) / d, J22 = (b2 - f2) / d, det = J11 * J22 - J12 * J21;
+    let du = (-f1 * J22 + f2 * J12) / det, dw = (-J11 * f2 + J21 * f1) / det;
+    if (!isFinite(du) || !isFinite(dw)) { du = 0; dw = 0; }
+    du = limv(du, 0.05); dw = limv(dw, 1);
+    u += du; w += dw;
+    if (Math.abs(du) < 1e-12 && Math.abs(dw) < 1e-10) break;
+  }
+  const [, , c, Ve, Vb] = res(u, w);
+  return {u, w, Vb, Ve, Ic: c.ic, Ib: c.ib, Ie: c.ie, Iz: 0};
+}
+/**
+ * 授業の計算（VBE 一定・h 一定）の動作点。ref: 'v'（基準電圧源 Vref）か 'z'（理想ツェナー VZ = 4.7 V と Rz）
+ * VCE < 0.2 V になる所は飽和として Vout = V0 − 0.2 V で止める
+ */
+function idealOp(p, V0) {
+  const VCS = 0.2, h = p.h, VBE = p.VBE;
+  let Vb, Ve, Ib, Iz = 0, sat = false;
+  if (p.ref === 'v') { Vb = p.Vref; Ve = Vb - VBE; }
+  else {
+    const VZ = 4.7;
+    Ve = VZ - VBE; Ib = Math.max(0, Ve) / p.R / (h + 1); Vb = VZ;
+    Iz = (V0 - VZ) / p.Rz - Ib;
+    if (Iz < 0) { Iz = 0; Ib = Math.max(0, (V0 - VBE) / (p.Rz + p.R * (h + 1))); Ve = Ib * p.R * (h + 1); Vb = V0 - p.Rz * Ib; }
+  }
+  if (Ve < 0) Ve = 0;
+  if (V0 - Ve < VCS) { Ve = Math.max(0, V0 - VCS); sat = true; }
+  const Ie = Ve / p.R;
+  Ib = Ie / (h + 1);
+  if (p.ref === 'z' && Iz > 0) Iz = Math.max(0, (V0 - Vb) / p.Rz - Ib);
+  return {Vb, Ve, Ic: h * Ib, Ib, Ie, Iz, sat};
+}
+/**
+ * リニアレギュレータ。p = {V0, dV（リプルの振幅）, Vref, VBE, h, Rz, R, ref: 'v'|'z', model: 'ideal'|'q'}
+ * 入力 V0(t) = V0 + dV sin(2π·120 t)。リプルの 4 周期を 1 周期 240 点で計算する。
+ * 戻り値: t, v0, vb, ve, ic, ib, ie, iz, irz（Rz の電流）, sat（1 = 飽和）, T, periods, p
+ */
+function simulateLinreg(p) {
+  const fr = 120, T = 1 / fr, periods = 4, N = 240;
+  const n = periods * N + 1;
+  const A = {t: new Float64Array(n), v0: new Float64Array(n), vb: new Float64Array(n), ve: new Float64Array(n), ic: new Float64Array(n),
+    ib: new Float64Array(n), ie: new Float64Array(n), iz: new Float64Array(n), irz: new Float64Array(n), sat: new Uint8Array(n)};
+  let g = null, last = null, lastV0 = NaN;
+  for (let k = 0; k < n; k++) {
+    const t = k * T / N, V0 = p.V0 + p.dV * Math.sin(2 * Math.PI * fr * t);
+    let o;
+    if (V0 === lastV0) o = last;
+    else if (p.model === 'ideal') o = idealOp(p, V0);
+    else {
+      o = emFollower(Q2N2222, V0, p.R, p.ref === 'v' ? {kind: 'v', Vb: p.Vref} : {kind: 'z', Rz: p.Rz, Z: D1N750}, g);
+      g = o;
+      o.sat = o.w > 0.4; // ベース・コレクタ接合が順方向（飽和領域）
+    }
+    last = o; lastV0 = V0;
+    A.t[k] = t; A.v0[k] = V0; A.vb[k] = o.Vb; A.ve[k] = o.Ve; A.ic[k] = o.Ic; A.ib[k] = o.Ib; A.ie[k] = o.Ie; A.iz[k] = o.Iz;
+    A.irz[k] = p.ref === 'z' ? (V0 - o.Vb) / p.Rz : 0; A.sat[k] = o.sat ? 1 : 0;
+  }
+  return Object.assign(A, {T, periods, p: Object.assign({D: 0}, p)});
+}
+/** 最後の 1 周期の平均（台形） */
+function linregMetrics(S) {
+  const n = S.t.length, t0 = S.t[n - 1] - S.T;
+  let k0 = 0;
+  while (k0 < n && S.t[k0] < t0 - 1e-12) k0++;
+  const avg = (f) => { let s = 0; for (let k = k0 + 1; k < n; k++) s += (f(k) + f(k - 1)) / 2 * (S.t[k] - S.t[k - 1]); return s / (S.t[n - 1] - S.t[k0]); };
+  const mx = (f) => { let m = -Infinity; for (let k = k0; k < n; k++) m = Math.max(m, f(k)); return m; };
+  const mn = (f) => { let m = Infinity; for (let k = k0; k < n; k++) m = Math.min(m, f(k)); return m; };
+  const p = S.p, Vr = p.ref === 'v';
+  let satN = 0;
+  for (let k = k0; k < n; k++) satN += S.sat[k];
+  const M = {
+    v0: avg(k => S.v0[k]), vb: avg(k => S.vb[k]), ve: avg(k => S.ve[k]), ic: avg(k => S.ic[k]), ib: avg(k => S.ib[k]), ie: avg(k => S.ie[k]),
+    iz: avg(k => S.iz[k]), irz: avg(k => S.irz[k]),
+    vbe: avg(k => S.vb[k] - S.ve[k]), vce: avg(k => S.v0[k] - S.ve[k]),
+    pout: avg(k => S.ve[k] * S.ie[k]), pq: avg(k => (S.v0[k] - S.ve[k]) * S.ic[k] + (S.vb[k] - S.ve[k]) * S.ib[k]), pqce: avg(k => (S.v0[k] - S.ve[k]) * S.ic[k]),
+    pin: avg(k => S.v0[k] * (S.ic[k] + S.irz[k]) + (Vr ? S.vb[k] * S.ib[k] : 0)),
+    veMax: mx(k => S.ve[k]), veMin: mn(k => S.ve[k]), v0Max: mx(k => S.v0[k]), v0Min: mn(k => S.v0[k]),
+    satFrac: satN / (n - k0),
+  };
+  return M;
+}
+// ==SIM-END==
+</script>
+<script src="common.js"></script>
+<script>
+(() => {
+'use strict';
+// 座標（p16・p21 の図と同じ並び：左に電源、上にトランジスタ（左がコレクタ、右がエミッタ）、下にベース、右に負荷）
+const X = {B: 0, L: 150, Q: 330, R: 590}, Y = {T: 0, bar: 60, bz: 125, rf: 182, H: 300, M: 150};
+const CB = COL.fuchsia, CHEAT = '#db2777';
+let refSel = 'v', modelSel = 'ideal';
+let gRef = null, gZen = null, gZenW = null;
+// スライドの値（p21 は LTspice の数値、p22 は図の目盛りから読んだ値）
+const SLIDE = {
+  10: {VZ: 4.660448, VBE: 0.938959, Vout: 3.721488, Ic: 0.3683584, Ib: 3.790468e-3, pg: 'p21'},
+  50: {VZ: 4.6766, VBE: 0.792, Vout: 3.884, pg: 'p22（目盛りから読んだ値）'},
+  100: {VZ: 4.6775, VBE: 0.762, Vout: 3.915, pg: 'p22（目盛りから読んだ値）'},
+};
+const vbe = (S, k) => S.vb[k] - S.ve[k];
+
+SimApp({
+  pdef: [
+    {k: 'V0', b: 'V', s: '0', up: true, title: '入力の電圧（平均）', min: 1, max: 30, step: 0.1, log: false, unit: 'V', def: 10},
+    {k: 'dV', b: 'ΔV', s: '0', up: true, title: '入力のリプルの振幅（120 Hz の正弦波）', min: 0, max: 5, step: 0.1, log: false, unit: 'V', def: 0, fmt: (x) => x.toFixed(1) + ' V'},
+    {k: 'Vref', b: 'V', s: 'ref', up: true, title: '基準電圧源の電圧', min: 1, max: 15, step: 0.1, log: false, unit: 'V', def: 6, fmt: (x) => x.toFixed(1) + ' V'},
+    {k: 'VBE', b: 'V', s: 'BE', up: true, title: 'ベース・エミッタ間の電圧（授業の計算で一定とする値）', min: 0.5, max: 1.5, step: 0.05, log: false, unit: 'V', def: 1.0, fmt: (x) => x.toFixed(2) + ' V'},
+    {k: 'h', b: 'h', s: '', title: 'h = Ic / Ib（授業の計算で一定とする値）', min: 10, max: 500, log: true, unit: '', def: 100, fmt: (x) => String(Math.round(x))},
+    {k: 'Rz', b: 'R', s: 'Z', up: true, title: 'ツェナーに電流を流す抵抗', min: 50, max: 5000, log: true, unit: 'Ω', def: 400},
+    {k: 'R', b: 'R', s: 'L', up: true, title: '負荷の抵抗', min: 1, max: 1000, log: true, unit: 'Ω', def: 10},
+  ],
+  extraParams(el, app) {
+    const mk = (label, opts, get, set) => {
+      const d = document.createElement('div');
+      d.className = 'crow';
+      d.style.flexWrap = 'wrap';
+      d.innerHTML = `<span style="min-width:5.6em">${label}</span><span class="seg">${opts.map(([v, t]) => `<button data-v="${v}">${t}</button>`).join('')}</span>`;
+      const bs = d.querySelectorAll('button');
+      const show = () => bs.forEach(b => b.classList.toggle('on', b.dataset.v === String(get())));
+      bs.forEach(b => b.onclick = () => { set(b.dataset.v); show(); refresh(); app.schedule(); });
+      el.insertBefore(d, el.firstChild);
+      return show;
+    };
+    const refresh = () => {
+      const sh = (k, on) => { app.sliders[k].row.style.display = on ? '' : 'none'; };
+      sh('Vref', refSel === 'v'); sh('Rz', refSel === 'z');
+      sh('VBE', modelSel === 'ideal'); sh('h', modelSel === 'ideal');
+    };
+    const s2 = mk('トランジスタ', [['ideal', '授業の計算（V<sub>BE</sub>・h 一定）'], ['q', '2N2222 のモデル']], () => modelSel, (v) => { modelSel = v; });
+    const s1 = mk('基準電圧', [['v', '基準電圧源 V<sub>ref</sub>（p9・p16）'], ['z', 'ツェナー 1N750（p21）']], () => refSel, (v) => { refSel = v; });
+    app.refreshSel = () => { s1(); s2(); refresh(); };
+    app.refreshSel();
+  },
+  presets: [
+    {name: 'p16〜18：Vref 6.0 V・VBE 1.0 V・h = 100', v: {V0: 10, dV: 0, Vref: 6, VBE: 1.0, h: 100, R: 10}, apply: (a) => { refSel = 'v'; modelSel = 'ideal'; a.refreshSel(); }},
+    {name: 'p21：ツェナー・負荷 10 Ω', v: {V0: 10, dV: 0, Rz: 400, R: 10}, apply: (a) => { refSel = 'z'; modelSel = 'q'; a.refreshSel(); }},
+    {name: 'p22：負荷 50 Ω', v: {V0: 10, dV: 0, Rz: 400, R: 50}, apply: (a) => { refSel = 'z'; modelSel = 'q'; a.refreshSel(); }},
+    {name: 'p22：負荷 100 Ω', v: {V0: 10, dV: 0, Rz: 400, R: 100}, apply: (a) => { refSel = 'z'; modelSel = 'q'; a.refreshSel(); }},
+    {name: '入力にリプル（10 V ± 2 V）', v: {V0: 10, dV: 2, Rz: 400, R: 10}, apply: (a) => { refSel = 'z'; modelSel = 'q'; a.refreshSel(); }},
+    {name: '入力が下がりすぎる（7 V ± 3 V）', v: {V0: 7, dV: 3, Vref: 6, R: 10}, apply: (a) => { refSel = 'v'; modelSel = 'q'; a.refreshSel(); }},
+  ],
+  simulate: (P) => simulateLinreg({V0: P.V0, dV: P.dV, Vref: P.Vref, VBE: P.VBE, h: P.h, Rz: P.Rz, R: P.R, ref: refSel, model: modelSel}),
+  metrics: linregMetrics,
+  initWin: 'last',
+  gatePane: gateRowsPane([
+    {label: '活性領域', color: CB, on: (S, k) => !S.sat[k] && S.ic[k] > 1e-6},
+    {label: '飽和', color: COL.red, on: (S, k) => !!S.sat[k]},
+    {label: 'ツェナー', color: COL.teal, on: (S, k) => S.p.ref === 'z' && S.iz[k] > 1e-4},
+  ]),
+  probes: {
+    'n:in':  {b: 'V', s: '0', up: true, color: COL.blue, q: 'V', what: '電源の＋側の節点（コレクタ）の電位 = 入力の電圧', f: (S, k) => S.v0[k]},
+    'n:b':   {b: 'V', s: 'B', up: true, color: COL.teal, q: 'V', what: 'ベースの節点の電位（= 基準電圧 Vref、または VZ）', f: (S, k) => S.vb[k]},
+    'n:out': {b: 'V', s: 'out', up: true, color: COL.orange, q: 'V', what: '出力の節点（エミッタ）の電位 = 出力の電圧', f: (S, k) => S.ve[k]},
+    'n:gnd': {b: 'GND', s: '', color: COL.sub, q: 'V', what: '基準の節点（0 V）', f: () => 0},
+    'i:V0':  {b: 'I', s: 'in', up: true, color: COL.iin, q: 'I', what: '電源から出る電流（上向きが正）', f: (S, k) => S.ic[k] + S.irz[k]},
+    'v:V0':  {b: 'V', s: '0', up: true, color: COL.blue, q: 'V', what: '電源の電圧（上が＋）', f: (S, k) => S.v0[k]},
+    'i:Q':   {b: 'I', s: 'c', up: true, color: COL.ink, q: 'I', what: 'コレクタ電流（右向きが正）', f: (S, k) => S.ic[k]},
+    'v:Q':   {b: 'V', s: 'CE', up: true, color: COL.ink, q: 'V', what: 'コレクタ・エミッタ間の電圧（コレクタが＋）', f: (S, k) => S.v0[k] - S.ve[k]},
+    'i:B':   {b: 'I', s: 'b', up: true, color: CB, q: 'I', what: 'ベース電流（上向きが正）', f: (S, k) => S.ib[k]},
+    'v:B':   {b: 'V', s: 'BE', up: true, color: COL.ink2, q: 'V', what: 'ベース・エミッタ間の電圧（ベースが＋）', f: vbe},
+    'i:E':   {b: 'I', s: 'out', up: true, color: COL.ir, q: 'I', what: 'エミッタから出る電流 = 出力の電流（右向きが正）', f: (S, k) => S.ie[k]},
+    'i:Vr':  {b: 'I', s: 'b', up: true, color: CB, q: 'I', what: '基準電圧源の電流（上向きが正。ベース電流だけが流れる）', f: (S, k) => S.ib[k], hidden: (S) => S.p.ref !== 'v'},
+    'v:Vr':  {b: 'V', s: 'ref', up: true, color: COL.teal, q: 'V', what: '基準電圧源の電圧（上が＋）', f: (S, k) => S.vb[k], hidden: (S) => S.p.ref !== 'v'},
+    'i:Z':   {b: 'I', s: 'Z', up: true, color: COL.teal, q: 'I', what: 'ツェナーの電流（下向き＝カソードからアノードが正）', f: (S, k) => S.iz[k], hidden: (S) => S.p.ref !== 'z'},
+    'v:Z':   {b: 'V', s: 'Z', up: true, color: COL.teal, q: 'V', what: 'ツェナーの電圧（上のカソードが＋）', f: (S, k) => S.vb[k], hidden: (S) => S.p.ref !== 'z'},
+    'i:Rz':  {b: 'I', s: 'RZ', up: true, color: COL.violet, q: 'I', what: 'ツェナー側の抵抗の電流（右向きが正）', f: (S, k) => S.irz[k], hidden: (S) => S.p.ref !== 'z'},
+    'v:Rz':  {b: 'v', s: 'RZ', up: true, color: COL.violet, q: 'V', what: 'ツェナー側の抵抗の両端の電圧（左が＋）', f: (S, k) => S.v0[k] - S.vb[k], hidden: (S) => S.p.ref !== 'z'},
+    'i:R':   {b: 'I', s: 'out', up: true, color: COL.ir, q: 'I', what: '負荷の電流（下向きが正）', f: (S, k) => S.ve[k] / S.p.R},
+    'v:R':   {b: 'V', s: 'out', up: true, color: COL.orange, q: 'V', what: '負荷の両端の電圧（上が＋）', f: (S, k) => S.ve[k]},
+  },
+  defaultProbes: ['n:in', 'n:b', 'n:out', 'i:R'],
+  refLines: [{keys: ['n:out', 'v:R'], val: (S) => S.p.model === 'ideal' && S.p.ref === 'v' ? S.p.Vref - S.p.VBE : NaN, label: 'Vref − VBE'}],
+  build(K) {
+    const {el, W, gWire} = K;
+    const xq = X.Q, cx = xq - 62, ex = xq + 62;
+    const nodeW = {
+      in: [[[X.B, Y.M - 9], [X.B, Y.T], [cx, Y.T]], [[X.L, Y.T], [X.L, Y.bz], [X.L + 40, Y.bz]]],
+      b: [[[xq, Y.bar], [xq, Y.rf - 9]], [[(X.L + xq) / 2 + 45, Y.bz], [xq, Y.bz]]],
+      out: [[[ex, Y.T], [X.R, Y.T], [X.R, Y.M - 45]]],
+      gnd: [[[X.B, Y.M + 9], [X.B, Y.H], [X.R, Y.H], [X.R, Y.M + 45]], [[xq, Y.rf + 9], [xq, Y.H]]],
+    };
+    // 線：基準電圧源とツェナーで違う所は別のグループ
+    W(nodeW.in[0]); W(nodeW.b[0]); W(nodeW.out[0]); W(nodeW.gnd[0]);
+    gZenW = el('g', {}, gWire);
+    W(nodeW.in[1], gZenW); W(nodeW.b[1], gZenW);
+    W([[xq, 268], [xq, Y.H]], gZenW);
+    K.dot(X.L, Y.T, gZenW); K.dot(xq, Y.bz, gZenW);
+    K.dot(xq, Y.H);
+    K.battery(X.B, Y.M);
+    K.ground(X.B, Y.H);
+    // トランジスタ（npn、横向き：左がコレクタ、右がエミッタ、下がベース）
+    el('line', {x1: xq - 34, y1: Y.bar, x2: xq + 34, y2: Y.bar, 'stroke-width': 5}, gWire);
+    W([[xq - 18, Y.bar], [cx, Y.T]]);
+    W([[xq + 18, Y.bar], [ex, Y.T]]);
+    { // エミッタの矢印（外向き）
+      const ux = (ex - xq - 18) / Math.hypot(ex - xq - 18, Y.bar), uy = -Y.bar / Math.hypot(ex - xq - 18, Y.bar);
+      const tx = xq + 18 + (ex - xq - 18) * 0.78, ty = Y.bar - Y.bar * 0.78, hd = 15;
+      el('polygon', {points: `${tx},${ty} ${tx - ux * hd - uy * hd * 0.5},${ty - uy * hd + ux * hd * 0.5} ${tx - ux * hd + uy * hd * 0.5},${ty - uy * hd - ux * hd * 0.5}`, fill: COL.ink, stroke: 'none'}, gWire);
+    }
+    K.text(cx + 4, Y.T - 10, 'C', COL.sub, 18, 'middle');
+    K.text(ex - 4, Y.T - 10, 'E', COL.sub, 18, 'middle');
+    K.text(xq - 12, Y.bar + 28, 'B', COL.sub, 18, 'end');
+    const qName = K.text(xq, Y.T - 22, '', COL.sub, 18);
+    // 基準電圧源
+    gRef = el('g', {}, gWire);
+    el('line', {x1: xq - 26, y1: Y.rf - 9, x2: xq + 26, y2: Y.rf - 9}, gRef);
+    el('line', {x1: xq - 13, y1: Y.rf + 9, x2: xq + 13, y2: Y.rf + 9, 'stroke-width': 6}, gRef);
+    W([[xq, Y.rf + 9], [xq, Y.H]], gRef);
+    el('text', {x: xq + 34, y: Y.rf + 50, 'font-size': 18, fill: COL.teal, stroke: 'none'}, gRef, '基準電圧源');
+    // ツェナー（カソードが上）と Rz
+    gZen = el('g', {}, gWire);
+    const zc = 220, sz = 18;
+    W([[xq, Y.bz], [xq, zc - sz]], gZen);
+    W([[xq, zc + sz], [xq, 268]], gZen);
+    el('polygon', {points: `${xq - sz},${zc + sz} ${xq + sz},${zc + sz} ${xq},${zc - sz}`, fill: '#fff'}, gZen);
+    W([[xq - sz - 6, zc - sz + 8], [xq - sz, zc - sz], [xq + sz, zc - sz], [xq + sz + 6, zc - sz - 8]], gZen);
+    el('rect', {x: (X.L + xq) / 2 - 45, y: Y.bz - 13, width: 90, height: 26, fill: '#fff'}, gZen);
+    el('text', {x: xq + 34, y: zc + 46, 'font-size': 18, fill: COL.teal, stroke: 'none'}, gZen, '1N750');
+    const rzName = K.name((X.L + xq) / 2, Y.bz + 46, 'R', 'middle', 30, 'Z');
+    gZen.appendChild(rzName);
+    K.res(X.R, Y.M);
+    K.name(X.R + 26, Y.M + 10, 'R', 'start', 32, 'L');
+    K.box(xq - 82, Y.T - 46, 164, 128, CB);
+    K.text(xq + 86, Y.bar + 22, 'トランジスタ', CB, 18, 'start');
+    K.qName = qName;
+    return {
+      nodeW,
+      hits: [['e:V0', [-34, Y.M - 26, 68, 52]], ['e:Q', [cx + 6, Y.T - 10, ex - cx - 40, Y.bar - 4]], ['e:B', [xq - 18, Y.bar + 6, 36, 50]],
+        ['e:E', [ex - 30, Y.T - 4, 40, 36]],
+        ['e:Vr', [xq - 34, Y.rf - 22, 68, 44]], ['e:Z', [xq - 30, zc - 26, 60, 52]], ['e:Rz', [(X.L + xq) / 2 - 48, Y.bz - 20, 96, 40]],
+        ['e:R', [X.R - 22, Y.M - 50, 44, 100]]],
+      arrows: {
+        'i:V0': [[-24, Y.M + 60], [-24, Y.M + 14], 'L'], 'v:V0': [[-66, Y.M + 44], [-66, Y.M - 44], 'L'],
+        'i:Q': [[cx - 100, Y.T - 22], [cx - 40, Y.T - 22], 'T'], 'v:Q': [[ex - 20, Y.T - 62], [cx + 20, Y.T - 62], 'T'],
+        'i:B': [[xq - 24, Y.bar + 104], [xq - 24, Y.bar + 50], 'L'], 'v:B': [[ex + 10, Y.bar + 34], [xq + 30, Y.bar + 34], 'B'],
+        'i:E': [[ex + 40, Y.T - 22], [ex + 100, Y.T - 22], 'T'],
+        'i:Vr': [[xq - 40, Y.rf + 30], [xq - 40, Y.rf - 26], 'L'], 'v:Vr': [[xq + 50, Y.rf + 30], [xq + 50, Y.rf - 30], 'R'],
+        'i:Z': [[xq - 40, zc - 26], [xq - 40, zc + 30], 'L'], 'v:Z': [[xq + 50, zc + 34], [xq + 50, zc - 34], 'R'],
+        'i:Rz': [[(X.L + xq) / 2 - 30, Y.bz - 26], [(X.L + xq) / 2 + 30, Y.bz - 26], 'T'], 'v:Rz': [[(X.L + xq) / 2 + 40, Y.bz + 62], [(X.L + xq) / 2 - 40, Y.bz + 62], 'B'],
+        'i:R': [[X.R - 40, Y.M - 30], [X.R - 40, Y.M + 30], 'L'], 'v:R': [[X.R + 82, Y.M + 44], [X.R + 82, Y.M - 44], 'R'],
+      },
+      nodeTag: {in: [70, Y.T, 0, -16], b: [xq, Y.bar + 40, 18, 8, 'start'], out: [X.R - 60, Y.T, 0, -16], gnd: [X.L + 60, Y.H, 0, 40]},
+      loops: {
+        main: [[X.B + 22, Y.H - 22], [X.B + 22, Y.T + 22], [cx, Y.T + 22], [xq, Y.bar - 14], [ex, Y.T + 22], [X.R - 22, Y.T + 22], [X.R - 22, Y.H - 22]],
+        zen: [[X.B + 34, Y.H - 34], [X.B + 34, Y.T + 34], [X.L - 22, Y.T + 34], [X.L - 22, Y.bz + 22], [xq - 22, Y.bz + 22], [xq - 22, Y.H - 34]],
+      },
+      sw: {},
+    };
+  },
+  onRun(S, app) {
+    const z = S.p.ref === 'z';
+    gRef.style.display = z ? 'none' : ''; gZen.style.display = z ? '' : 'none'; gZenW.style.display = z ? '' : 'none';
+    ['e:Vr'].forEach(h => app.hitEl[h].style.display = z ? 'none' : '');
+    ['e:Z', 'e:Rz'].forEach(h => app.hitEl[h].style.display = z ? '' : 'none');
+  },
+  hideWire: (n, idx, app) => refSel !== 'z' && ((n === 'in' || n === 'b') && idx === 1),
+  state(S, k, MET) {
+    const p = S.p, v0 = S.v0[k], ve = S.ve[k], vb = S.vb[k], ic = S.ic[k];
+    const ip = (x) => Math.abs(x) / Math.max(1e-12, Math.max(...[MET.ic, MET.irz].map(Math.abs)) * 1.2);
+    const loops = [['main', ip(ic)]];
+    if (p.ref === 'z') loops.push(['zen', ip(S.irz[k])]);
+    const F = (x, u) => fmtSI(x, u, 4);
+    let html = `<span class="eq">V<sub>0</sub></span> = ${F(v0, 'V')}：`;
+    if (S.sat[k]) html += `<span class="warn">飽和</span>：入力が低すぎて <span class="eq">V<sub>CE</sub></span> = ${F(v0 - ve, 'V')} しか残っていない。出力 <span class="eq">V<sub>out</sub></span> = ${F(ve, 'V')} は入力といっしょに下がり、もう一定にならない。`;
+    else if (ic < 1e-6) html += `<span class="sw-off">トランジスタがオフ</span>：ベースの電位が低く、電流が流れない。`;
+    else html += `<span class="sw-on">活性領域</span>：電源 → トランジスタ（C → E）→ 負荷 → 電源。<span class="eq">V<sub>out</sub> = ${p.ref === 'v' ? 'V<sub>ref</sub>' : 'V<sub>Z</sub>'} − V<sub>BE</sub></span> = ${F(vb, 'V')} − ${F(vb - ve, 'V')} = ${F(ve, 'V')}。残りの <span class="eq">V<sub>CE</sub></span> = ${F(v0 - ve, 'V')} はトランジスタが受け持ち、<span style="color:${CHEAT}">熱になる</span>（${F((v0 - ve) * ic, 'W')}）。`;
+    if (p.ref === 'z') html += ` ツェナーの電流 <span class="eq">I<sub>Z</sub></span> = ${F(S.iz[k], 'A')}。`;
+    return {loops, html};
+  },
+  metricsHtml(S, m) {
+    const p = S.p, ideal = p.model === 'ideal', z = p.ref === 'z';
+    const F = (x, u, d = 4) => !isFinite(x) ? '—' : u ? fmtSI(x, u, d) : x.toFixed(4);
+    // 飽和している時間があるときは、式（活性領域の式）と合わない行を「ずれる」ではなく「目安」にする
+    const mark = (sim, val, tol) => { const o = okMark(sim, val, tol); return m.satFrac > 0 && /ずれる/.test(o) ? '<span class="small">目安（飽和中）</span>' : o; };
+    const R = (nm, sim, eq, val, unit, tol = 0.02) => `<tr><td>${nm}</td><td class="num">${F(sim, unit)}</td><td class="eq">${eq}</td><td class="num">${isFinite(val) ? F(val, unit) : '—'}</td><td>${isFinite(val) && isFinite(sim) ? pctDiff(sim, val) + ' ' + mark(sim, val, tol) : '—'}</td></tr>`;
+    const I = (nm, sim, unit, txt) => `<tr><td>${nm}</td><td class="num">${F(sim, unit)}</td><td colspan="3">${txt}</td></tr>`;
+    const Vr = z ? 'V<sub>Z</sub>' : 'V<sub>ref</sub>';
+    let rows = `<tr><th>量</th><th>シミュレーション</th><th>授業の式</th><th>式の値</th><th>差</th></tr>`;
+    if (m.satFrac > 0) rows += `<tr><td colspan="5"><span class="ng">飽和している時間があります</span>（最後の周期の ${(m.satFrac * 100).toFixed(0)} %）。入力の最小 ${F(m.v0Min, 'V', 3)} が、出力 + 飽和の電圧より低くなっています。下の式は「活性領域で動いている」ときの式なので合わず、合わない行は「目安」としています。</td></tr>`;
+    const vbeTxt = ideal ? `V<sub>BE</sub> = ${p.VBE.toFixed(2)} V（一定）` : `V<sub>BE</sub> はシミュレーションの値 ${F(m.vbe, 'V')}`;
+    const vrVal = ideal ? (z ? 4.7 : p.Vref) : m.vb;
+    rows += R('出力の電圧 <span class="eq">V<sub>out</sub></span>（p10 の KVL）', m.ve, `V<sub>out</sub> = ${Vr} − V<sub>BE</sub>（${vbeTxt}）`, vrVal - (ideal ? p.VBE : m.vbe), 'V');
+    rows += R('出力の電流 <span class="eq">I<sub>out</sub></span>', m.ie, 'I<sub>out</sub> = V<sub>out</sub> / R<sub>L</sub>', m.ve / p.R, 'A');
+    rows += R('コレクタ電流 <span class="eq">I<sub>c</sub></span>', m.ic, 'I<sub>c</sub> ≈ I<sub>out</sub>（p18 の近似）', m.ie, 'A');
+    if (ideal) rows += R('ベース電流 <span class="eq">I<sub>b</sub></span>', m.ib, `I<sub>b</sub> = I<sub>c</sub> / h（h = ${Math.round(p.h)}）`, m.ic / p.h, 'A');
+    else rows += I('<span class="eq">h = I<sub>c</sub> / I<sub>b</sub></span>', m.ic / m.ib, '', `授業の計算では 100 とした。2N2222 のモデルでは電流が大きいほど小さくなる（BF = 200）。<span class="eq">I<sub>b</sub></span> = ${F(m.ib, 'A')}`);
+    rows += R('出力の電流（キルヒホッフの電流則）', m.ie, 'I<sub>out</sub> = I<sub>c</sub> + I<sub>b</sub>', m.ic + m.ib, 'A');
+    rows += R('<span class="eq">V<sub>CE</sub></span>', m.vce, 'V<sub>CE</sub> = V<sub>0</sub> − V<sub>out</sub>', m.v0 - m.ve, 'V');
+    const iin = z ? 'I<sub>c</sub> + I<sub>RZ</sub>' : 'I<sub>c</sub>';
+    rows += R('電力変換効率 <span class="eq">η</span>', m.pout / m.pin, `η = V<sub>out</sub>I<sub>out</sub> / (V<sub>0</sub>(${iin}))`, m.ve * m.ie / (m.v0 * (m.ic + m.irz)), '');
+    rows += R('トランジスタの損失（熱）', m.pq, 'V<sub>CE</sub> × I<sub>c</sub>', m.vce * m.ic, 'W');
+    if (z) rows += R('ツェナーの電流 <span class="eq">I<sub>Z</sub></span>', m.iz, 'I<sub>Z</sub> = (V<sub>0</sub> − V<sub>Z</sub>) / R<sub>Z</sub> − I<sub>b</sub>', m.irz - m.ib, 'A');
+    // スライド p21・p22 の LTspice の値（同じ回路のとき）
+    const sl = SLIDE[Math.round(p.R)];
+    if (z && !ideal && sl && Math.abs(p.R - Math.round(p.R)) < 1e-9 && Math.abs(p.V0 - 10) < 1e-9 && p.dV === 0 && Math.abs(p.Rz - 400) < 1e-9) {
+      const S2 = (nm, sim, v, unit) => `<tr><td>${nm}</td><td class="num">${F(sim, unit)}</td><td>スライド ${sl.pg} の LTspice の値</td><td class="num">${F(v, unit)}</td><td>${pctDiff(sim, v)} ${okMark(sim, v, 0.01)}</td></tr>`;
+      rows += S2('<span class="eq">V<sub>out</sub></span>', m.ve, sl.Vout, 'V');
+      rows += S2('<span class="eq">V<sub>Z</sub></span>', m.vb, sl.VZ, 'V');
+      rows += S2('<span class="eq">V<sub>BE</sub></span>', m.vbe, sl.VBE, 'V');
+      if (sl.Ic) { rows += S2('<span class="eq">I<sub>c</sub></span>', m.ic, sl.Ic, 'A'); rows += S2('<span class="eq">I<sub>b</sub></span>', m.ib, sl.Ib, 'A'); }
+    }
+    if (p.dV > 0) rows += I('出力の揺れ（最大 − 最小）', m.veMax - m.veMin, 'V', `入力の揺れ ${F(m.v0Max - m.v0Min, 'V', 3)} に対して ${((m.veMax - m.veMin) / (m.v0Max - m.v0Min) * 100).toFixed(2)} %${ideal && !m.satFrac ? '（授業の計算では V<sub>BE</sub> 一定なので 0）' : ''}`);
+    const sub = `最後の 1 周期（1/120 s）の平均。` + (ideal ? '授業の計算（V<sub>BE</sub>・h 一定）' : '2N2222' + (z ? '・1N750' : '') + ' のモデル');
+    return {rows, sub};
+  },
+});
+})();
+</script>
+</body>
+</html>

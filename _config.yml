@@ -1,0 +1,14 @@
+title: パワーエレクトロニクス（2026年度）
+description: 大阪工業大学 工学部 電気電子システム工学科 / 神野 崇馬
+markdown: kramdown
+
+# 講義資料は講義が終わった回から公開する。
+# 公開する回は、lectures/NN_テーマ/slides.pdf を置いて generate.py の LECTURES を
+# 埋めたうえで、必要なら下の exclude から外す。
+# （まだ置いていない回は、そもそもリポジトリに無いので exclude に書く必要はない）
+exclude:
+  - generate.py
+  - _style.html
+  - _students_style.html
+  - README.md
+  - publish_from_checks.py

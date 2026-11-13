@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>コイルとスイッチング電圧のシミュレーター — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="common.css">
+<style>#ecv { display: block; width: 100%; }</style>
+</head>
+<body>
+<header>
+  <nav class="hnav"><a href="../index.html">← 科目のページへ戻る</a><a href="index.html">回路を選ぶ（シミュレーターの一覧）</a></nav>
+  <h1>コイルにスイッチング電圧をかけるシミュレーター</h1>
+  <div class="subtitle">パワーエレクトロニクス 第4回 LCR回路の復習 p9〜23 / 大阪工業大学</div>
+</header>
+<main>
+  <div class="notice">
+    スイッチング電圧 <span class="eq">v<sub>in</sub>(t)</span>（<span class="eq">0 ≤ t &lt; DT</span> で <span class="eq">V<sub>0</sub></span>、残りは 0 を周期 <span class="eq">T</span> でくり返す）をコイル <span class="eq">L</span> にかけます。
+    「回路の値」の<b>負荷</b>のボタンで「なし（p9〜12）」「電池 <span class="eq">V<sub>1</sub></span>（p13〜18）」「抵抗 <span class="eq">R</span>（p19〜23）」から選べます。
+    回路図の<b>線をクリック</b>するとその点の電位、<b>素子をクリック</b>すると電流（矢印の向きが正）が下のグラフに出ます。値を変えると、<span class="eq">t = 0</span>（<span class="eq">i<sub>L</sub>(0) = 0</span>）から計算し直します。
+  </div>
+
+  <div class="top">
+    <section class="card">
+      <div class="card-h">
+        <span class="ttl">回路</span>
+        <span class="small">素子をクリックしたとき：</span>
+        <span class="seg" id="emode"><button data-m="i" class="on">電流</button><button data-m="v">両端の電圧</button></span>
+      </div>
+      <svg id="sch" viewBox="-140 -100 740 400" aria-label="スイッチング電圧源・コイル・負荷の回路図"></svg>
+      <div id="state"></div>
+    </section>
+
+    <section class="card params">
+      <div class="card-h"><span class="ttl">回路の値</span></div>
+      <div class="card-b" id="params"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-h">
+      <span class="ttl">波形</span>
+      <span class="seg" id="win">
+        <button data-w="all" class="on">起動から最後まで</button><button data-w="first">起動直後</button><button data-w="last">定常状態</button>
+      </span>
+    </div>
+    <div class="ctl">
+      <button id="play">▶ 再生</button>
+      <label>速さ <select id="speed"><option value="0.25">×0.25</option><option value="0.5">×0.5</option><option value="1" selected>×1</option><option value="2">×2</option><option value="4">×4</option></select></label>
+      <label id="nper">周期の数 <select id="nP"><option>2</option><option selected>3</option><option>5</option><option>10</option></select></label>
+      <label>グラフ <select id="lay"><option value="vi">電圧と電流の2段</option><option value="each">1本ずつ別の段</option></select></label>
+    </div>
+    <div class="scrubrow"><input type="range" id="scrub" min="0" max="10000" value="0" aria-label="時刻"><span class="tc" id="tc"></span></div>
+    <div id="legend"></div>
+    <div id="plotwrap"><canvas id="plot"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">コイルに流出入するエネルギー（p23）</span><span class="small" id="esub"></span></div>
+    <div class="card-b"><canvas id="ecv" aria-label="コイルの電流と磁気エネルギーの波形"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">最後の周期の値と、授業の式の比較</span><span class="small" id="msub"></span></div>
+    <div class="card-b" style="overflow-x:auto"><table class="m" id="metrics"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">このシミュレーターの前提</span></div>
+    <div class="card-b">
+      <ul class="notes">
+        <li><span class="eq">v<sub>in</sub>(t)</span> は理想の電圧源（どちら向きの電流も流せる）。コイル・抵抗・電池も理想の素子です（コイルの巻線抵抗は 0）。<span class="eq">t = 0</span> で <span class="eq">i<sub>L</sub> = 0</span>。</li>
+        <li>KVL（p15）：<span class="eq">v<sub>in</sub> − v<sub>L</sub> − v<sub>out</sub> = 0</span>、枝構成式：<span class="eq">v<sub>L</sub> = L di<sub>L</sub>/dt</span>。負荷なしは <span class="eq">v<sub>out</sub> = 0</span>（p9 と同じく、コイルが電源に直接つながる）、電池は <span class="eq">v<sub>out</sub> = V<sub>1</sub></span>、抵抗は <span class="eq">v<sub>out</sub> = R i<sub>L</sub></span>。</li>
+        <li>負荷なしでは、オフの間 <span class="eq">v<sub>L</sub> = 0</span> なので電流は一定のまま、オンのたびに <span class="eq">V<sub>0</sub>DT/L</span> ずつ増えます（p11〜12、定常状態にならない）。電池では、<span class="eq">V<sub>1</sub> = DV<sub>0</sub></span> のときだけ I と II の面積が等しくなり、定常状態になります（p16）。<span class="eq">V<sub>1</sub> ≠ DV<sub>0</sub></span> だと、1 周期ごとに <span class="eq">T(DV<sub>0</sub> − V<sub>1</sub>)/L</span> ずつ増え（減り）続けます（負の電流にもなる）。</li>
+        <li>抵抗のときの <span class="eq">ΔI = DT(1 − D)V<sub>0</sub>/L</span>（p18）は、抵抗の電圧を一定 <span class="eq">DV<sub>0</sub></span> とみなした 1 回目の近似（p19）の式です。厳密な振れ幅は <span class="eq">(V<sub>0</sub>/R)(1 − a)(1 − b)/(1 − ab)</span>（<span class="eq">a = e<sup>−DT/τ</sup></span>、<span class="eq">b = e<sup>−(1−D)T/τ</sup></span>、<span class="eq">τ = L/R</span>）で、<span class="eq">τ</span> が <span class="eq">T</span> の数倍以上あれば差は 0.1 % 以下です。<span class="eq">τ</span> が <span class="eq">T</span> と同じくらいまで小さくなると、近似の式は大きめに出ます（表に厳密な値も出します）。抵抗の電圧の平均 <span class="eq">DV<sub>0</sub></span> は近似ではなく厳密です（1 周期で <span class="eq">v<sub>L</sub></span> の平均が 0 になるため）。</li>
+        <li>起動の時定数：抵抗のとき、電流の 1 周期ごとの平均は <span class="eq">DV<sub>0</sub>/R</span> に <span class="eq">e<sup>−t/τ</sup></span>（<span class="eq">τ = L/R</span>）で近づきます。表の値は、最初の 2 周期の平均の差の比から求めています。</li>
+        <li>計算は 4 次のルンゲ・クッタ法（1 周期を 40〜400 分割、<span class="eq">τ</span> が短いときはもっと細かく）で、<span class="eq">v<sub>in</sub></span> の切り替わりの時刻はちょうど刻みの境目に置いています。</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<footer>パワーエレクトロニクス ｜ 神野 崇馬 ｜ 試作版</footer>
+<div id="tip"></div>
+
+<script>
+// ==SIM-BEGIN==
+/**
+ * スイッチング電圧源 v_in（0 ≤ t mod T < DT で V0、ほかは 0）→ コイル L → 負荷（なし / 電池 V1 / 抵抗 R）。
+ * p = {V0, D, f, L, load: 'none' | 'V1' | 'R', V1, R, N?（負荷なし・電池のときの周期の数）}
+ * 状態変数 x = [iL]、離散状態 s = 1（v_in = V0）/ 0（v_in = 0）。simEv で計算する。
+ */
+function lswOut(p, i) { return p.load === 'V1' ? p.V1 : p.load === 'R' ? p.R * i : 0; }
+function lswModel(p) {
+  const T = 1 / p.f, D = p.D, L = p.L;
+  let periods, n = 400;
+  if (p.load === 'R') {
+    const tau = L / p.R;
+    periods = Math.min(3000, Math.max(10, Math.ceil(8 * tau / T) + 6));
+    n = Math.max(40, Math.min(400, Math.floor(4e5 / periods)));
+    n = Math.min(20000, Math.max(n, Math.ceil(30 * T / tau)));   // τ が短いときは刻みを細かく
+  } else periods = p.N || 8;
+  return {
+    T, periods, h: T / n, x0: [0], s0: 1,
+    f: (t, x, s) => [((s ? p.V0 : 0) - lswOut(p, x[0])) / L],
+    breaks: (t0) => [t0, t0 + D * T],
+    onBreak: (t) => Math.abs(t - Math.round(t / T) * T) < 1e-9 * T ? 1 : 0,
+  };
+}
+function simulateLsw(p) {
+  const S = simEv(lswModel(p));
+  S.p = Object.assign({}, p);
+  return S;
+}
+/** 時刻 t の x[j]（線形補間。切り替わりの瞬間の 2 点は同じ値） */
+function evAt(S, t, j = 0) {
+  const a = S.t; let lo = 0, hi = a.length - 1;
+  if (t <= a[0]) return S.x[j][0];
+  if (t >= a[hi]) return S.x[j][hi];
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (a[m] <= t) lo = m; else hi = m; }
+  const u = a[hi] > a[lo] ? (t - a[lo]) / (a[hi] - a[lo]) : 0;
+  return S.x[j][lo] * (1 - u) + S.x[j][hi] * u;
+}
+/** [t0, t1] での g(S, k) の台形積分 */
+function evInt(S, g, t0, t1) {
+  let s = 0;
+  for (let k = 1; k < S.t.length; k++) {
+    const a = S.t[k - 1], b = S.t[k];
+    if (b <= t0 + 1e-12 * S.T || a >= t1 - 1e-12 * S.T || b <= a) continue;
+    s += (g(S, k - 1) + g(S, k)) / 2 * (b - a);
+  }
+  return s;
+}
+/** 周期ごとの x[0] の平均 */
+function evPerAvg(S) {
+  const n = S.periods, A = new Float64Array(n), T = S.T;
+  for (let k = 1; k < S.t.length; k++) {
+    const a = S.t[k - 1], b = S.t[k];
+    if (b <= a) continue;
+    const q = Math.min(n - 1, Math.floor((a + b) / 2 / T));
+    A[q] += (S.x[0][k - 1] + S.x[0][k]) / 2 * (b - a);
+  }
+  for (let q = 0; q < n; q++) A[q] /= T;
+  return A;
+}
+function lswMetrics(S) {
+  const p = S.p, T = S.T, tE = S.periods * T, tA = tE - T, tB = tA + p.D * T;
+  const iA = evAt(S, tA), iB = evAt(S, tB), iE = evAt(S, tE);
+  const vL = (S, k) => (S.s[k] ? p.V0 : 0) - lswOut(p, S.x[0][k]);
+  const eOn = evInt(S, (S, k) => vL(S, k) * S.x[0][k], tA, tB), eOff = evInt(S, (S, k) => vL(S, k) * S.x[0][k], tB, tE);
+  let iMax = -Infinity, iMin = Infinity;
+  for (let k = 0; k < S.t.length; k++) if (S.t[k] >= tA - 1e-12 * T) { iMax = Math.max(iMax, S.x[0][k]); iMin = Math.min(iMin, S.x[0][k]); }
+  const iAvg = evInt(S, (S, k) => S.x[0][k], tA, tE) / T;
+  const vOutAvg = evInt(S, (S, k) => lswOut(p, S.x[0][k]), tA, tE) / T;
+  const m = {iA, iB, iE, eOn, eOff, iMax, iMin, iAvg, vOutAvg, absMax: 0};
+  for (let k = 0; k < S.t.length; k++) m.absMax = Math.max(m.absMax, Math.abs(S.x[0][k]));
+  if (p.load === 'R') {
+    const A = evPerAvg(S), fin = A[A.length - 1];
+    const r = (fin - A[1]) / (fin - A[0]);
+    m.tauSim = r > 0 && r < 1 && Math.abs(fin - A[1]) > 0.02 * Math.abs(fin) ? -T / Math.log(r) : NaN;
+    m.steady = Math.abs(A[A.length - 1] - A[A.length - 2]) <= 2e-3 * Math.abs(fin);
+  }
+  return m;
+}
+// ==SIM-END==
+</script>
+<script src="common.js"></script>
+<script>
+(() => {
+'use strict';
+let load = 'none';
+const H = 240, YM = 120, XR = 480, XL1 = 180, XL2 = 340;
+const C_IN = COL.ink2, C_IL = COL.blue, C_VL = COL.red, C_OUT = COL.orange;
+const vinOf = (S, k) => S.s[k] ? S.p.V0 : 0;
+const iOf = (S, k) => S.x[0][k];
+const vOutOf = (S, k) => lswOut(S.p, S.x[0][k]);
+let gBat = null, gRes = null, gShort = null, app = null;
+
+// ---- エネルギーの図（p23）：i_L と U_m = ½ L i_L² ----
+const ecv = document.getElementById('ecv');
+let lastS = null;
+function drawEnergy(S) {
+  lastS = S;
+  const p = S.p, T = S.T, np = Math.min(3, S.periods);
+  const t0 = p.load === 'none' ? 0 : (S.periods - np) * T, t1 = t0 + np * T;
+  const W = ecv.parentElement.clientWidth - 28, PH = W < 560 ? 100 : 120, ML = 62, MR = 12, Hh = 3 * PH + 66;
+  const dpr = window.devicePixelRatio || 1;
+  ecv.width = Math.round(W * dpr); ecv.height = Math.round(Hh * dpr); ecv.style.height = Hh + 'px';
+  const c = ecv.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.fillStyle = '#fff'; c.fillRect(0, 0, W, Hh);
+  const pw = W - ML - MR, X = (t) => ML + (t - t0) / (t1 - t0) * pw;
+  let k0 = 0; while (k0 < S.t.length - 1 && S.t[k0] < t0) k0++;
+  let k1 = k0; while (k1 < S.t.length - 1 && S.t[k1] < t1) k1++;
+  const series = [
+    {nm: 'v_in', sym: ['v', 'in'], unit: 'V', color: C_IN, f: vinOf},
+    {nm: 'i_L', sym: ['i', 'L'], unit: 'A', color: C_IL, f: iOf},
+    {nm: 'U_m', sym: ['U', 'm'], unit: 'J', color: COL.ink, f: (S, k) => 0.5 * p.L * S.x[0][k] ** 2},
+  ];
+  series.forEach((sr, q) => {
+    const y0 = 6 + q * (PH + 8);
+    let mn = 0, mx = 0;
+    for (let k = k0; k <= k1; k++) { const v = sr.f(S, k); mn = Math.min(mn, v); mx = Math.max(mx, v); }
+    if (mx - mn < 1e-15) mx = mn + 1;
+    const pad = (mx - mn) * 0.1; mn -= pad; mx += pad;
+    const Y = (v) => y0 + PH - (v - mn) / (mx - mn) * PH;
+    // オンの間（I）とオフの間（II）
+    for (let n = Math.round(t0 / T); n * T < t1 - 1e-12; n++) {
+      c.fillStyle = 'rgba(192,38,211,0.06)'; c.fillRect(X(n * T), y0, X(n * T + p.D * T) - X(n * T), PH);
+      if (q === 2) {
+        c.font = `13px ${SERIF}`; c.textAlign = 'center'; c.fillStyle = COL.sub;
+        c.fillText('I', X(n * T + p.D * T / 2), y0 + PH - 6); c.fillText('II', X(n * T + p.D * T + (1 - p.D) * T / 2), y0 + PH - 6);
+      }
+    }
+    c.strokeStyle = '#d5dbe2'; c.lineWidth = 1; c.strokeRect(ML + 0.5, y0 + 0.5, pw - 1, PH - 1);
+    c.font = '11px Menlo, monospace'; c.textAlign = 'right'; c.fillStyle = COL.sub;
+    const st = (() => { const raw = (mx - mn) / 3, e = 10 ** Math.floor(Math.log10(raw)), m = raw / e; return (m < 1.5 ? 1 : m < 3 ? 2 : m < 7 ? 5 : 10) * e; })();
+    for (let v = Math.ceil(mn / st) * st; v <= mx + 1e-15; v += st) {
+      const y = Y(v);
+      c.strokeStyle = Math.abs(v) < st * 1e-6 ? '#b8c2cc' : '#eef1f4';
+      c.beginPath(); c.moveTo(ML, y); c.lineTo(ML + pw, y); c.stroke();
+      c.fillText(fmtSI(Math.abs(v) < st * 1e-6 ? 0 : v, sr.unit, 3).replace(/\.0+ /, ' '), ML - 5, y + 4);
+    }
+    c.save(); c.beginPath(); c.rect(ML, y0, pw, PH); c.clip();
+    c.strokeStyle = sr.color; c.lineWidth = 2.2; c.lineJoin = 'round'; c.beginPath();
+    for (let k = k0; k <= k1; k++) { const x = X(S.t[k]), y = Y(sr.f(S, k)); if (k === k0) c.moveTo(x, y); else c.lineTo(x, y); }
+    c.stroke(); c.restore();
+    c.fillStyle = 'rgba(255,255,255,0.85)'; c.fillRect(ML + 3, y0 + 2, 46, 22);
+    c.fillStyle = sr.color; c.textAlign = 'left';
+    c.font = `italic 17px ${SERIF}`; c.fillText(sr.sym[0], ML + 8, y0 + 18);
+    const w0 = c.measureText(sr.sym[0]).width;
+    c.font = `italic 11px ${SERIF}`; c.fillText(sr.sym[1], ML + 9 + w0, y0 + 22);
+  });
+  // 時間の目盛り（0, DT, T, T + DT, … を周期の単位で）
+  c.font = `italic 12px ${SERIF}`; c.textAlign = 'center'; c.fillStyle = COL.sub;
+  const yb = 6 + 3 * (PH + 8) + 12;
+  for (let n = Math.round(t0 / T); n <= Math.round(t1 / T); n++) {
+    const nn = n - Math.round(t0 / T) + (p.load === 'none' ? 0 : S.periods - np);
+    c.fillText(nn === 0 ? '0' : nn === 1 ? 'T' : nn + 'T', X(n * T), yb);
+    if (n * T + p.D * T < t1 - 1e-12) c.fillText(nn === 0 ? 'DT' : (nn === 1 ? 'T' : nn + 'T') + '+DT', X(n * T + p.D * T), yb + 14);
+  }
+  document.getElementById('esub').innerHTML = (p.load === 'none' ? '最初の ' : '最後の ') + np + ' 周期。<span class="eq">U<sub>m</sub> = ½Li<sub>L</sub><sup>2</sup></span>。I（オン）で蓄積、II（オフ）で放出';
+}
+window.addEventListener('resize', () => { if (lastS) drawEnergy(lastS); });
+
+app = SimApp({
+  pdef: [
+    {k: 'V0', b: 'V', s: '0', up: true, title: 'スイッチング電圧の高さ', min: 1, max: 100, step: 0.5, log: false, unit: 'V', def: 10},
+    {k: 'D', b: 'D', s: '', title: 'デューティ比（V0 の時間の割合）', min: 0.05, max: 0.95, step: 0.01, log: false, unit: '', def: 1 / 3},
+    {k: 'f', b: 'f', s: '', title: 'スイッチングの周波数 f = 1/T', min: 100, max: 100e3, log: true, unit: 'Hz', def: 1e3},
+    {k: 'L', b: 'L', s: '', min: 100e-6, max: 1, log: true, unit: 'H', def: 10e-3},
+    {k: 'V1', b: 'V', s: '1', up: true, title: '負荷の電池の電圧', min: 0, max: 50, step: 0.1, log: false, unit: 'V', def: 10 / 3},
+    {k: 'R', b: 'R', s: '', title: '負荷の抵抗', min: 0.1, max: 100, log: true, unit: 'Ω', def: 1},
+  ],
+  extraParams(el, a) {
+    const d = document.createElement('div');
+    d.className = 'crow';
+    d.innerHTML = `<span style="min-width:3em">負荷</span><span class="seg"><button data-v="none">なし</button><button data-v="V1">電池 V₁</button><button data-v="R">抵抗 R</button></span>`;
+    const bs = d.querySelectorAll('button');
+    const show = () => {
+      bs.forEach(b => b.classList.toggle('on', b.dataset.v === load));
+      a.sliders.V1.row.style.display = load === 'V1' ? '' : 'none';
+      a.sliders.R.row.style.display = load === 'R' ? '' : 'none';
+    };
+    bs.forEach(b => b.onclick = () => { load = b.dataset.v; show(); a.schedule(); });
+    el.insertBefore(d, a.sliders.V1.row);
+    const b2 = document.createElement('div');
+    b2.className = 'crow';
+    b2.innerHTML = `<button class="xbtn" id="setV1">V₁ = DV₀ にする（定常状態の条件、p16）</button>`;
+    el.insertBefore(b2, a.sliders.R.row);
+    b2.querySelector('button').onclick = () => { a.P.V1 = +(a.P.D * a.P.V0).toPrecision(6); a.sliders.V1.set(); a.schedule(); };
+    a.showLoad = () => { show(); b2.style.display = load === 'V1' ? '' : 'none'; };
+    bs.forEach(b => b.addEventListener('click', a.showLoad));
+    a.showLoad();
+  },
+  presets: [
+    {name: 'p9〜12：コイルだけ（階段状に増える）', v: {V0: 10, D: 1 / 3, f: 1e3, L: 10e-3}, apply: (a) => { load = 'none'; a.showLoad(); }},
+    {name: 'p13〜18：電池 V₁ = DV₀（定常状態）', v: {V0: 10, D: 1 / 3, f: 1e3, L: 10e-3, V1: 10 / 3}, apply: (a) => { load = 'V1'; a.showLoad(); }},
+    {name: 'p15：V₁ が DV₀ より大きい（減り続ける）', v: {V0: 10, D: 1 / 3, f: 1e3, L: 10e-3, V1: 5}, apply: (a) => { load = 'V1'; a.showLoad(); }},
+    {name: 'p19〜20：抵抗 R（τ = L/R = 10T）', v: {V0: 10, D: 1 / 3, f: 1e3, L: 10e-3, R: 1}, apply: (a) => { load = 'R'; a.showLoad(); }},
+    {name: 'p21：L を 5 倍（変動が小さい）', v: {V0: 10, D: 1 / 3, f: 1e3, L: 50e-3, R: 1}, apply: (a) => { load = 'R'; a.showLoad(); }},
+  ],
+  simulate: (P) => simulateLsw({V0: P.V0, D: P.D, f: P.f, L: P.L, load, V1: P.V1, R: P.R}),
+  metrics: lswMetrics,
+  onRun(S, a) {
+    gBat.style.display = S.p.load === 'V1' ? '' : 'none';
+    gRes.style.display = S.p.load === 'R' ? '' : 'none';
+    gShort.style.display = S.p.load === 'none' ? '' : 'none';
+    a.hitEl['e:Ld'].style.display = S.p.load === 'none' ? 'none' : '';
+    drawEnergy(S);
+  },
+  gatePane: gateRowsPane([{label: 'V₀ の間', color: COL.fuchsia, on: (S, k) => S.s[k] === 1}]),
+  probes: {
+    'n:in':  {b: 'v', s: 'in', color: C_IN, q: 'V', what: '電源の上の節点の電位（= v_in）', f: vinOf},
+    'n:out': {b: 'v', s: 'out', color: C_OUT, q: 'V', what: 'コイルの右の節点の電位（= 負荷の電圧。負荷なしでは 0）', f: vOutOf},
+    'n:gnd': {b: 'GND', s: '', color: COL.sub, q: 'V', what: '下の線（0 V）', f: () => 0},
+    'i:V':   {b: 'i', s: 'in', color: C_IL, q: 'I', what: '電源の電流（上向きが正。= i_L）', f: iOf},
+    'v:V':   {b: 'v', s: 'in', color: C_IN, q: 'V', what: 'スイッチング電圧（上が＋）', f: vinOf},
+    'i:L':   {b: 'i', s: 'L', color: C_IL, q: 'I', what: 'コイルの電流（右向きが正）', f: iOf},
+    'v:L':   {b: 'v', s: 'L', color: C_VL, q: 'V', what: 'コイルの両端の電圧（左が＋、p15 の矢印）', f: (S, k) => vinOf(S, k) - vOutOf(S, k)},
+    'i:Ld':  {b: 'i', s: 'R', color: COL.ir, q: 'I', what: '負荷の電流（下向きが正。= i_L）', f: iOf},
+    'v:Ld':  {b: 'v', s: 'out', color: C_OUT, q: 'V', what: '負荷の両端の電圧（上が＋）。電池なら V₁、抵抗なら v_R = R i_L', f: vOutOf},
+  },
+  defaultProbes: ['n:in', 'v:L', 'i:L'],
+  refLines: [
+    {keys: ['n:out', 'v:Ld'], val: (S) => S.p.load === 'none' ? NaN : S.p.D * S.p.V0, label: 'DV₀', color: COL.orange},
+  ],
+  hideWire: (n, idx) => n === 'out' && idx === 1 && load !== 'none',
+  build(K) {
+    const {el, W, gWire} = K;
+    const nodeW = {
+      in: [[[0, YM - 28], [0, 0], [XL1, 0]]],
+      out: [[[XL2, 0], [XR, 0], [XR, YM - 45]], [[XR, YM - 45], [XR, YM + 45]]],
+      gnd: [[[XR, YM + 45], [XR, H], [0, H], [0, YM + 28]]],
+    };
+    W(nodeW.in[0]); W(nodeW.out[0]); W(nodeW.gnd[0]);
+    gShort = el('g', {}, gWire); W(nodeW.out[1], gShort);
+    // パルスの電圧源（○ の中に ⎍）
+    el('circle', {cx: 0, cy: YM, r: 28, fill: '#fff'}, gWire);
+    el('path', {d: `M-15 ${YM + 9} H-7 V${YM - 10} H7 V${YM + 9} H15`, 'stroke-width': 2.6}, gWire);
+    K.name(-48, YM + 10, 'v', 'end', 30, 'in');
+    K.coil([XL1, 0], [XL2, 0], 4, 1);
+    K.name((XL1 + XL2) / 2, 46, 'L');
+    gBat = el('g', {}, gWire);
+    W([[XR, YM - 45], [XR, YM - 9]], gBat); W([[XR, YM + 9], [XR, YM + 45]], gBat);
+    el('line', {x1: XR - 26, y1: YM - 9, x2: XR + 26, y2: YM - 9}, gBat);
+    el('line', {x1: XR - 13, y1: YM + 9, x2: XR + 13, y2: YM + 9, 'stroke-width': 6}, gBat);
+    const nb = K.name(XR - 36, YM + 12, 'V', 'end', 30, '1'); gBat.appendChild(nb);
+    gRes = el('g', {}, gWire);
+    gRes.appendChild(K.res(XR, YM));
+    gRes.appendChild(K.name(XR - 24, YM + 10, 'R', 'end'));
+    const I = 26;
+    const box = [[I, I], [XR - I, I], [XR - I, H - I], [I, H - I]];
+    return {
+      nodeW,
+      hits: [['e:V', [-32, YM - 32, 64, 64]], ['e:L', [XL1 + 4, -24, XL2 - XL1 - 8, 40]], ['e:Ld', [XR - 30, YM - 48, 60, 96]]],
+      arrows: {
+        'i:V': [[44, YM + 26], [44, YM - 26], 'R'], 'v:V': [[-96, YM + 44], [-96, YM - 44], 'L'],
+        'i:L': [[40, -24], [150, -24], 'T'], 'v:L': [[XL2 - 10, -54], [XL1 + 10, -54], 'T'],
+        'i:Ld': [[XR + 34, YM - 30], [XR + 34, YM + 30], 'R'], 'v:Ld': [[XR + 80, YM + 44], [XR + 80, YM - 44], 'R'],
+      },
+      nodeTag: {in: [0, 52, -14, 8, 'end'], out: [XR - 60, 0, 0, -16], gnd: [240, H, 0, 40]},
+      loops: {cw: box, ccw: box.slice().reverse()},
+      sw: {},
+    };
+  },
+  state(S, k, MET) {
+    const p = S.p, s = S.s[k], i = S.x[0][k], vin = s ? p.V0 : 0, vL = vin - lswOut(p, i);
+    const fr = Math.abs(i) / Math.max(1e-15, MET.absMax);
+    let html = s ? `<span class="sw-on">v<sub>in</sub> = V<sub>0</sub></span>：` : `<span class="sw-off">v<sub>in</sub> = 0</span>：`;
+    html += `コイルの電圧 <span class="eq">v<sub>L</sub> = v<sub>in</sub> − v<sub>out</sub></span> = ${fmtSI(vL, 'V', 3)}。`;
+    if (Math.abs(vL) < 1e-9 * p.V0) html += `<span class="eq">i<sub>L</sub></span> は変わらない（一定のまま流れ続ける）。`;
+    else html += `<span class="eq">i<sub>L</sub></span> が${vL > 0 ? '増える' : '減る'}（傾き <span class="eq">v<sub>L</sub>/L</span>）。`;
+    const pw = vL * i;
+    if (Math.abs(pw) > 1e-9 * p.V0 * MET.absMax) html += pw > 0 ? ' コイルに磁気エネルギーが蓄積。' : ' コイルから磁気エネルギーが放出。';
+    if (i < -1e-9 * MET.absMax) html += ' <span class="warn">電流が負（左向き）</span>';
+    return {loops: Math.abs(i) > 1e-9 * MET.absMax ? [[i > 0 ? 'cw' : 'ccw', fr]] : [], html};
+  },
+  metricsHtml(S, m) {
+    const p = S.p, T = S.T, D = p.D, N = S.periods;
+    const F = (x, u) => fmtSI(x, u, 4);
+    const mark = (a, b, tol, sc) => Math.abs(a - b) <= tol * Math.max(Math.abs(b), sc) ? '<span class="ok">一致</span>' : '<span class="ng">ずれる</span>';
+    const R = (nm, sim, eq, val, u, sc, tol = 0.01) => `<tr><td>${nm}</td><td class="num">${F(sim, u)}</td><td class="eq">${eq}</td><td class="num">${F(val, u)}</td><td>${Math.abs(val) > 1e-15 ? pctDiff(sim, val) : '差 ' + F(sim - val, u)} ${mark(sim, val, tol, sc || 0)}</td></tr>`;
+    const step = p.V0 * D * T / p.L;
+    let rows = `<tr><th>量</th><th>シミュレーション</th><th>授業の式</th><th>式の値</th><th>差</th></tr>`;
+    if (p.load === 'none') {
+      rows += R('オンの間に増える電流（最後の周期）', m.iB - m.iA, 'V<sub>0</sub>DT / L', step, 'A');
+      rows += R('オフの間の電流の変化', m.iE - m.iB, '0（v<sub>L</sub> = 0）', 0, 'A', step);
+      rows += R(`最後の時刻 ${N}T の電流`, m.iE, `${N} V<sub>0</sub>DT / L`, N * step, 'A');
+    } else if (p.load === 'V1') {
+      rows += R('オンの間に増える電流 <span class="eq">I<sub>max</sub> − I<sub>min</sub></span>', m.iB - m.iA, 'DT(V<sub>0</sub> − V<sub>1</sub>) / L', D * T * (p.V0 - p.V1) / p.L, 'A', step);
+      rows += R('オフの間の電流の変化', m.iE - m.iB, '−(T − DT)V<sub>1</sub> / L', -(1 - D) * T * p.V1 / p.L, 'A', step);
+      rows += R('1 周期での電流の変化', m.iE - m.iA, 'T(DV<sub>0</sub> − V<sub>1</sub>) / L', T * (D * p.V0 - p.V1) / p.L, 'A', step);
+      const ok = Math.abs(p.V1 - D * p.V0) <= 1e-3 * p.V0;
+      rows += `<tr><td>定常状態になる条件（<span class="eq">V<sub>1</sub> = DV<sub>0</sub></span>）</td><td class="num">${F(p.V1, 'V')}（今の値）</td><td class="eq">V<sub>1</sub> = DV<sub>0</sub></td><td class="num">${F(D * p.V0, 'V')}</td><td>${ok ? '<span class="ok">定常状態</span>' : '<span class="ng">今の値では定常にならない</span>'}</td></tr>`;
+      if (ok) rows += R('電流の振動の大きさ <span class="eq">ΔI</span>', m.iMax - m.iMin, 'DT(1 − D)V<sub>0</sub> / L', D * T * (1 - D) * p.V0 / p.L, 'A');
+    } else {
+      const tau = p.L / p.R, a = Math.exp(-D * T / tau), b = Math.exp(-(1 - D) * T / tau);
+      const dIex = p.V0 / p.R * (1 - a) * (1 - b) / (1 - a * b), dIap = D * T * (1 - D) * p.V0 / p.L;
+      rows += R('抵抗の電圧の平均 <span class="eq">v<sub>R</sub></span>', m.vOutAvg, 'DV<sub>0</sub>', D * p.V0, 'V');
+      rows += R('コイルの電流の平均', m.iAvg, 'DV<sub>0</sub> / R', D * p.V0 / p.R, 'A');
+      rows += R('電流の振動の大きさ <span class="eq">ΔI</span>', m.iMax - m.iMin, 'DT(1 − D)V<sub>0</sub> / L（近似）', dIap, 'A', 0, 0.02);
+      rows += `<tr><td colspan="5" class="small">参考：厳密な振れ幅 <span class="eq">(V<sub>0</sub>/R)(1 − a)(1 − b)/(1 − ab)</span> = ${F(dIex, 'A')}（シミュレーションとの差 ${pctDiff(m.iMax - m.iMin, dIex)}）。<span class="eq">τ/T</span> = ${(tau / T).toPrecision(3)}</td></tr>`;
+      if (isFinite(m.tauSim)) rows += R('起動の時定数（周期平均の近づき方）', m.tauSim, 'τ = L / R', tau, 's');
+      else rows += `<tr><td>起動の時定数</td><td class="num">—</td><td class="eq">τ = L / R</td><td class="num">${F(tau, 's')}</td><td class="small">τ が T より短く、1 周期で定常になるので周期平均では測れない</td></tr>`;
+    }
+    const eTh = 0.5 * p.L * (m.iB ** 2 - m.iA ** 2);
+    const esc = 0.5 * p.L * Math.max(m.iB ** 2, m.iA ** 2, 1e-30);
+    rows += R('オン（I）でコイルに入るエネルギー <span class="eq">∫v<sub>L</sub>i<sub>L</sub>dt</span>', m.eOn, '½L(i(DT)² − i(0)²)', eTh, 'J', esc);
+    if (p.load !== 'none' && (p.load === 'R' || Math.abs(p.V1 - D * p.V0) <= 1e-3 * p.V0)) rows += R('オフ（II）でコイルから出るエネルギー', -m.eOff, 'オンで入った分（定常状態）', m.eOn, 'J', esc);
+    const sub = p.load === 'R'
+      ? `最後の 1 周期で計算（${N} 周期を計算）。` + (m.steady ? '' : ' <span class="ng">まだ定常状態に達していません</span>')
+      : `最後の 1 周期で計算（${N} 周期を計算。負荷なし・電池では起動からの値も使う）`;
+    return {rows, sub};
+  },
+});
+})();
+</script>
+</body>
+</html>

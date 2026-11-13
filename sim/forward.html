@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>フォワードコンバータのシミュレーター — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<header>
+  <nav class="hnav"><a href="../index.html">← 科目のページへ戻る</a><a href="index.html">回路を選ぶ（シミュレーターの一覧）</a></nav>
+  <h1>フォワードコンバータのシミュレーター</h1>
+  <div class="subtitle">パワーエレクトロニクス 第6回 直流-直流変換（２）p31〜34 / 大阪工業大学</div>
+</header>
+<main>
+  <div class="notice">
+    回路図の<b>線（節点）をクリック</b>すると、その点の電位が下のグラフに出ます。1次側は電源の−側（GND）、2次側は絶縁されているので出力の下の線（GND<sub>2</sub>）を 0 V とします。
+    <b>素子をクリック</b>すると、その素子の電流が出ます（矢印の向きが正）。<b>変圧器の鉄心（真ん中の太い線）</b>をクリックすると励磁電流 <span class="eq">i<sub>m</sub></span> が出ます。
+    値を変えると、スイッチを入れた瞬間（t = 0、電流も電圧も 0）から計算し直します。
+  </div>
+
+  <div class="top">
+    <section class="card">
+      <div class="card-h">
+        <span class="ttl">回路</span>
+        <span class="small">素子をクリックしたとき：</span>
+        <span class="seg" id="emode"><button data-m="i" class="on">電流</button><button data-m="v">両端の電圧</button></span>
+      </div>
+      <div class="sch-hint">← 回路図は横にスクロールできます →</div>
+      <div class="schwrap"><svg id="sch" viewBox="-120 -305 1200 600" aria-label="フォワードコンバータの回路図"></svg></div>
+      <div id="state"></div>
+    </section>
+
+    <section class="card params">
+      <div class="card-h"><span class="ttl">回路の値</span></div>
+      <div class="card-b" id="params"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-h">
+      <span class="ttl">波形</span>
+      <span class="seg" id="win">
+        <button data-w="all" class="on">起動から最後まで</button><button data-w="first">起動直後</button><button data-w="last">定常状態</button>
+      </span>
+    </div>
+    <div class="ctl">
+      <button id="play">▶ 再生</button>
+      <label>速さ <select id="speed"><option value="0.25">×0.25</option><option value="0.5">×0.5</option><option value="1" selected>×1</option><option value="2">×2</option><option value="4">×4</option></select></label>
+      <label id="nper">周期の数 <select id="nP"><option>2</option><option selected>3</option><option>5</option><option>10</option></select></label>
+      <label>グラフ <select id="lay"><option value="vi">電圧と電流の2段</option><option value="each">1本ずつ別の段</option></select></label>
+    </div>
+    <div class="scrubrow"><input type="range" id="scrub" min="0" max="10000" value="0" aria-label="時刻"><span class="tc" id="tc"></span></div>
+    <div id="legend"></div>
+    <div id="plotwrap"><canvas id="plot"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">定常状態の値と、授業の式の比較</span><span class="small" id="msub"></span></div>
+    <div class="card-b" style="overflow-x:auto"><table class="m" id="metrics"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">このシミュレーターの前提</span></div>
+    <div class="card-b">
+      <ul class="notes">
+        <li>変圧器は結合係数 1 の結合コイル（漏れインダクタンス・巻線の抵抗・鉄心の損失や飽和なし）です。これは「理想変圧器 ＋ 1次側の励磁インダクタンス <span class="eq">L<sub>m</sub></span>」と同じで、3 つの巻線の電圧は巻数に比例し（<span class="eq">v<sub>1</sub> : v<sub>2</sub> : v<sub>3</sub> = n<sub>1</sub> : n<sub>2</sub> : n<sub>3</sub></span>、○ の側が＋）、電流は <span class="eq">n<sub>1</sub>i<sub>1</sub> − n<sub>2</sub>i<sub>2</sub> + n<sub>3</sub>i<sub>3</sub> = n<sub>1</sub>i<sub>m</sub></span> を満たします。</li>
+        <li>スライド p34 の値（1次 10 mH・2次 0.1 mH・リセット巻線 10 mH）は、<span class="eq">L<sub>m</sub></span> = 10 mH、<span class="eq">n<sub>2</sub>/n<sub>1</sub></span> = √(0.1/10) = 0.1、<span class="eq">n<sub>3</sub>/n<sub>1</sub></span> = 1 にあたります。</li>
+        <li>スイッチとダイオード（D<sub>1</sub>・D<sub>2</sub>・リセット用 D<sub>3</sub>）は理想です。オンの間、2次側には <span class="eq">(n<sub>2</sub>/n<sub>1</sub>)V<sub>0</sub></span> が出て、D<sub>1</sub> → コイル → C・R に流れます。オフの間は D<sub>2</sub> が流れて、降圧チョッパーと同じ動きになります。</li>
+        <li>オフの間、励磁電流 <span class="eq">i<sub>m</sub></span> はリセット巻線 n<sub>3</sub> と D<sub>3</sub> を通って電源に戻ります（1次側の電圧は <span class="eq">−(n<sub>1</sub>/n<sub>3</sub>)V<sub>0</sub></span>）。リセットにかかる時間は <span class="eq">(n<sub>3</sub>/n<sub>1</sub>)DT</span> なので、<span class="eq">D ≤ n<sub>1</sub>/(n<sub>1</sub> + n<sub>3</sub>)</span>（<span class="eq">(n<sub>3</sub>/n<sub>1</sub>)DT ≤ (1 − D)T</span> から。n<sub>3</sub> = n<sub>1</sub> なら <span class="eq">D</span> ≤ 0.5）でないと励磁電流が周期ごとに増えていきます（実際の鉄心は飽和します）。</li>
+        <li>出力のコイルの電流が 0 になると、D<sub>1</sub>・D<sub>2</sub> が止まって電流 0 のまま（電流不連続モード）になります。</li>
+        <li>計算は 4 次のルンゲ・クッタ法（1 周期を 80〜400 分割）で、出力のコイルの電流が 0 になる時刻は二分法、励磁電流が 0 に戻る時刻は式で求めています。</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<footer>パワーエレクトロニクス ｜ 神野 崇馬 ｜ 試作版</footer>
+<div id="tip"></div>
+
+<script src="common.js"></script>
+<script>
+// ==SIM-BEGIN==
+/**
+ * フォワードコンバータ（リセット巻線つき）。p = {V0, D, f, Lm, n (= n2/n1), k3 (= n3/n1), L, C, R}
+ * 2次側の出力のコイルの電流 i と v_C は、オンで (n V0 − v)/L、オフで −v/L（降圧チョッパーと同じ）。
+ * 励磁電流 i_m（1次側に換算）はオンで V0/Lm の傾きで増え、オフでリセット巻線に V0 がかかり（1次の電圧 −V0/k3）
+ * V0/(k3 Lm) の傾きで 0 まで減る。2次側とは独立なので区間ごとに式で求め、0 に戻る時刻で区間を区切る。
+ * extra: im（励磁電流）、ph（1次側の状態：1 オン / 2 リセット中 / 0 リセット済み）
+ */
+function forwardModel(p) {
+  const V0 = p.V0, D = p.D, T = 1 / p.f, n = p.n, k3 = p.k3, Lm = p.Lm, L = p.L, C = p.C, R = p.R;
+  const ton = D * T, toff = T - ton, up = V0 * ton / Lm, sdn = V0 / (k3 * Lm);
+  const imS = [0];
+  const imStart = (pn) => { while (imS.length <= pn) imS.push(Math.max(0, imS[imS.length - 1] + up - sdn * toff)); return imS[pn]; };
+  const trOf = (pn) => (imStart(pn) + up) / sdn; // オフになってから励磁電流が 0 に戻るまでの時間
+  return {
+    T, D, R, C, Vs: n * V0,
+    fx: (g, i, v) => [((g ? n * V0 : 0) - v) / L, (i - v / R) / C],
+    sigma: slowRate(L, C, R),
+    splits: (pn, g) => g ? [] : [trOf(pn)],
+    extra: {names: ['im', 'ph'], f: (t, g, end) => {
+      let pn = Math.floor(t / T), tau = t - pn * T;
+      if (g) { // オンの区間：周期の始まり付近の丸め誤差
+        if (tau > ton + 1e-9 * T) { pn += 1; tau -= T; }
+        return [imStart(Math.max(0, pn)) + V0 * Math.max(0, tau) / Lm, 1];
+      }
+      if (tau < ton - 1e-9 * T) { pn -= 1; tau += T; } // オフの区間の終わり（t = (pn+1)T）
+      const tr = trOf(pn), u = tau - ton;
+      if (Math.abs(u - tr) < 1e-7 * T) return [0, end ? 2 : 0]; // 0 に戻った瞬間：区間の終わりの点はリセット中、次の点はリセット済み
+      return [Math.max(0, imStart(pn) + up - sdn * u), u < tr ? 2 : 0];
+    }},
+  };
+}
+function simulateForward(p) { const s = simPWL(forwardModel(p)); s.p = Object.assign({}, p); return s; }
+function forwardMetrics(S) {
+  const a = lastStats(S, (S, k) => S.i[k]), b = lastStats(S, (S, k) => S.v[k]), c = lastStats(S, (S, k) => S.ex.im[k]);
+  // 最後の周期で、オフになってから励磁電流が 0 に戻るまでの時間
+  const n = S.t.length, t0 = S.t[n - 1] - S.T, tOff = t0 + S.p.D * S.T;
+  let tr = NaN;
+  for (let k = a.k0; k < n; k++) if (S.t[k] > tOff && S.ex.ph[k] === 0) { tr = S.t[k] - tOff; break; }
+  return Object.assign({vAvg: b.avg, vMax: b.max, vMin: b.min, dV: b.pp, iAvg: a.avg, iMax: a.max, iMin: a.min, dI: a.pp,
+    imMax: c.max, imMin: c.min, tReset: tr}, settleInfo(S, S.p.n * S.p.V0));
+}
+// ==SIM-END==
+</script>
+<script>
+(() => {
+'use strict';
+const H = 220, YM = 110;
+const X = {B: 0, RX: 60, RJ: 110, RD1: 190, RD2: 270, S1: 150, S2: 240, NP: 330, CORE: 366, NS: 402, D1a: 440, D1k: 520, D2: 590, L1: 630, L2: 750, C: 830, R: 950};
+const Y = {RT: -230, RN1: -205, RN2: -105, RB: -80, c1: 45, c2: 175};
+const C1 = '#2563eb', C2 = COL.orange, C3 = '#0891b2', CM = '#be123c', CD1 = COL.teal, CD2 = '#0f766e', CD3 = '#65a30d';
+// 1次側の電圧（○ の側が＋）。オン V0、リセット中 −V0/k3、リセット済み 0
+const v1 = (S, k) => S.ex.ph[k] === 1 ? S.p.V0 : S.ex.ph[k] === 2 ? -S.p.V0 / S.p.k3 : 0;
+const vx = (S, k) => S.m[k] === 1 ? S.p.n * S.p.V0 : S.m[k] === 0 ? 0 : S.v[k];
+const i2 = (S, k) => S.m[k] === 1 ? S.i[k] : 0;
+const i1 = (S, k) => S.g[k] ? S.ex.im[k] + S.p.n * i2(S, k) : 0;
+const i3 = (S, k) => S.ex.ph[k] === 2 ? S.ex.im[k] / S.p.k3 : 0;
+const r3 = (x) => +x.toPrecision(3);
+let ratioText = null;
+
+SimApp({
+  pdef: [
+    {k: 'V0', b: 'V', s: '0', up: true, min: 5, max: 300, step: 5, log: false, unit: 'V', def: 100},
+    {k: 'D', b: 'D', s: '', min: 0.05, max: 0.9, step: 0.01, log: false, unit: '', def: 0.3},
+    {k: 'f', b: 'f', s: 'sw', min: 1e3, max: 100e3, log: true, unit: 'Hz', def: 20e3},
+    {k: 'Lm', b: 'L', s: 'm', html: 'L<sub>m</sub>', title: '1次側の励磁インダクタンス（1次の巻線のインダクタンス）', min: 0.5e-3, max: 100e-3, log: true, unit: 'H', def: 10e-3},
+    {k: 'n', html: 'n<sub style="font-style:normal">2</sub>/n<sub style="font-style:normal">1</sub>', title: '巻数比 n2/n1', min: 0.02, max: 2, log: true, unit: '', def: 0.1, fmt: r3},
+    {k: 'k3', html: 'n<sub style="font-style:normal">3</sub>/n<sub style="font-style:normal">1</sub>', title: '巻数比 n3/n1（リセット巻線）', min: 0.25, max: 4, log: true, unit: '', def: 1, fmt: r3},
+    {k: 'L', b: 'L', s: '', title: '出力のコイル', min: 10e-6, max: 10e-3, log: true, unit: 'H', def: 1e-3},
+    {k: 'C', b: 'C', s: '', min: 1e-6, max: 2200e-6, log: true, unit: 'F', def: 500e-6},
+    {k: 'R', b: 'R', s: '', min: 0.5, max: 500, log: true, unit: 'Ω', def: 5},
+  ],
+  presets: [
+    {name: '第6回 p34 の回路（100 V → 3 V）', v: {V0: 100, D: 0.3, f: 20e3, Lm: 10e-3, n: 0.1, k3: 1, L: 1e-3, C: 500e-6, R: 5}},
+    {name: 'リセットが間に合わない（D = 0.6）', v: {V0: 100, D: 0.6, f: 20e3, Lm: 10e-3, n: 0.1, k3: 1, L: 1e-3, C: 500e-6, R: 5}},
+    {name: 'n₃ を半分（n₃/n₁ = 0.5）', v: {V0: 100, D: 0.3, f: 20e3, Lm: 10e-3, n: 0.1, k3: 0.5, L: 1e-3, C: 500e-6, R: 5}},
+    {name: '電流不連続モードの例', v: {V0: 100, D: 0.3, f: 20e3, Lm: 10e-3, n: 0.1, k3: 1, L: 100e-6, C: 100e-6, R: 100}},
+  ],
+  simulate: (P) => simulateForward({V0: P.V0, D: P.D, f: P.f, Lm: P.Lm, n: P.n, k3: P.k3, L: P.L, C: P.C, R: P.R}),
+  metrics: forwardMetrics,
+  probes: {
+    'n:in':  {b: 'V', s: '0', up: true, color: COL.blue, q: 'V', what: '電源の＋側の節点の電位（n₃ の下の端もここ）', f: (S) => S.p.V0},
+    'n:p':   {b: 'v', s: '1', up: true, color: C1, q: 'V', what: 'スイッチと 1次の巻線 n₁ の ○ の側の節点の電位（= 1次の電圧 v₁）', f: v1},
+    'n:r':   {b: 'v', s: 'r', color: CD3, q: 'V', what: 'リセット巻線 n₃ の ○ の側（D₃ のカソード）の電位', f: (S, k) => S.p.V0 + S.p.k3 * v1(S, k)},
+    'n:gnd': {b: 'GND', s: '', color: COL.sub, q: 'V', what: '1次側の基準の節点（0 V）', f: () => 0},
+    'n:s':   {b: 'v', s: '2', up: true, color: C2, q: 'V', what: '2次の巻線 n₂ の ○ の側（D₁ のアノード）の電位（= 2次の電圧 v₂）', f: (S, k) => S.p.n * v1(S, k)},
+    'n:x':   {b: 'v', s: 'x', color: COL.fuchsia, q: 'V', what: 'D₁・D₂・出力のコイルの節点の電位', f: vx},
+    'n:out': {b: 'v', s: 'R', color: COL.green, q: 'V', what: '出力の節点の電位（C と R の電圧）', f: (S, k) => S.v[k]},
+    'n:gnd2': {b: 'GND₂', s: '', color: COL.sub, q: 'V', what: '2次側の基準の節点（0 V）', base: '2次側の電位の基準（1次側とは絶縁されている）', f: () => 0},
+    'i:V0':  {b: 'i', s: 'in', color: COL.iin, q: 'I', what: '電源から出る電流（上向きが正。リセット中は電源に戻るのでマイナス）', f: (S, k) => i1(S, k) - i3(S, k)},
+    'i:S':   {b: 'i', s: 'S', color: COL.isw, q: 'I', what: 'スイッチの電流（右向きが正）', f: i1},
+    'i:P1':  {b: 'i', s: '1', up: true, color: C1, q: 'I', what: '1次の巻線の電流（○ に入る向きが正）= 励磁電流 + 負荷電流', f: i1},
+    'i:P2':  {b: 'i', s: '2', up: true, color: C2, q: 'I', what: '2次の巻線の電流（○ から出る向きが正）', f: i2},
+    'i:P3':  {b: 'i', s: '3', up: true, color: C3, q: 'I', what: 'リセット巻線の電流（○ に入る向きが正）', f: i3},
+    'i:core': {b: 'i', s: 'm', color: CM, q: 'I', what: '励磁電流（1次側に換算。鉄心の磁束に比例）', f: (S, k) => S.ex.im[k]},
+    'i:D1':  {b: 'i', s: 'D1', color: CD1, q: 'I', what: 'ダイオード D₁ の電流（右向きが正）', f: i2},
+    'i:D2':  {b: 'i', s: 'D2', color: CD2, q: 'I', what: 'ダイオード D₂ の電流（上向きが正）', f: (S, k) => S.m[k] === 0 ? S.i[k] : 0},
+    'i:D3':  {b: 'i', s: 'D3', color: CD3, q: 'I', what: 'リセット用ダイオード D₃ の電流（右向きが正）', f: i3},
+    'i:L':   {b: 'i', s: 'L', color: COL.ink, q: 'I', what: '出力のコイルの電流（右向きが正）', f: (S, k) => S.i[k]},
+    'i:C':   {b: 'i', s: 'C', color: COL.violet, q: 'I', what: 'コンデンサの電流（下向き＝充電が正）', f: (S, k) => S.i[k] - S.v[k] / S.p.R},
+    'i:R':   {b: 'i', s: 'R', color: COL.ir, q: 'I', what: '抵抗の電流（下向きが正）', f: (S, k) => S.v[k] / S.p.R},
+    'v:V0':  {b: 'V', s: '0', up: true, color: COL.blue, q: 'V', what: '電源の電圧（上が＋）', f: (S) => S.p.V0},
+    'v:S':   {b: 'v', s: 'sw', color: COL.fuchsia, q: 'V', what: 'スイッチの両端の電圧（左が＋）', f: (S, k) => S.p.V0 - v1(S, k)},
+    'v:P1':  {b: 'v', s: '1', up: true, color: C1, q: 'V', what: '1次の巻線の電圧（○ の側が＋）', f: v1},
+    'v:P2':  {b: 'v', s: '2', up: true, color: C2, q: 'V', what: '2次の巻線の電圧（○ の側が＋）', f: (S, k) => S.p.n * v1(S, k)},
+    'v:P3':  {b: 'v', s: '3', up: true, color: C3, q: 'V', what: 'リセット巻線の電圧（○ の側が＋）', f: (S, k) => S.p.k3 * v1(S, k)},
+    'v:D1':  {b: 'v', s: 'D1', color: CD1, q: 'V', what: 'D₁ の両端の電圧（右のカソードが＋。逆向きにかかる電圧）', f: (S, k) => vx(S, k) - S.p.n * v1(S, k)},
+    'v:D2':  {b: 'v', s: 'D2', color: CD2, q: 'V', what: 'D₂ の両端の電圧（上のカソードが＋。逆向きにかかる電圧）', f: vx},
+    'v:D3':  {b: 'v', s: 'D3', color: CD3, q: 'V', what: 'D₃ の両端の電圧（右のカソードが＋。逆向きにかかる電圧）', f: (S, k) => S.p.V0 + S.p.k3 * v1(S, k)},
+    'v:L':   {b: 'v', s: 'L', color: COL.ink, q: 'V', what: '出力のコイルの両端の電圧（左が＋）', f: (S, k) => vx(S, k) - S.v[k]},
+    'v:C':   {b: 'v', s: 'C', color: COL.green, q: 'V', what: 'コンデンサの両端の電圧（上が＋）', f: (S, k) => S.v[k]},
+    'v:R':   {b: 'v', s: 'R', color: COL.green, q: 'V', what: '抵抗の両端の電圧（上が＋）', f: (S, k) => S.v[k]},
+  },
+  defaultProbes: ['v:L', 'n:out', 'i:L', 'i:core'],
+  refLines: [{keys: ['n:out', 'v:C', 'v:R'], val: (S) => S.p.D * S.p.n * S.p.V0, label: 'D(n₂/n₁)V₀', color: COL.green}],
+  build(K) {
+    const {W, el, gWire} = K;
+    const r = 11;
+    const nodeW = {
+      in: [[[X.B, YM - 9], [X.B, 0], [X.S1, 0]], [[X.RJ, 0], [X.RJ, Y.RB], [X.NP, Y.RB], [X.NP, Y.RN2]]],
+      p: [[[X.S2, 0], [X.NP, 0], [X.NP, Y.c1]]],
+      r: [[[X.NP, Y.RN1], [X.NP, Y.RT], [X.RD2, Y.RT]]],
+      gnd: [[[X.B, YM + 9], [X.B, H], [X.NP, H], [X.NP, Y.c2]], [[X.RX, H], [X.RX, r]], [[X.RX, -r], [X.RX, Y.RT], [X.RD1, Y.RT]]],
+      s: [[[X.NS, Y.c1], [X.NS, 0], [X.D1a, 0]]],
+      x: [[[X.D1k, 0], [X.L1, 0]], [[X.D2, 0], [X.D2, YM - 40]]],
+      out: [[[X.L2, 0], [X.R, 0], [X.R, YM - 45]], [[X.C, 0], [X.C, YM - 10]]],
+      gnd2: [[[X.NS, Y.c2], [X.NS, H], [X.R, H], [X.R, YM + 45]], [[X.D2, YM + 40], [X.D2, H]], [[X.C, YM + 10], [X.C, H]]],
+    };
+    for (const nn in nodeW) nodeW[nn].forEach(p => W(p));
+    el('path', {d: `M${X.RX} ${-r} A${r} ${r} 0 0 0 ${X.RX} ${r}`}, gWire); // 上の線を飛び越す
+    K.battery(X.B, YM);
+    K.ground(X.B, H);
+    const sw = K.switch([X.S1, 0], [X.S2, 0], 1);
+    K.box(X.S1 - 18, -32, X.S2 - X.S1 + 36, 58, COL.fuchsia);
+    K.text((X.S1 + X.S2) / 2, -42, '制御スイッチ', COL.fuchsia, 22);
+    // 変圧器
+    K.coil([X.NP, Y.c1], [X.NP, Y.c2], 4, 1, 4);
+    K.coil([X.NP, Y.RN1], [X.NP, Y.RN2], 3, 1, 4);
+    K.coil([X.NS, Y.c1], [X.NS, Y.c2], 4, -1, 4);
+    el('line', {x1: X.CORE, y1: Y.RN1 - 8, x2: X.CORE, y2: Y.c2 + 8, 'stroke-width': 5}, gWire);
+    K.pol(X.NP - 24, Y.c1 + 12); K.pol(X.NS + 24, Y.c1 + 12); K.pol(X.NP - 24, Y.RN1 + 12);
+    K.name(X.NP - 34, Y.c2 - 8, 'n', 'end', 30, '1');
+    K.name(X.NS + 30, Y.c2 - 8, 'n', 'start', 30, '2');
+    K.name(X.NP - 34, Y.RN2 - 6, 'n', 'end', 30, '3');
+    K.text(X.NP + 30, -246, 'リセット巻線', C3, 22, 'start');
+    // ダイオード
+    K.diode([X.RD1, Y.RT], [X.RD2, Y.RT]);
+    K.name((X.RD1 + X.RD2) / 2, Y.RT + 52, 'D', 'middle', 26, '3');
+    K.diode([X.D1a, 0], [X.D1k, 0]);
+    K.name((X.D1a + X.D1k) / 2, 50, 'D', 'middle', 26, '1');
+    K.diode([X.D2, YM + 40], [X.D2, YM - 40]);
+    K.name(X.D2 + 28, YM + 10, 'D', 'start', 26, '2');
+    // 出力
+    K.coil([X.L1, 0], [X.L2, 0], 4, 1);
+    K.name((X.L1 + X.L2) / 2, 44, 'L');
+    K.cap(X.C, YM);
+    K.res(X.R, YM);
+    K.name(X.C + 38, YM + 34, 'C', 'start');
+    K.name(X.R - 22, YM + 8, 'R', 'end');
+    [[X.RJ, 0], [X.RX, H], [X.D2, 0], [X.D2, H], [X.C, 0], [X.C, H]].forEach(([x, y]) => K.dot(x, y));
+    K.text(X.R + 10, H + 50, '2次側（絶縁）', COL.sub, 22, 'end');
+    ratioText = K.text(X.CORE, H + 52, '', COL.ink, 24);
+    const I = 20, box = (x0, x1) => [[x0 + I, I], [x1 - I, I], [x1 - I, H - I], [x0 + I, H - I]];
+    return {
+      nodeW,
+      hits: [['e:V0', [-34, YM - 26, 68, 52]], ['e:S', [X.S1 + 8, -24, X.S2 - X.S1 - 16, 44]],
+        ['e:P1', [X.NP - 16, Y.c1 + 4, 32, Y.c2 - Y.c1 - 8]], ['e:P3', [X.NP - 16, Y.RN1 + 4, 32, Y.RN2 - Y.RN1 - 8]], ['e:P2', [X.NS - 16, Y.c1 + 4, 32, Y.c2 - Y.c1 - 8]],
+        ['e:core', [X.CORE - 9, Y.RN1, 18, Y.c2 - Y.RN1]],
+        ['e:D3', [X.RD1 + 8, Y.RT - 24, X.RD2 - X.RD1 - 16, 48]], ['e:D1', [X.D1a + 8, -24, X.D1k - X.D1a - 16, 48]], ['e:D2', [X.D2 - 24, YM - 32, 48, 64]],
+        ['e:L', [X.L1 + 4, -24, X.L2 - X.L1 - 8, 40]], ['e:C', [X.C - 36, YM - 24, 72, 48]], ['e:R', [X.R - 22, YM - 50, 44, 100]]],
+      arrows: {
+        'i:V0': [[-22, 56], [-22, 12], 'L'], 'v:V0': [[-62, YM + 44], [-62, YM - 44], 'L'],
+        'i:S': [[X.S1 + 14, 40], [X.S2 - 14, 40], 'B'], 'v:S': [[X.S2 - 6, 96], [X.S1 + 6, 96], 'B'],
+        'i:P1': [[X.NP - 56, Y.c1 + 30], [X.NP - 56, Y.c2 - 40], 'L'], 'v:P1': [[X.NP - 56, Y.c2 - 20], [X.NP - 56, Y.c1 + 20], 'L'],
+        'i:P3': [[X.NP - 56, Y.RN1 + 26], [X.NP - 56, Y.RN2 - 30], 'L'], 'v:P3': [[X.NP - 56, Y.RN2 - 14], [X.NP - 56, Y.RN1 + 14], 'L'],
+        'i:P2': [[X.NS + 56, Y.c2 - 30], [X.NS + 56, Y.c1 + 30], 'R'], 'v:P2': [[X.NS + 56, Y.c2 - 20], [X.NS + 56, Y.c1 + 20], 'R'],
+        'i:D3': [[X.RD1 + 8, Y.RT - 30], [X.RD2 - 8, Y.RT - 30], 'T'], 'v:D3': [[X.RD1 + 8, Y.RT + 70], [X.RD2 - 8, Y.RT + 70], 'B'],
+        'i:D1': [[X.D1a + 8, -34], [X.D1k - 8, -34], 'T'], 'v:D1': [[X.D1a + 8, -76], [X.D1k - 8, -76], 'T'],
+        'i:D2': [[X.D2 - 40, YM + 30], [X.D2 - 40, YM - 30], 'L'], 'v:D2': [[X.D2 - 40, YM + 40], [X.D2 - 40, YM - 40], 'L'],
+        'i:L': [[X.L1 + 10, -30], [X.L2 - 10, -30], 'T'], 'v:L': [[X.L2 - 8, -72], [X.L1 + 8, -72], 'T'],
+        'i:C': [[X.C - 48, YM - 30], [X.C - 48, YM + 30], 'L'], 'v:C': [[X.C - 48, YM + 40], [X.C - 48, YM - 40], 'L'],
+        'i:R': [[X.R + 34, YM - 30], [X.R + 34, YM + 30], 'R'], 'v:R': [[X.R + 70, YM + 44], [X.R + 70, YM - 44], 'R'],
+      },
+      nodeTag: {in: [X.RJ + 20, 0, 0, -16], p: [X.S2 + 44, 0, 0, -16], r: [X.NP - 30, Y.RT, 0, -16], gnd: [X.B + 110, H, 0, 40],
+        s: [X.NS + 22, 0, 0, -16], x: [X.D2 + 20, 0, 0, -16], out: [X.C + 50, 0, 0, -16], gnd2: [X.D2 + 60, H, 0, 40]},
+      loops: {
+        onP: box(X.B, X.NP), onS: box(X.NS, X.R), offS: box(X.D2, X.R), cr: box(X.C, X.R),
+        offR: [[X.RX + 10, H - I], [X.RX + 10, Y.RT + I], [X.NP - I, Y.RT + I], [X.NP - I, Y.RB - I], [X.RJ - 10, Y.RB - I], [X.RJ - 10, -I], [X.B - I, -I], [X.B - I, H - I]],
+      },
+      sw: {S: sw},
+    };
+  },
+  onRun(S) { ratioText.textContent = `n₁ : n₂ : n₃ = 1 : ${r3(S.p.n)} : ${r3(S.p.k3)}`; },
+  state(S, k, MET) {
+    const g = S.g[k], m = S.m[k], ph = S.ex.ph[k], p = S.p;
+    const fr = (x) => Math.abs(x) / Math.max(1e-15, MET.iMax);
+    const frP = (x) => Math.abs(x) / Math.max(1e-15, p.n * MET.iMax + MET.imMax);
+    const loops = [];
+    let html = '';
+    const warn = p.D > 1 / (1 + p.k3) + 1e-9 ? ` <span class="warn">D &gt; n₁/(n₁+n₃) = ${r3(1 / (1 + p.k3))} なので、オフの間にリセットが終わらず、励磁電流が周期ごとに増えていく（実際の鉄心は飽和する）。</span>` : '';
+    if (g) {
+      loops.push(['onP', frP(i1(S, k))]);
+      html = `<span class="sw-on">スイッチ オン</span>：1次側は 電源 → スイッチ → n<sub>1</sub> → 電源。2次側に <span class="eq">(n<sub>2</sub>/n<sub>1</sub>)V<sub>0</sub></span> = ${fmtSI(p.n * p.V0, 'V', 3)} が出て、`;
+      if (m === 1) { loops.push(['onS', fr(S.i[k])]); html += `D<sub>1</sub> → コイル → C・R に流れる（1次の電流 = 励磁電流 + 負荷電流）。励磁電流 <span class="eq">i<sub>m</sub></span> が増える。`; }
+      else { loops.push(['cr', fr(S.v[k] / p.R)]); html += `まだ <span class="eq">v<sub>C</sub></span> の方が高いので 2次側には流れない。`; }
+    } else {
+      if (ph === 2) { loops.push(['offR', frP(i3(S, k))]); html = `<span class="sw-off">スイッチ オフ</span>：1次側は 励磁電流が リセット巻線 n<sub>3</sub> → D<sub>3</sub> を通って電源に戻る（1次の電圧は <span class="eq">−(n<sub>1</sub>/n<sub>3</sub>)V<sub>0</sub></span>、鉄心の磁束が元に戻る）。`; }
+      else html = `<span class="sw-off">スイッチ オフ</span>：励磁電流は 0 に戻った（リセット済み、巻線の電圧はすべて 0）。`;
+      if (m === 0) { loops.push(['offS', fr(S.i[k])]); html += `2次側は コイル → C・R → D<sub>2</sub> → コイル（降圧チョッパーと同じ）。`; }
+      else { loops.push(['cr', fr(S.v[k] / p.R)]); html += `<span class="dcm">出力のコイルの電流が 0</span>（電流不連続）：C が R に放電している。`; }
+    }
+    return {sw: {S: g}, loops, html: html + warn};
+  },
+  metricsHtml(S, m) {
+    // 定常状態に達する前に打ち切ったときは、判定を「ずれる」ではなく「目安」にする
+    // 出力の電圧の揺れが平均の半分を超えるほど大きいとき（f_sw が低く L・C が小さい極端な値）も、式の前提（出力の電圧はほぼ一定）が崩れるので「目安」
+    const bigRip = m.dV > 0.5 * Math.abs(m.vAvg);
+    const mk = (a, b, tol) => !m.steady ? '<span class="small">目安（定常に達していない）</span>' : bigRip && /ずれる/.test(okMark(a, b, tol)) ? '<span class="small">目安（出力の揺れが大きい）</span>' : okMark(a, b, tol);
+    const p = S.p, T = S.T, D = p.D, nV = p.n * p.V0;
+    const vth = D * nV, dIth = D * T * (1 - D) * nV / p.L, dVth = m.dI / (8 * p.C * p.f);
+    const imth = p.V0 * D * T / p.Lm, trth = p.k3 * D * T, lim = 1 / (1 + p.k3), ok = D <= lim + 1e-9;
+    const Kd = 2 * p.L / (p.R * T), Mdcm = 2 / (1 + Math.sqrt(1 + 4 * Kd / (D * D)));
+    let rows = `<tr><th>量</th><th>シミュレーション</th><th>授業の式</th><th>式の値</th><th>差</th></tr>`;
+    rows += `<tr><td>出力の電圧の平均</td><td class="num">${fmtSI(m.vAvg, 'V', 4)}</td><td class="eq">v<sub>R</sub> = D(n<sub>2</sub>/n<sub>1</sub>)V<sub>0</sub></td><td class="num">${fmtSI(vth, 'V', 4)}</td><td>${pctDiff(m.vAvg, vth)} ${m.dcm ? '' : mk(m.vAvg, vth, 0.02)}</td></tr>`;
+    rows += `<tr><td>出力のコイルの電流の振れ幅</td><td class="num">${fmtSI(m.dI, 'A', 4)}</td><td class="eq">DT(1 − D)(n<sub>2</sub>/n<sub>1</sub>)V<sub>0</sub> / L</td><td class="num">${fmtSI(dIth, 'A', 4)}</td><td>${m.dcm ? '—' : pctDiff(m.dI, dIth) + ' ' + mk(m.dI, dIth, 0.05)}</td></tr>`;
+    rows += `<tr><td>出力の電圧の振れ幅</td><td class="num">${fmtSI(m.dV, 'V', 3)}</td><td class="eq">ΔI / (8Cf<sub>sw</sub>)</td><td class="num">${fmtSI(dVth, 'V', 3)}</td><td>${m.dcm ? '—' : pctDiff(m.dV, dVth)}</td></tr>`;
+    rows += `<tr><td>出力のコイルの電流の平均</td><td class="num">${fmtSI(m.iAvg, 'A', 4)}</td><td class="eq">v<sub>R</sub> / R</td><td class="num">${fmtSI(m.vAvg / p.R, 'A', 4)}</td><td>${pctDiff(m.iAvg, m.vAvg / p.R)}</td></tr>`;
+    if (ok) {
+      rows += `<tr><td>励磁電流の山</td><td class="num">${fmtSI(m.imMax, 'A', 4)}</td><td class="eq">V<sub>0</sub>DT / L<sub>m</sub></td><td class="num">${fmtSI(imth, 'A', 4)}</td><td>${pctDiff(m.imMax, imth)}</td></tr>`;
+      rows += `<tr><td>リセットにかかる時間</td><td class="num">${isFinite(m.tReset) ? fmtSI(m.tReset, 's', 4) : 'オフの終わりまで'}</td><td class="eq">(n<sub>3</sub>/n<sub>1</sub>)DT</td><td class="num">${fmtSI(trth, 's', 4)}</td><td>${isFinite(m.tReset) ? pctDiff(m.tReset, trth) : '—（ちょうど限界）'}</td></tr>`;
+    } else {
+      rows += `<tr><td colspan="5"><span class="ng">リセットが間に合っていません</span>：<span class="eq">D</span> = ${D} &gt; <span class="eq">n<sub>1</sub>/(n<sub>1</sub> + n<sub>3</sub>)</span> = ${r3(lim)}。オフの間（<span class="eq">(1 − D)T</span> = ${fmtSI((1 - D) * T, 's', 3)}）に、励磁電流を 0 に戻すのに必要な <span class="eq">(n<sub>3</sub>/n<sub>1</sub>)DT</span> = ${fmtSI(trth, 's', 3)} が足りず、励磁電流が 1 周期に ${fmtSI(p.V0 * (D * T - (1 - D) * T / p.k3) / p.Lm, 'A', 3)} ずつ増えていきます（最後の周期で ${fmtSI(m.imMax, 'A', 3)}）。</td></tr>`;
+    }
+    if (m.dcm) rows += `<tr><td colspan="5"><span class="dcm" style="color:#7c3aed;font-weight:700">電流不連続モード</span>：オフの途中で出力のコイルの電流が 0 になっています。<span class="eq">D(n<sub>2</sub>/n<sub>1</sub>)V<sub>0</sub></span> は「電流が 0 にならない」ときの式なので合いません。参考：降圧チョッパーの不連続モードの式で <span class="eq">V<sub>0</sub></span> を <span class="eq">(n<sub>2</sub>/n<sub>1</sub>)V<sub>0</sub></span> にしたもの = ${fmtSI(Mdcm * nV, 'V', 4)}（差 ${pctDiff(m.vAvg, Mdcm * nV)}）</td></tr>`;
+    if (bigRip && m.steady) rows += `<tr><td colspan="5" class="small">出力の電圧の揺れ（${fmtSI(m.dV, 'V', 3)}）が平均の半分を超えています。授業の式は「出力の電圧はほぼ一定（揺れは小さい）」として求めたものなので、合わない行は「目安」としています（<span class="eq">f<sub>sw</sub></span>・<span class="eq">L</span>・<span class="eq">C</span> を大きくすると式に近づきます）。</td></tr>`;
+    const sub = `最後の 1 周期で計算。定常状態まで約 ${fmtSI(m.settle, 's', 2)}（${Math.max(1, Math.round(m.settle / T))} 周期）` +
+      (m.steady ? '' : ` <span class="ng">まだ定常状態に達していません（${S.periods} 周期で打ち切り）</span>`);
+    return {rows, sub};
+  },
+});
+})();
+</script>
+</body>
+</html>

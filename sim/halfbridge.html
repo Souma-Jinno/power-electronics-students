@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ハーフブリッジインバータのシミュレーター — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<header>
+  <nav class="hnav"><a href="../index.html">← 科目のページへ戻る</a><a href="index.html">回路を選ぶ（シミュレーターの一覧）</a></nav>
+  <h1>ハーフブリッジインバータ（方形波）のシミュレーター</h1>
+  <div class="subtitle">パワーエレクトロニクス 第11回 直流-交流変換（１） p6〜8 / 大阪工業大学</div>
+</header>
+<main>
+  <div class="notice">
+    電源を 2 つ（それぞれ <span class="eq">E</span>）直列にして、その間の点 O と、上下 2 つのスイッチ（1 本の<b>レグ</b>）の中点 a の間に負荷をつなぎます（p8 の左の回路）。
+    S<sub>1</sub> と S<sub>2</sub> を半周期ずつオンにすると、負荷の電圧は <span class="eq">+E</span> と <span class="eq">−E</span> を行き来する<b>方形波</b>になります（p6〜7 の「回路を切り替える」をスイッチ 2 つでやる）。
+    フルブリッジと比べて<b>スイッチは 2 つで済むが、電源が 2 つ必要</b>です。
+    回路図の<b>線をクリックすると電位</b>（2 つの電源の間 O を 0 V とする）、<b>素子をクリックすると電流</b>（矢印の向きが正）が下のグラフに出ます。
+  </div>
+
+  <div class="top">
+    <section class="card">
+      <div class="card-h">
+        <span class="ttl">回路</span>
+        <span class="small">素子をクリックしたとき：</span>
+        <span class="seg" id="emode"><button data-m="i" class="on">電流</button><button data-m="v">両端の電圧</button></span>
+      </div>
+      <svg id="sch" viewBox="-150 -40 800 400" aria-label="ハーフブリッジインバータの回路図"></svg>
+      <div id="state"></div>
+    </section>
+
+    <section class="card params">
+      <div class="card-h"><span class="ttl">回路の値</span></div>
+      <div class="card-b" id="params"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-h">
+      <span class="ttl">波形</span>
+      <span class="seg" id="win">
+        <button data-w="all">起動から最後まで</button><button data-w="first">起動直後</button><button data-w="last" class="on">定常状態</button>
+      </span>
+    </div>
+    <div class="ctl">
+      <button id="play">▶ 再生</button>
+      <label>速さ <select id="speed"><option value="0.1">×0.1</option><option value="0.25">×0.25</option><option value="0.5">×0.5</option><option value="1" selected>×1</option><option value="2">×2</option></select></label>
+      <label id="nper">周期の数 <select id="nP"><option>1</option><option selected>2</option><option>3</option><option>5</option></select></label>
+      <label>グラフ <select id="lay"><option value="vi">電圧と電流の2段</option><option value="each" selected>1本ずつ別の段</option></select></label>
+    </div>
+    <div class="scrubrow"><input type="range" id="scrub" min="0" max="10000" value="0" aria-label="時刻"><span class="tc" id="tc"></span></div>
+    <div id="legend"></div>
+    <div id="plotwrap"><canvas id="plot"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">定常状態の値と、授業の式の比較</span><span class="small" id="msub"></span></div>
+    <div class="card-b" style="overflow-x:auto"><table class="m" id="metrics"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">このシミュレーターの前提</span></div>
+    <div class="card-b">
+      <ul class="notes">
+        <li>電源は 2 つとも <span class="eq">E</span>（p7 の 2 つの電源と同じ。合わせて 2<span class="eq">E</span>）。負荷の電圧・電流は、a から O に向かう向き（回路図の左向き）を正とします。こうすると S<sub>1</sub> オンで <span class="eq">+E</span>、S<sub>2</sub> オンで <span class="eq">−E</span> になり、フルブリッジ（p10〜16）と同じ式が使えます。</li>
+        <li>スイッチは理想（オンで 0 Ω、どちら向きにも流せる）。オンのスイッチは負荷の電流が逆向きのときもそのスイッチ自身が流し、還流ダイオードはデッドタイムの間だけ流れます（フルブリッジの p20・p26〜30 と同じ考え方）。ダイオードも理想（電圧降下 0）です。</li>
+        <li>ゲート信号：S<sub>1</sub> は 0〜<span class="eq">T</span>/2、S<sub>2</sub> は <span class="eq">T</span>/2 + <span class="eq">t<sub>d</sub></span> 〜 <span class="eq">T</span>、<span class="eq">T</span> の後にも <span class="eq">t<sub>d</sub></span> のデッドタイム（最初の周期だけは t = 0 から S<sub>1</sub> がオン）。<span class="eq">t<sub>d</sub></span> は周期の 20 % までにしています。</li>
+        <li>デッドタイムの間：還流ダイオードがあると、<span class="eq">i</span> &gt; 0 なら D<sub>2</sub>（負荷に −<span class="eq">E</span>）、<span class="eq">i</span> &lt; 0 なら D<sub>1</sub>（負荷に +<span class="eq">E</span>）が流れます。ダイオードがないと、オフのスイッチ（10 kΩ とした）に電流が流れ込んで大電圧がかかります（第11回 p22・p24）。</li>
+        <li>オフのスイッチには、2 つの電源を合わせた 2<span class="eq">E</span> がかかります（フルブリッジは <span class="eq">E</span>）。</li>
+        <li>負荷が <span class="eq">L</span> だけのときは抵抗がないので、電流の平均は最初の値のまま変わりません。「<span class="eq">i</span>(0) = −TE/(4L)」を選ぶと p12 と同じ ±<span class="eq">TE</span>/(4<span class="eq">L</span>) の三角波になります。<span class="eq">L</span>＋<span class="eq">R</span> の定常状態の山は <span class="eq">(E/R)</span> tanh(<span class="eq">T</span>/(4τ))、τ = <span class="eq">L/R</span> です。</li>
+        <li>計算は 4 次のルンゲ・クッタ法（1 周期を 400 分割）。ゲートの切り替わりは区間の境目に置き、ダイオードの電流が 0 になる時刻は二分法で求めています。</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<footer>パワーエレクトロニクス ｜ 神野 崇馬 ｜ 試作版</footer>
+<div id="tip"></div>
+
+<script src="common.js"></script>
+<script>
+// ==SIM-BEGIN==
+/** オフのスイッチの抵抗（還流ダイオードなしでデッドタイムに入ったとき、切れたコイルの電流の逃げ道） */
+const INV_ROFF = 10e3;
+/**
+ * 方形波インバータ（第11回）。kind: 'full'（フルブリッジ）/'half'（ハーフブリッジ）。
+ * p = {kind, E, f, R, L, load: 'R'|'L'|'RL', td（デッドタイム。0 ならなし）, diode（還流ダイオードあり）, i0（コイルの電流の初期値）}
+ * ゲート（p26 と同じ）：S1・S4（ハーフは S1）は 0〜T/2、S2・S3（ハーフは S2）は T/2 + td 〜 T。T の後にも td のデッドタイム（最初の周期だけは t = 0 からオン）。
+ * 状態変数 [i]（負荷の電流。フルは a → b、ハーフは a → O の向きが正）。離散状態 s = g + 4 m
+ *   g: 1 S1・S4 オン / 2 S2・S3 オン / 0 デッドタイム（全部オフ）
+ *   m（g = 0 のとき）: 1 i > 0 をダイオードが流す（フル D2・D3、ハーフ D2） / 2 i < 0（フル D1・D4、ハーフ D1）
+ *                      3 電流 0 で止まっている / 4 ダイオードなし（オフのスイッチの抵抗 INV_ROFF に流れる）
+ */
+function invGate(p, t) {
+  const T = 1 / p.f, td = invTd(p), u = t - Math.floor(t / T) * T;
+  if (u < T / 2) return (u >= td || t < T / 2) ? 1 : 0;
+  return u >= T / 2 + td ? 2 : 0;
+}
+function invTd(p) { return Math.min(p.td || 0, 0.2 / p.f); }
+/** 負荷にかかる電圧（フル v_ab、ハーフ v_aO）。kR：ダイオードなしのデッドタイムで負荷から見える抵抗（フル 1·Roff、ハーフ Roff/2） */
+function invVload(p, s, i) {
+  const g = s & 3, m = s >> 2;
+  if (g === 1) return p.E;
+  if (g === 2) return -p.E;
+  if (m === 1) return -p.E;
+  if (m === 2) return p.E;
+  if (m === 4) return -(p.kind === 'half' ? 0.5 : 1) * INV_ROFF * i;
+  return 0;
+}
+function invModel(p) {
+  const T = 1 / p.f, td = invTd(p);
+  const Rl = p.load === 'L' ? 0 : p.R, Ll = p.load === 'R' ? 0 : p.L;
+  const kR = p.kind === 'half' ? 0.5 : 1, tauD = Ll / (Rl + kR * INV_ROFF);
+  const fineN = 48, fineDt = tauD / 4;   // ダイオードなしのデッドタイム：電流が速く減衰するので、始めの 12τ を細かく刻む
+  const nodiode = !p.diode && td > 0 && Ll > 0;
+  let periods = 4;
+  if (Ll > 0) periods = Rl > 0 ? Math.min(300, Math.max(6, Math.ceil(6 * Ll / Rl / T) + 3)) : 6;
+  const deadStart = (t) => { const n = Math.floor(t / T + 1e-9); return t - n * T < T / 2 - 1e-9 * T ? n * T : n * T + T / 2; };
+  return {
+    T, periods, h: T / 400, x0: [Ll > 0 ? (p.i0 || 0) : 0], s0: 1,
+    f: (t, x, s) => {
+      if (!(Ll > 0) || (s >> 2) === 3) return [0];
+      return [(invVload(p, s, x[0]) - Rl * x[0]) / Ll];
+    },
+    breaks: (t0, t1) => {
+      const pn = Math.round(t0 / T), b = [t0, t0 + T / 2];
+      if (td > 0) { if (pn > 0) b.push(t0 + td); b.push(t0 + T / 2 + td); }
+      if (nodiode) for (const ds of (pn > 0 ? [t0, t0 + T / 2] : [t0 + T / 2])) for (let j = 1; j <= fineN && j * fineDt < td; j++) b.push(ds + j * fineDt);
+      return b.sort((u, v) => u - v);
+    },
+    onBreak: (t, x, s) => {
+      const g = invGate(p, t + 1e-9 * T);
+      if (g) return g;
+      if (!(Ll > 0)) return 0;
+      if (!p.diode) {
+        if (t - deadStart(t) >= fineN * fineDt * (1 - 1e-9)) x[0] = 0;   // 12τ 経った：e^−12 で 0 とみなす
+        return 4 << 2;
+      }
+      if ((s & 3) === 0) return s;
+      const i = x[0];
+      if (Math.abs(i) <= 1e-12 * p.E / Math.max(p.R, 1e-3)) { x[0] = 0; return 3 << 2; }
+      return (i > 0 ? 1 : 2) << 2;
+    },
+    guards: (t, x, s) => { const m = s >> 2; return [m === 1 ? x[0] : m === 2 ? -x[0] : 1]; },
+    onGuard: (t, x, s) => { x[0] = 0; return 3 << 2; },
+  };
+}
+function simulateInv(p) { const S = simEv(invModel(p)); S.p = Object.assign({}, p); S.p.D = 0.5; return S; }
+// 波形の量（S, k）
+const invG = (S, k) => S.s[k] & 3, invM = (S, k) => S.s[k] >> 2;
+function invI(S, k) {
+  const p = S.p;
+  if (p.load === 'R') { const g = invG(S, k); return g === 1 ? p.E / p.R : g === 2 ? -p.E / p.R : 0; }
+  return S.x[0][k];
+}
+function invVab(S, k) { return S.p.load === 'R' && invG(S, k) === 0 ? 0 : invVload(S.p, S.s[k], invI(S, k)); }
+function invVR(S, k) { return S.p.load === 'L' ? 0 : S.p.R * invI(S, k); }
+function invVL(S, k) { return S.p.load === 'R' ? 0 : invVab(S, k) - invVR(S, k); }
+/** 左のレグの中点 a の電位（フル：電源の − が 0 V、ハーフ：2 つの電源の間 O が 0 V） */
+function invVa(S, k) {
+  const p = S.p, g = invG(S, k), m = invM(S, k), i = invI(S, k), E = p.E;
+  if (p.kind === 'half') {
+    if (g === 1 || m === 2) return E;
+    if (g === 2 || m === 1) return -E;
+    if (m === 4) return -INV_ROFF * i / 2;
+    return 0;
+  }
+  if (g === 1 || m === 2) return E;
+  if (g === 2 || m === 1) return 0;
+  if (m === 4) return E / 2 - INV_ROFF * i / 2;
+  return E / 2;
+}
+function invVb(S, k) { return invVa(S, k) - invVab(S, k); }   // フルのみ
+/** スイッチの電流（下向きが正）。n = 1..4 */
+function invIS(S, k, n) {
+  const p = S.p, g = invG(S, k), m = invM(S, k), i = invI(S, k), E = p.E, va = invVa(S, k);
+  const on1 = n === 1 || n === 4, sg = (n === 1 || n === 4) ? 1 : -1;
+  if ((on1 && g === 1) || (!on1 && g === 2)) return sg * i;
+  if (m !== 4) return 0;
+  if (p.kind === 'half') return n === 1 ? (E - va) / INV_ROFF : (va + E) / INV_ROFF;
+  const vb = invVb(S, k);
+  return [0, (E - va) / INV_ROFF, va / INV_ROFF, (E - vb) / INV_ROFF, vb / INV_ROFF][n];
+}
+/** スイッチの両端の電圧（上が＋） */
+function invVS(S, k, n) {
+  const p = S.p, E = p.E, va = invVa(S, k);
+  if (p.kind === 'half') return n === 1 ? E - va : va + E;
+  const vb = invVb(S, k);
+  return [0, E - va, va, E - vb, vb][n];
+}
+/** 還流ダイオードの電流（下のアノード → 上のカソード、上向きが正） */
+function invID(S, k, n) {
+  const m = invM(S, k), i = invI(S, k);
+  if (S.p.kind === 'half') return n === 1 ? (m === 2 ? -i : 0) : (m === 1 ? i : 0);
+  return (n === 2 || n === 3) ? (m === 1 ? i : 0) : (m === 2 ? -i : 0);
+}
+/** 電源の電流（＋の端子から出る向き）。ハーフは n = 1 上の電源 / 2 下の電源 */
+function invIE(S, k, n) {
+  if (S.p.kind === 'half') { const e1 = invIS(S, k, 1) - invID(S, k, 1); return n === 2 ? e1 - invI(S, k) : e1; }
+  return invIS(S, k, 1) + invIS(S, k, 3) - invID(S, k, 1) - invID(S, k, 3);
+}
+function invMetrics(S) {
+  const p = S.p, T = S.T, f0 = p.f;
+  const I = acStats(S, invI, T, f0), V = acStats(S, invVab, T, f0);
+  const VL = acStats(S, invVL, T, 0), IS1 = acStats(S, (S, k) => invIS(S, k, 1), T, 0);
+  const VS1 = acStats(S, (S, k) => invVS(S, k, 1), T, 0), ID = acStats(S, (S, k) => invID(S, k, 2), T, 0);
+  const Pin = acStats(S, (S, k) => p.kind === 'half' ? p.E * (invIE(S, k, 1) + invIE(S, k, 2)) : p.E * invIE(S, k), T, 0).avg;
+  const Pr = p.load === 'L' ? 0 : acStats(S, (S, k) => p.R * invI(S, k) ** 2, T, 0).avg;
+  let stop = false, nod = false;
+  for (let k = I.k0; k < S.t.length; k++) { const m = invM(S, k); if (invG(S, k) === 0 && m === 3) stop = true; if (m === 4) nod = true; }
+  // 区間 I の傾き（S1・S4 オンの 1/4〜3/4 の 2 点）
+  const tE = S.t[S.t.length - 1], ta = tE - T + invTd(p) + 0.05 * T, tb = tE - T + 0.45 * T;
+  const at = (t) => { let k = I.k0; while (k < S.t.length - 1 && S.t[k + 1] <= t) k++; const u = (t - S.t[k]) / (S.t[k + 1] - S.t[k] || 1); return invI(S, k) * (1 - u) + invI(S, k + 1) * u; };
+  const slope = (at(tb) - at(ta)) / (tb - ta);
+  return {I, V, VL, IS1, VS1, ID, Pin, Pr, stop, nod, slope};
+}
+// ==SIM-END==
+</script>
+<script>
+(() => {
+'use strict';
+const XO = 0, XL = 420, YT = 0, YB = 300, YM = 150, DX = 110, Y1 = 75, Y2 = 225;
+const XR1 = 60, XR2 = 140, XC1 = 200, XC2 = 290;   // 抵抗・コイルの両端（左から O → R → L → a）
+const CS1 = COL.fuchsia, CS2 = COL.violet, CD = COL.teal;
+let loadSel = 'RL', deadOn = false, diodeOn = true, i0Sel = 'neg';
+const G = {};
+const r3 = (x) => String(+x.toPrecision(3));
+const TE4L = (p) => p.E / (4 * p.f * p.L);
+const ipk = (p) => p.E / p.R * Math.tanh(1 / (4 * p.f) / (p.L / p.R));
+const isL = (S) => S.p.load !== 'R';
+const PROBESET = {R: ['v:R', 'i:R'], L: ['v:L', 'i:L', 'i:S1'], RL: ['v:R', 'v:L', 'i:L']};
+const setProbes = (a, list) => { a.probes.clear(); list.forEach(k => a.probes.add(k)); };
+
+SimApp({
+  pdef: [
+    {k: 'E', b: 'E', s: '', title: '直流の電源 1 つの電圧（2 つ直列）', min: 1, max: 300, step: 1, log: false, unit: 'V', def: 10},
+    {k: 'f', b: 'f', s: '', title: '出力の周波数（周期 T = 1/f）', min: 50, max: 20e3, log: true, unit: 'Hz', def: 1e3},
+    {k: 'R', b: 'R', s: '', min: 0.1, max: 100, log: true, unit: 'Ω', def: 2},
+    {k: 'L', b: 'L', s: '', min: 10e-6, max: 100e-3, log: true, unit: 'H', def: 1e-3},
+    {k: 'td', b: 't', s: 'd', title: 'デッドタイム（両方のスイッチがオフの時間）', min: 1e-6, max: 100e-6, step: 1e-6, log: false, unit: 's', def: 20e-6},
+  ],
+  extraParams(el, app) {
+    const mk = (label, opts, get, set) => {
+      const d = document.createElement('div');
+      d.className = 'crow';
+      d.innerHTML = `<span style="min-width:4.6em">${label}</span><span class="seg">${opts.map(([v, t]) => `<button data-v="${v}">${t}</button>`).join('')}</span>`;
+      const bs = d.querySelectorAll('button');
+      const show = () => bs.forEach(b => b.classList.toggle('on', b.dataset.v === String(get())));
+      bs.forEach(b => b.onclick = () => { set(b.dataset.v); refresh(); app.schedule(); });
+      el.appendChild(d);
+      return {show, d};
+    };
+    const sel = [
+      mk('負荷', [['R', 'R'], ['L', 'L'], ['RL', 'L＋R']], () => loadSel, (v) => { loadSel = v; setProbes(app, PROBESET[v]); }),
+      mk('デッドタイム', [['0', 'なし'], ['1', 'あり']], () => deadOn ? 1 : 0, (v) => { deadOn = v === '1'; }),
+      mk('還流ダイオード', [['1', 'あり'], ['0', 'なし']], () => diodeOn ? 1 : 0, (v) => { diodeOn = v === '1'; }),
+      mk('<span class="eq">i</span>(0)', [['zero', '0'], ['neg', '−TE/(4L)']], () => i0Sel, (v) => { i0Sel = v; }),
+    ];
+    const refresh = () => {
+      sel.forEach(s => s.show());
+      app.sliders.R.row.style.display = loadSel === 'L' ? 'none' : '';
+      app.sliders.L.row.style.display = loadSel === 'R' ? 'none' : '';
+      app.sliders.td.row.style.display = deadOn ? '' : 'none';
+      sel[3].d.style.display = loadSel === 'R' ? 'none' : '';
+    };
+    app.refreshSel = refresh;
+    refresh();
+  },
+  presets: [
+    {name: '抵抗負荷（方形波、p6〜7）', v: {E: 10, f: 1e3, R: 1}, apply: (a) => { loadSel = 'R'; deadOn = false; diodeOn = true; setProbes(a, ['v:R', 'i:R', 'i:S1']); a.refreshSel(); }},
+    {name: 'L＋R（τ = T/2）', v: {E: 10, f: 1e3, R: 2, L: 1e-3}, apply: (a) => { loadSel = 'RL'; deadOn = false; diodeOn = true; i0Sel = 'neg'; setProbes(a, ['v:R', 'v:L', 'i:L']); a.refreshSel(); }},
+    {name: 'インダクタ負荷（スイッチの電流）', v: {E: 10, f: 1e3, L: 1e-3}, apply: (a) => { loadSel = 'L'; deadOn = false; diodeOn = true; i0Sel = 'neg'; setProbes(a, ['i:L', 'i:S1', 'i:S2']); a.refreshSel(); }},
+    {name: 'デッドタイム＋還流ダイオード（L＋R）', v: {E: 10, f: 1e3, R: 2, L: 1e-3, td: 20e-6}, apply: (a) => { loadSel = 'RL'; deadOn = true; diodeOn = true; i0Sel = 'neg'; setProbes(a, ['i:L', 'i:S1', 'i:D2']); a.refreshSel(); }},
+    {name: 'デッドタイム・ダイオードなし（L）', v: {E: 10, f: 1e3, L: 1e-3, td: 20e-6}, apply: (a) => { loadSel = 'L'; deadOn = true; diodeOn = false; i0Sel = 'zero'; setProbes(a, ['i:L', 'v:S1']); a.refreshSel(); }},
+  ],
+  simulate: (P) => simulateInv({kind: 'half', E: P.E, f: P.f, R: P.R, L: P.L, load: loadSel, td: deadOn ? P.td : 0, diode: diodeOn,
+    i0: loadSel !== 'R' && i0Sel === 'neg' ? -P.E / (4 * P.f * P.L) : 0}),
+  metrics: invMetrics,
+  initWin: 'last',
+  onRun(S, app) {
+    const L = S.p.load !== 'R', R = S.p.load !== 'L';
+    G.coil.style.display = L ? '' : 'none'; G.coilW.style.display = L ? 'none' : '';
+    G.res.style.display = R ? '' : 'none'; G.resW.style.display = R ? 'none' : '';
+    G.dio.style.display = S.p.diode ? '' : 'none';
+    app.hitEl['e:L'].style.display = L ? '' : 'none';
+    app.hitEl['e:R'].style.display = R ? '' : 'none';
+    ['e:D1', 'e:D2'].forEach(h => { app.hitEl[h].style.display = S.p.diode ? '' : 'none'; });
+  },
+  gatePane: gateRowsPane([
+    {label: 'S₁', color: CS1, on: (S, k) => invG(S, k) === 1},
+    {label: 'S₂', color: CS2, on: (S, k) => invG(S, k) === 2},
+    {label: 'ダイオード', color: CD, on: (S, k) => invG(S, k) === 0 && (invM(S, k) === 1 || invM(S, k) === 2)},
+  ]),
+  probes: {
+    'n:gnd': {b: 'GND', s: '', color: COL.sub, q: 'V', what: '2 つの電源の間の点 O（0 V）', f: () => 0},
+    'n:p': {b: 'v', s: 'P', color: COL.blue, q: 'V', what: '上の線の電位（= +E）', f: (S) => S.p.E},
+    'n:n': {b: 'v', s: 'N', color: COL.blue, q: 'V', what: '下の線の電位（= −E）', f: (S) => -S.p.E},
+    'n:a': {b: 'v', s: 'a', color: COL.orange, q: 'V', what: 'レグの中点 a の電位（= 負荷全体の電圧。両方オフで電流 0 のときは決まらないので 0 と表示）', f: invVa},
+    'n:m': {b: 'v', s: 'm', color: COL.teal, q: 'V', what: 'R と L の間の電位（R だけ・L だけのときは、それぞれ a・O と同じ）', f: (S, k) => invVa(S, k) - invVL(S, k)},
+    'i:E1': {b: 'i', s: 'E1', color: COL.iin, q: 'I', what: '上の電源の電流（＋の端子から出る向きが正）', f: (S, k) => invIE(S, k, 1)},
+    'v:E1': {b: 'E', s: '', color: COL.blue, q: 'V', what: '上の電源の電圧（上が＋）', f: (S) => S.p.E},
+    'i:E2': {b: 'i', s: 'E2', color: COL.iin, q: 'I', what: '下の電源の電流（＋の端子から出る向きが正）', f: (S, k) => invIE(S, k, 2)},
+    'v:E2': {b: 'E', s: '', color: COL.blue, q: 'V', what: '下の電源の電圧（上が＋）', f: (S) => S.p.E},
+    'i:S1': {b: 'i', s: 'S1', color: CS1, q: 'I', what: 'S₁ の電流（下向きが正）', f: (S, k) => invIS(S, k, 1)},
+    'v:S1': {b: 'v', s: 'S1', color: CS1, q: 'V', what: 'S₁ の両端の電圧（上が＋）', f: (S, k) => invVS(S, k, 1)},
+    'i:S2': {b: 'i', s: 'S2', color: CS2, q: 'I', what: 'S₂ の電流（下向きが正）', f: (S, k) => invIS(S, k, 2)},
+    'v:S2': {b: 'v', s: 'S2', color: CS2, q: 'V', what: 'S₂ の両端の電圧（上が＋）', f: (S, k) => invVS(S, k, 2)},
+    'i:D1': {b: 'i', s: 'D1', color: CD, q: 'I', what: '還流ダイオード D₁ の電流（上向きが正）', f: (S, k) => invID(S, k, 1), hidden: (S) => !S.p.diode},
+    'v:D1': {b: 'v', s: 'D1', color: CD, q: 'V', what: 'D₁ の両端の電圧（上のカソードが＋。S₁ と同じ）', f: (S, k) => invVS(S, k, 1), hidden: (S) => !S.p.diode},
+    'i:D2': {b: 'i', s: 'D2', color: CD, q: 'I', what: '還流ダイオード D₂ の電流（上向きが正）', f: (S, k) => invID(S, k, 2), hidden: (S) => !S.p.diode},
+    'v:D2': {b: 'v', s: 'D2', color: CD, q: 'V', what: 'D₂ の両端の電圧（上のカソードが＋。S₂ と同じ）', f: (S, k) => invVS(S, k, 2), hidden: (S) => !S.p.diode},
+    'i:L': {b: 'i', s: 'L', color: COL.ink, q: 'I', what: 'コイルの電流（左向き = a → O が正）', f: invI, hidden: (S) => S.p.load === 'R'},
+    'v:L': {b: 'v', s: 'L', color: COL.ink2, q: 'V', what: 'コイルの両端の電圧（右が＋）', f: invVL, hidden: (S) => S.p.load === 'R'},
+    'i:R': {b: 'i', s: 'R', color: COL.ir, q: 'I', what: '抵抗の電流（左向き = a → O が正）', f: invI, hidden: (S) => S.p.load === 'L'},
+    'v:R': {b: 'v', s: 'R', color: COL.orange, q: 'V', what: '抵抗の両端の電圧（右が＋）', f: invVR, hidden: (S) => S.p.load === 'L'},
+    'x:vo': {b: 'v', s: 'aO', color: COL.fuchsia, q: 'V', what: '負荷全体にかかる電圧（a − O）', f: invVab},
+  },
+  defaultProbes: ['v:R', 'v:L', 'i:L'],
+  extraButtons: [{key: 'x:vo', label: '負荷全体の電圧 <i>v</i><sub>aO</sub>'}],
+  refLines: [
+    {keys: ['i:L', 'i:S1'], val: (S) => S.p.load === 'L' && S.p.i0 < 0 && !(S.p.td > 0 && !S.p.diode) ? TE4L(S.p) : NaN, label: 'TE/4L'},
+    {keys: ['i:L', 'i:S1'], val: (S) => S.p.load === 'L' && S.p.i0 < 0 && !(S.p.td > 0 && !S.p.diode) ? -TE4L(S.p) : NaN, label: '−TE/4L'},
+    {keys: ['i:R'], val: (S) => S.p.load === 'R' ? S.p.E / S.p.R : NaN, label: 'E/R'},
+    {keys: ['i:R'], val: (S) => S.p.load === 'R' ? -S.p.E / S.p.R : NaN, label: '−E/R'},
+    {keys: ['v:R', 'v:L', 'x:vo'], val: (S) => (S.p.load === 'RL' && !(S.p.td > 0 && !S.p.diode)) || S.p.load === 'R' ? S.p.E : NaN, label: 'E'},
+    {keys: ['v:R', 'v:L', 'x:vo'], val: (S) => (S.p.load === 'RL' && !(S.p.td > 0 && !S.p.diode)) || S.p.load === 'R' ? -S.p.E : NaN, label: '−E'},
+  ],
+  build(K) {
+    const {W, el, gWire} = K;
+    const grab = (fn) => { const n0 = gWire.childNodes.length; fn(); const g = el('g', {}, gWire); while (gWire.childNodes.length - 1 > n0) g.appendChild(gWire.childNodes[n0]); return g; };
+    const nodeW = {
+      p: [[[XO, Y1 - 9], [XO, YT], [XL, YT], [XL, 45]]],
+      gnd: [[[XO, Y1 + 9], [XO, Y2 - 9]], [[XO, YM], [XR1, YM]], [[XO, YM], [-60, YM]]],
+      n: [[[XO, Y2 + 9], [XO, YB], [XL, YB], [XL, 255]]],
+      a: [[[XL, 105], [XL, 195]], [[XC2, YM], [XL, YM]]],
+      m: [[[XR2, YM], [XC1, YM]]],
+    };
+    for (const nn in nodeW) nodeW[nn].forEach(p => W(p));
+    K.ground(-60, YM);
+    K.battery(XO, Y1); K.battery(XO, Y2);
+    G.nE1 = K.name(XO - 34, Y1 + 12, 'E', 'end'); G.nE2 = K.name(XO - 34, Y2 + 12, 'E', 'end');
+    K.text(-60, YM - 12, 'O', COL.sub, 20);
+    const sw = {S1: K.switch([XL, 45], [XL, 105], -1), S2: K.switch([XL, 195], [XL, 255], -1)};
+    K.name(XL - 34, 86, 'S', 'end', 28, '1'); K.name(XL - 34, 236, 'S', 'end', 28, '2');
+    G.dio = grab(() => {
+      [[XL, 25, '1'], [XL, 175, '2']].forEach(([x, y, n]) => {
+        const xd = x + DX;
+        W([[x, y], [xd, y], [xd, y + 12]]); W([[xd, y + 88], [xd, y + 100], [x, y + 100]]);
+        K.diode([xd, y + 88], [xd, y + 12], 15);
+        K.dot(x, y); K.dot(x, y + 100);
+        K.name(xd - 22, y + 30, 'D', 'end', 24, n);
+      });
+    });
+    G.coil = grab(() => { K.coil([XC1, YM], [XC2, YM], 3, 1); K.name((XC1 + XC2) / 2, YM + 46, 'L', 'middle', 30); });
+    G.coilW = grab(() => W([[XC1, YM], [XC2, YM]]));
+    G.res = grab(() => { K.resH((XR1 + XR2) / 2, YM, XR2 - XR1); K.name((XR1 + XR2) / 2, YM + 46, 'R', 'middle', 30); });
+    G.resW = grab(() => W([[XR1, YM], [XR2, YM]]));
+    [[XO, YM], [XL, YM]].forEach(([x, y]) => K.dot(x, y));
+    const arrows = {
+      'v:E1': [[XO - 80, Y1 + 36], [XO - 80, Y1 - 36], 'L'], 'i:E1': [[XO + 40, Y1 + 26], [XO + 40, Y1 - 26], 'R'],
+      'v:E2': [[XO - 80, Y2 + 36], [XO - 80, Y2 - 36], 'L'], 'i:E2': [[XO + 40, Y2 + 26], [XO + 40, Y2 - 26], 'R'],
+      'i:L': [[XC2 - 10, 116], [XC1 + 10, 116], 'T'], 'v:L': [[XC1 + 10, 212], [XC2 - 10, 212], 'B'],
+      'i:R': [[XR2 - 10, 116], [XR1 + 10, 116], 'T'], 'v:R': [[XR1 + 10, 212], [XR2 - 10, 212], 'B'],
+      'i:S1': [[XL + 24, 50], [XL + 24, 100], 'R'], 'v:S1': [[XL + 24, 104], [XL + 24, 46], 'R'],
+      'i:S2': [[XL + 24, 200], [XL + 24, 250], 'R'], 'v:S2': [[XL + 24, 254], [XL + 24, 196], 'R'],
+      'i:D1': [[XL + DX + 26, 109], [XL + DX + 26, 41], 'R'], 'v:D1': [[XL + DX + 26, 113], [XL + DX + 26, 37], 'R'],
+      'i:D2': [[XL + DX + 26, 259], [XL + DX + 26, 191], 'R'], 'v:D2': [[XL + DX + 26, 263], [XL + DX + 26, 187], 'R'],
+    };
+    const hits = [['e:E1', [XO - 30, Y1 - 24, 60, 48]], ['e:E2', [XO - 30, Y2 - 24, 60, 48]],
+      ['e:L', [XC1 - 2, YM - 22, XC2 - XC1 + 4, 30]], ['e:R', [XR1 - 2, YM - 15, XR2 - XR1 + 4, 30]],
+      ['e:S1', [XL - 24, 48, 48, 54]], ['e:S2', [XL - 24, 198, 48, 54]],
+      ['e:D1', [XL + DX - 20, 40, 40, 60]], ['e:D2', [XL + DX - 20, 190, 40, 60]]];
+    const S1 = [[XO, Y1], [XO, YT], [XL, YT], [XL, YM], [XO, YM]];
+    const S2 = [[XO, Y2], [XO, YM], [XL, YM], [XL, YB], [XO, YB]];
+    return {
+      nodeW, hits, arrows, sw,
+      nodeTag: {gnd: [30, YM, 0, -14], p: [220, YT, 0, -14], n: [220, YB, 0, 34], a: [XL, YM, 14, 8, 'start'], m: [(XR2 + XC1) / 2, YM, 0, -14]},
+      loops: {
+        S1f: S1, S1r: S1.slice().reverse(), S2f: S2, S2r: S2.slice().reverse(),
+        D2: [[XO, YB], [XL, YB], [XL, 275], [XL + DX, 275], [XL + DX, 175], [XL, 175], [XL, YM], [XO, YM], [XO, Y2]],
+        D1: [[XO, YM], [XL, YM], [XL, 125], [XL + DX, 125], [XL + DX, 25], [XL, 25], [XL, YT], [XO, YT], [XO, Y1]],
+      },
+    };
+  },
+  state(S, k, MET, app) {
+    // 電源の名前 E は、電圧の矢印（v:E1・v:E2）を出している間は矢印のラベル E と重なるので隠す
+    if (app) { G.nE1.style.display = app.probes.has('v:E1') ? 'none' : ''; G.nE2.style.display = app.probes.has('v:E2') ? 'none' : ''; }
+    const p = S.p, g = invG(S, k), m = invM(S, k), i = invI(S, k), L = isL(S);
+    const fr = Math.abs(i) / Math.max(1e-12, MET.I.max, -MET.I.min);
+    const iq = L ? '<span class="eq">i<sub>L</sub></span>' : '<span class="eq">i<sub>R</sub></span>';
+    const ld = p.load === 'R' ? 'R' : p.load === 'L' ? 'L' : 'L → R';
+    const ldr = p.load === 'R' ? 'R' : p.load === 'L' ? 'L' : 'R → L';
+    const sw = {S1: g === 1, S2: g === 2};
+    let loops = [], html = '';
+    const on1 = `<span class="sw-on">S₁ オン</span>（<span class="eq">v<sub>aO</sub> = +E</span>）`, on2 = `<span class="sw-on" style="color:${CS2}">S₂ オン</span>（<span class="eq">v<sub>aO</sub> = −E</span>）`;
+    if (g === 1) {
+      loops = [[i >= 0 ? 'S1f' : 'S1r', fr]];
+      if (!L || i >= 0) html = `${on1}${L ? `、${iq} &gt; 0` : ''}：上の電源 → S₁ → ${ld} → O → 上の電源${L ? '（<b>エネルギーを蓄える</b>）' : `。<span class="eq">i<sub>R</sub> = E/R</span>`}`;
+      else html = `${on1}、${iq} &lt; 0：電流は S₁ を下から上へ逆向きに流れて、上の電源の＋に流れ込む（<b>エネルギーが電源に戻る</b>）`;
+    } else if (g === 2) {
+      loops = [[i <= 0 ? 'S2f' : 'S2r', fr]];
+      if (!L || i <= 0) html = `${on2}${L ? `、${iq} &lt; 0` : ''}：下の電源 → O → ${ldr} → S₂ → 下の電源${L ? '（<b>エネルギーを蓄える</b>）' : `。<span class="eq">i<sub>R</sub> = −E/R</span>`}`;
+      else html = `${on2}、${iq} &gt; 0：電流は S₂ を逆向きに流れて、下の電源の＋に流れ込む（<b>エネルギーが電源に戻る</b>）`;
+    } else {
+      const dt = '<span class="sw-off">デッドタイム（両方オフ）</span>';
+      if (!L) html = `${dt}：抵抗だけなので電流は流れない（<span class="eq">v<sub>R</sub> = 0</span>）`;
+      else if (m === 1) { loops = [['D2', fr]]; html = `${dt}、${iq} &gt; 0：<span style="color:${CD};font-weight:700">D₂</span> を通って下の電源の＋に戻る（<span class="eq">v<sub>aO</sub> = −E</span>）。電流は途切れない`; }
+      else if (m === 2) { loops = [['D1', fr]]; html = `${dt}、${iq} &lt; 0：<span style="color:${CD};font-weight:700">D₁</span> を通って上の電源の＋に戻る（<span class="eq">v<sub>aO</sub> = +E</span>）。電流は途切れない`; }
+      else if (m === 3) html = `${dt}：電流が 0 になったので、ダイオードも止まっている`;
+      else { const vs = invVS(S, k, 1); html = `${dt}・<span class="warn">還流ダイオードなし</span>：${iq} の逃げ道がなく、オフのスイッチ（10 kΩ とした）に流れ込む。` + (Math.abs(vs) > 2 * S.p.E ? `S₁ の両端に<b>大電圧</b>がかかる（コイルの電流が 10 kΩ に流れ込む。グラフの <span class="eq">v<sub>S1</sub></span> の細いとげ）` : `デッドタイムに入った瞬間に S₁ に大電圧がかかり（波形の細いとげ）、電流はすぐ 0 になった。今は <span class="eq">v<sub>S1</sub></span> = ${fmtSI(vs, 'V', 3)}`); }
+    }
+    return {sw, loops, html};
+  },
+  metricsHtml(S, M) {
+    const p = S.p, T = S.T, td = invTd(p), E = p.E, tau = p.L / p.R;
+    const nod = td > 0 && !p.diode && p.load !== 'R';
+    const row = (q, sim, eqH, th, unit, tol = 0.02, note = '') => `<tr><td>${q}</td><td class="num">${fmtSI(sim, unit, 4)}</td><td class="eq">${eqH}</td><td class="num">${fmtSI(th, unit, 4)}</td><td>${pctDiff(sim, th)} ${tol ? okMark(sim, th, tol) : '（目安）'}${note}</td></tr>`;
+    const zero = (q, sim, unit, eqH, scale) => `<tr><td>${q}</td><td class="num">${fmtSI(sim, unit, 3)}</td><td class="eq">${eqH}</td><td class="num">0</td><td>${Math.abs(sim) <= 1e-3 * scale ? '<span class="ok">一致</span>' : '<span class="ng">ずれる</span>'}</td></tr>`;
+    let rows = `<tr><th>量</th><th>シミュレーション</th><th>授業の式</th><th>式の値</th><th>差</th></tr>`;
+    if (p.load === 'R') {
+      rows += row('S₁ オンの間の <span class="eq">v<sub>R</sub></span>（p6〜7）', M.V.max, 'E', E, 'V');
+      rows += row('S₂ オンの間の <span class="eq">v<sub>R</sub></span>', M.V.min, '−E', -E, 'V');
+      rows += row('<span class="eq">i<sub>R</sub></span> の最大', M.I.max, 'E/R', E / p.R, 'A');
+      rows += row('<span class="eq">i<sub>R</sub></span> の最小', M.I.min, '−E/R', -E / p.R, 'A');
+      rows += row('<span class="eq">v<sub>R</sub></span> の実効値', M.V.rms, td > 0 ? 'E√(1 − 2t<sub>d</sub>/T)' : 'E', E * Math.sqrt(1 - 2 * td / T), 'V');
+      rows += row('オフの S₁ にかかる電圧', M.VS1.max, '2E（電源 2 つ分）', 2 * E, 'V');
+      rows += row('2 つの電源から出る電力の平均', M.Pin, 'V<sub>R,rms</sub>² / R', M.V.rms ** 2 / p.R, 'W', 0.01);
+    } else if (nod) {
+      const I0 = p.load === 'L' ? E * (T / 2 - td) / p.L : E / p.R * (1 - Math.exp(-(T / 2 - td) / tau));
+      // デッドタイムが L/(5 kΩ) の 12 倍より短いと、電流が 0 まで下がりきらない（式の前提「デッドタイムの後は 0 から」が崩れる）→ 判定は目安
+      const short = 12 * p.L / (INV_ROFF / 2) > td;
+      if (short) rows += `<tr><td colspan="5" class="small">デッドタイムが <span class="eq">L</span>/(5 kΩ) の 12 倍より短いので、電流は 0 まで下がりきらず、下の式（デッドタイムの後は 0 から）の前提が崩れます。差は目安です。</td></tr>`;
+      rows += row('スイッチが切れる直前の電流（デッドタイムの後は 0 から）', M.I.max, p.load === 'L' ? 'E (T/2 − t<sub>d</sub>) / L' : '(E/R)(1 − e<sup>−(T/2 − t<sub>d</sub>)/τ</sup>)', I0, 'A', short ? 0 : 0.02);
+      rows += row('S₁ にかかる電圧の最大', M.VS1.max, 'E + I<sub>0</sub> × 10 kΩ / 2', E + I0 * INV_ROFF / 2, 'V', short ? 0 : 0.02);
+      rows += row('2 つの電源から出る電力の平均', M.Pin, (p.load === 'RL' ? 'R I<sub>rms</sub>² + ' : '') + 'L I<sub>0</sub>² f（1 周期に 2 回、½LI<sub>0</sub>² がスイッチで熱になる）', M.Pr + p.L * I0 * I0 * p.f, 'W', short ? 0 : 0.01);
+      rows += `<tr><td colspan="5"><span class="ng">還流ダイオードがないと</span>、デッドタイムのたびにコイルの電流が切れて、スイッチに ${fmtSI(M.VS1.max, 'V', 3)}（オフのスイッチを 10 kΩ とした場合の計算値）もの電圧がかかります（電源は ${fmtSI(E, 'V', 3)} × 2）。実際の回路ならスイッチが壊れます。</td></tr>`;
+    } else if (M.stop) {
+      rows += `<tr><td colspan="5">デッドタイムの間にコイルの電流が 0 になり、ダイオードも止まりました（<span class="eq">τ = L/R</span> が短い）。各区間の式（三角波・tanh）はそのままでは使えません。</td></tr>`;
+      rows += row('2 つの電源から出る電力の平均', M.Pin, 'R I<sub>rms</sub>²', M.Pr, 'W', 0.01);
+    } else if (p.load === 'L') {
+      const neg = p.i0 < 0, a = TE4L(p);
+      if (neg) {
+        rows += row('<span class="eq">i<sub>L</sub></span> の最大', M.I.max, 'TE/(4L)', a, 'A');
+        rows += row('<span class="eq">i<sub>L</sub></span> の最小', M.I.min, '−TE/(4L)', -a, 'A');
+      } else {
+        rows += row('<span class="eq">i<sub>L</sub></span> の最大（<span class="eq">i</span>(0) = 0 から）', M.I.max, 'TE/(2L)', 2 * a, 'A');
+        rows += zero('<span class="eq">i<sub>L</sub></span> の最小', M.I.min, 'A', '0', a);
+        rows += `<tr><td colspan="5"><span class="eq">L</span> だけで抵抗がないので、<span class="eq">i</span>(0) = 0 から始めると平均が <span class="eq">TE</span>/(4<span class="eq">L</span>) ずれたまま戻りません。</td></tr>`;
+      }
+      rows += row('<span class="eq">i<sub>L</sub></span> の山と谷の差', M.I.max - M.I.min, 'TE/(2L)', 2 * a, 'A');
+      rows += row('S₁ オンの間の傾き <span class="eq">di<sub>L</sub>/dt</span>', M.slope, 'E/L', E / p.L, 'A/s');
+      if (neg) {
+        rows += row('<span class="eq">i<sub>S1</sub></span> の始め（オンになった瞬間）', M.IS1.min, td > 0 ? '−TE/(4L) + E t<sub>d</sub>/L' : '−TE/(4L)', -a + E * td / p.L, 'A');
+        rows += row('<span class="eq">i<sub>S1</sub></span> の終わり（オフになる直前）', M.IS1.max, 'TE/(4L)', a, 'A');
+        if (td > 0) rows += row('<span class="eq">i<sub>D2</sub></span> の最大', M.ID.max, 'TE/(4L)', a, 'A');
+      }
+      rows += row('オフの S₁ にかかる電圧', M.VS1.max, '2E（電源 2 つ分）', 2 * E, 'V');
+      rows += zero('2 つの電源から出る電力の平均', M.Pin, 'W', 'L だけなら 0（蓄えて、戻すだけ）', E * a);
+    } else {
+      const I = ipk(p);
+      rows += row('<span class="eq">i<sub>L</sub></span> の最大（定常状態）', M.I.max, '(E/R) tanh(T/(4τ))', I, 'A');
+      rows += row('<span class="eq">i<sub>L</sub></span> の最小', M.I.min, '−(E/R) tanh(T/(4τ))', -I, 'A');
+      rows += row('<span class="eq">v<sub>L</sub></span> の最大（切り替えた直後）', M.VL.max, 'E + R·i<sub>L,max</sub>', E + p.R * I, 'V');
+      rows += row('<span class="eq">i<sub>S1</sub></span> の始め', M.IS1.min, td > 0 ? 'E/R − (i<sub>L,max</sub> + E/R) e<sup>−t<sub>d</sub>/τ</sup>' : '−i<sub>L,max</sub>', td > 0 ? E / p.R - (I + E / p.R) * Math.exp(-td / tau) : -I, 'A');
+      if (td > 0) rows += row('<span class="eq">i<sub>D2</sub></span> の最大（デッドタイムの始め）', M.ID.max, 'i<sub>L,max</sub>', I, 'A');
+      rows += row('オフの S₁ にかかる電圧', M.VS1.max, '2E（電源 2 つ分）', 2 * E, 'V');
+      rows += row('2 つの電源から出る電力の平均', M.Pin, 'R I<sub>rms</sub>²', M.Pr, 'W', 0.01);
+      rows += row('参考：逐次近似の 1 回目の山（p15〜16）', M.I.max, 'TE/(4L)', TE4L(p), 'A', 0, `　τ = ${fmtSI(tau, 's', 3)} = ${r3(tau / T)} T。τ ≫ T なら一致`);
+    }
+    const sub = `最後の 1 周期で計算（${S.periods} 周期を計算）。${td > 0 ? `デッドタイム ${fmtSI(td, 's', 3)}（周期の ${r3(td / T * 100)} %）。` : ''}`;
+    return {rows, sub};
+  },
+});
+})();
+</script>
+</body>
+</html>

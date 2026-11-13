@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LTspice の回路ファイル — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="../sim/common.css">
+<style>
+  h2.sec { font-size: 1rem; margin: 26px 0 10px; padding-left: 10px; border-left: 4px solid var(--accent); }
+  h2.sec .small { font-weight: 400; margin-left: 8px; }
+  .steps { padding-left: 1.4em; font-size: 0.88rem; }
+  .steps li { margin: 5px 0; }
+  .card-h .dl { margin-left: auto; font-size: 0.82rem; font-weight: 700; color: #fff; background: var(--accent); border-radius: 16px; padding: 3px 12px; white-space: nowrap; }
+  .card-h .dl:hover { background: #1557b0; }
+  .card-h .size { font-size: 0.74rem; color: var(--text-secondary); white-space: nowrap; }
+  .lead { font-size: 0.86rem; padding: 10px 14px 4px; }
+  .ckt { border-top: 1px solid var(--border); padding: 10px 14px 12px; }
+  .ckt .nm { font-weight: 700; font-size: 0.92rem; }
+  .ckt .fd { font-family: Menlo, monospace; font-size: 0.74rem; color: var(--text-secondary); margin-left: 6px; word-break: break-all; }
+  .ckt .ds { font-size: 0.85rem; margin-top: 3px; }
+  .ckt .cond { font-size: 0.78rem; color: var(--text-secondary); margin-top: 2px; }
+  .ckt .q { font-size: 0.85rem; margin-top: 6px; padding: 6px 10px; background: #fff8e6; border-left: 3px solid var(--orange); border-radius: 0 6px 6px 0; }
+  .ckt .q::before { content: "やってみよう　"; color: var(--orange); font-weight: 700; font-size: 0.78rem; }
+  .ckt .web { font-size: 0.78rem; margin-top: 5px; }
+  .ckt .web a { color: var(--accent); }
+  .ckt .web a:hover { text-decoration: underline; }
+  .tblwrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.ov { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 0.84rem; background: var(--surface); }
+  table.ov th, table.ov td { border-bottom: 1px solid var(--border); padding: 7px 8px; text-align: left; vertical-align: top; }
+  table.ov th { font-weight: 600; color: var(--text-secondary); font-size: 0.76rem; background: var(--bg); }
+  table.ov td.n { white-space: nowrap; font-weight: 700; }
+  table.ov a { color: var(--accent); }
+  table.ov a:hover { text-decoration: underline; }
+  code { font-family: Menlo, monospace; font-size: 0.82em; background: #f1f3f4; padding: 0 4px; border-radius: 4px; }
+  footer { text-align: center; color: var(--text-secondary); font-size: 0.76rem; padding: 10px 16px 30px; }
+</style>
+</head>
+<body>
+<header>
+  <nav class="hnav"><a href="../index.html">← 科目のページへ戻る</a><a href="../sim/index.html">回路のシミュレーター（ブラウザ版）</a></nav>
+  <h1>LTspice の回路ファイル</h1>
+  <div class="subtitle">パワーエレクトロニクス 第4回・第5回 / 大阪工業大学</div>
+</header>
+<main>
+
+  <div class="notice">
+    授業で見せた回路を、LTspice（回路シミュレーター）のファイルにしてあります。回ごとに zip にまとめてあるので、ダウンロードして自分のパソコンで動かしてみてください。ブラウザで動くシミュレーターより手間はかかりますが、素子の値も回路そのものも自由に変えられます。卒業研究で回路を扱う人は、ここで慣れておくと後が楽です。
+  </div>
+
+  <div class="card" id="howto">
+    <div class="card-h"><span class="ttl">はじめに：LTspice の入れ方と動かし方</span></div>
+    <div class="card-b">
+      <ol class="steps">
+        <li>LTspice は Analog Devices が無料で配っています。Windows 版と Mac 版があります。<a href="https://www.analog.com/jp/resources/design-tools-and-calculators/ltspice-simulator.html" target="_blank" rel="noopener" style="color:var(--accent)">ダウンロードのページ</a>から入れてください。</li>
+        <li>下の「回の一覧」からその回のページを開き、zip をダウンロードして<u>展開</u>します。zip を開いただけの状態で中のファイルをダブルクリックすると、うまく動かないことがあります。いったんデスクトップなどに展開してください。</li>
+        <li>回路ごとにフォルダが分かれています。中の <code>.asc</code>（回路図）をダブルクリックすると LTspice で開きます。</li>
+        <li>Run（Windows は走っている人のアイコン、Mac は回路図の上で右クリック → Run）で計算が始まります。同じフォルダに <code>.plt</code> がある回路は、授業で見せた波形がそのまま出ます。</li>
+        <li>波形を足したいときは、回路図の線をクリックすると電圧、素子をクリックすると電流が出ます。素子の値は、値の文字を右クリックすると書き換えられます。</li>
+      </ol>
+      <p class="small" style="margin-top:6px">回路図の下のほうにある <code>.tran</code> は「何秒ぶん計算するか」、<code>.param</code> は「スイッチング周波数やデューティー比をここで決めている」という指令です。<code>.step</code> がある回路は、値を変えた何本かの波形が重ねて出ます。</p>
+    </div>
+  </div>
+
+  <h2 class="sec">回の一覧</h2>
+  <div class="tblwrap">
+  <table class="ov">
+    <tr><th>回</th><th>テーマ</th><th>入っている回路</th><th></th></tr>
+    <tr><td class="n">第4回</td><td>LCR回路の復習</td><td>RLC直列回路の共振</td><td><a href="04.html">開く</a></td></tr>
+    <tr><td class="n">第5回</td><td>直流-直流変換（１）</td><td>降圧・昇圧・昇降圧チョッパー、PWM の作り方、演習3つ</td><td><a href="05.html">開く</a></td></tr>
+  </table>
+  </div>
+  <p class="small">フォルダ名の <code>Fig.3.1</code> などは、教科書の図の番号です。同じ図の回路だと思って見てください。</p>
+
+
+
+
+
+
+
+
+
+  <p class="small" style="margin-top:20px">うまく動かないとき：zip を展開したか、<code>.asc</code> と <code>.plt</code> が同じフォルダにあるかを確かめてください。計算が長い回路（昇圧チョッパー、力率の L 平滑など）は、数十秒かかることがあります。</p>
+</main>
+<footer>パワーエレクトロニクス / 大阪工業大学 神野崇馬</footer>
+<script>
+if (!/github\.io$/.test(location.hostname)) {
+  var b = document.createElement('div');
+  b.textContent = '確認用（Mac mini の作業中の版）。学生に見えるのは git push した後です';
+  b.style.cssText = 'background:#fff3cd;color:#664d03;border-bottom:1px solid #e0c36a;padding:6px 12px;font-size:14px;text-align:center';
+  document.body.prepend(b);
+}
+</script>
+</body>
+</html>

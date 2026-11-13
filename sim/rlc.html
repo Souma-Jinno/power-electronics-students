@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RLC直列回路（共振）のシミュレーター — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="common.css">
+<style>#zcv, #ecv { display: block; width: 100%; } #zcv { cursor: pointer; touch-action: manipulation; }</style>
+</head>
+<body>
+<header>
+  <nav class="hnav"><a href="../index.html">← 科目のページへ戻る</a><a href="index.html">回路を選ぶ（シミュレーターの一覧）</a></nav>
+  <h1>RLC直列回路（共振）のシミュレーター</h1>
+  <div class="subtitle">パワーエレクトロニクス 第4回 LCR回路の復習 p36〜41 / 大阪工業大学</div>
+</header>
+<main>
+  <div class="notice">
+    スイッチングではなく、<b>単一の周波数</b>の交流 <span class="eq">v<sub>S</sub> = V<sub>m</sub> sin ωt</span>（<span class="eq">ω = 2πf</span>）を <span class="eq">L</span>・<span class="eq">C</span>・<span class="eq">R</span> の直列回路にかけます（p36）。
+    <b>周波数 f</b> を動かすか、下の<b>インピーダンス特性のグラフをクリック</b>すると、その周波数で計算し直します。<span class="eq">ωL = 1/(ωC)</span> の共振のとき、<span class="eq">v<sub>L</sub></span> と <span class="eq">v<sub>C</sub></span> が打ち消し合い、電流がいちばん大きくなります。
+    回路図の<b>線をクリック</b>するとその点の電位、<b>素子をクリック</b>すると電流（矢印の向きが正）が波形に出ます。電源は <span class="eq">t = 0</span>（電流 0、<span class="eq">v<sub>C</sub> = 0</span>）でつなぎます。
+  </div>
+
+  <div class="top">
+    <section class="card">
+      <div class="card-h">
+        <span class="ttl">回路</span>
+        <span class="small">素子をクリックしたとき：</span>
+        <span class="seg" id="emode"><button data-m="i" class="on">電流</button><button data-m="v">両端の電圧</button></span>
+      </div>
+      <svg id="sch" viewBox="-130 -125 760 420" aria-label="RLC直列回路の回路図"></svg>
+      <div id="state"></div>
+    </section>
+
+    <section class="card params">
+      <div class="card-h"><span class="ttl">回路の値</span></div>
+      <div class="card-b" id="params"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-h"><span class="ttl">インピーダンス特性（p38）</span><span class="small" id="zsub"></span></div>
+    <div class="card-b"><canvas id="zcv" aria-label="インピーダンスの大きさと周波数のグラフ。クリックで周波数を選ぶ"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h">
+      <span class="ttl">波形</span>
+      <span class="seg" id="win">
+        <button data-w="all">起動から最後まで</button><button data-w="first">起動直後</button><button data-w="last" class="on">定常状態</button>
+      </span>
+    </div>
+    <div class="ctl">
+      <button id="play">▶ 再生</button>
+      <label>速さ <select id="speed"><option value="0.25">×0.25</option><option value="0.5">×0.5</option><option value="1" selected>×1</option><option value="2">×2</option><option value="4">×4</option></select></label>
+      <label id="nper">周期の数 <select id="nP"><option>1</option><option>2</option><option selected>3</option><option>5</option><option>10</option></select></label>
+      <label>グラフ <select id="lay"><option value="vi">電圧と電流の2段</option><option value="each">1本ずつ別の段</option></select></label>
+    </div>
+    <div class="scrubrow"><input type="range" id="scrub" min="0" max="10000" value="0" aria-label="時刻"><span class="tc" id="tc"></span></div>
+    <div id="legend"></div>
+    <div id="plotwrap"><canvas id="plot"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">L と C のエネルギー（p39〜41）</span><span class="small" id="esub"></span></div>
+    <div class="card-b"><canvas id="ecv" aria-label="コイルとコンデンサの電圧とエネルギーの波形"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">定常状態の値と、授業の式の比較</span><span class="small" id="msub"></span></div>
+    <div class="card-b" style="overflow-x:auto"><table class="m" id="metrics"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">このシミュレーターの前提</span></div>
+    <div class="card-b">
+      <ul class="notes">
+        <li>電源は理想の交流電圧源 <span class="eq">v<sub>S</sub> = V<sub>m</sub> sin ωt</span>。<span class="eq">L</span>・<span class="eq">C</span>・<span class="eq">R</span> は理想の素子です。式は <span class="eq">L di/dt = v<sub>S</sub> − Ri − v<sub>C</sub></span>、<span class="eq">C dv<sub>C</sub>/dt = i</span>。</li>
+        <li>授業の式（p37）：<span class="eq">Z = jωL + 1/(jωC) + R = j(ωL − 1/(ωC)) + R</span>。定常状態の電流の振幅は <span class="eq">I<sub>m</sub> = V<sub>m</sub>/|Z|</span>、位相の遅れは <span class="eq">φ = tan<sup>−1</sup>{(ωL − 1/(ωC))/R}</span>（負なら進み）。</li>
+        <li>共振：<span class="eq">ωL = 1/(ωC)</span>、つまり <span class="eq">f<sub>0</sub> = 1/(2π√(LC))</span>。p38 の値（<span class="eq">L</span> = 1 mH、<span class="eq">C</span> = 10 μF、<span class="eq">R</span> = 1 Ω）では <span class="eq">f<sub>0</sub></span> ≈ 1.59 kHz で、<span class="eq">|Z|</span> = <span class="eq">R</span> = 1 Ω まで下がります。</li>
+        <li>同じ電流が流れる直列回路なので、<span class="eq">v<sub>C</sub></span> と <span class="eq">v<sub>L</sub></span> の振幅の比は <span class="eq">(1/(ωC))/(ωL) = (f<sub>0</sub>/f)<sup>2</sup></span>。L と C のエネルギーの最大値の比も同じです（p40・p41）。</li>
+        <li>エネルギーの和 <span class="eq">½Li<sup>2</sup> + ½Cv<sub>C</sub><sup>2</sup></span> は、定常状態で <span class="eq">½I<sub>m</sub><sup>2</sup>(L sin<sup>2</sup> + cos<sup>2</sup>/(ω<sup>2</sup>C))</span> の形になり、その変動（最大 − 最小）は <span class="eq">½I<sub>m</sub><sup>2</sup>|L − 1/(ω<sup>2</sup>C)|</span>。共振のときだけ 0（いつも一定、p39）です。</li>
+        <li>電源をつないだ直後は、固有の振動（<span class="eq">e<sup>−Rt/(2L)</sup></span> で減る）が重なります。「起動から最後まで」で見られます。表は最後の 1 周期の値です（振幅は基本波の成分）。</li>
+        <li>計算は 4 次のルンゲ・クッタ法（1 周期を 400 分割以上。固有の振動が速いときはもっと細かく）。</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<footer>パワーエレクトロニクス ｜ 神野 崇馬 ｜ 試作版</footer>
+<div id="tip"></div>
+
+<script>
+// ==SIM-BEGIN==
+/**
+ * RLC 直列回路に v_S = Vm sin(ωt) をつなぐ（t = 0 で i = 0, vC = 0）。p = {Vm, f, L, C, R}
+ * 状態変数 x = [i, vC]。simEv で計算する（離散状態は使わない）。
+ */
+function rlcModel(p) {
+  const T = 1 / p.f, w = 2 * Math.PI * p.f, L = p.L, C = p.C, R = p.R;
+  const a = R / (2 * L), w0sq = 1 / (L * C), disc = a * a - w0sq;
+  const sigma = disc >= 0 ? a - Math.sqrt(disc) : a;               // いちばん遅い減衰の速さ
+  const fast = disc >= 0 ? a + Math.sqrt(disc) : Math.sqrt(w0sq);  // いちばん速い変化の速さ
+  const h = Math.min(T / 400, 1 / (12 * fast));
+  let periods = Math.max(6, Math.ceil(12 / (sigma * T)) + 3), capped = false;
+  const maxP = Math.max(6, Math.floor(1.2e6 / (T / h)));
+  if (periods > maxP) { periods = maxP; capped = true; }
+  return {
+    T, periods, h, x0: [0, 0], s0: 0, capped,
+    f: (t, x) => [(p.Vm * Math.sin(w * t) - R * x[0] - x[1]) / L, x[0] / C],
+  };
+}
+function simulateRlc(p) {
+  const M = rlcModel(p), S = simEv(M);
+  S.p = Object.assign({D: 0}, p);
+  S.capped = M.capped;
+  return S;
+}
+const rlcVs = (S, k) => S.p.Vm * Math.sin(2 * Math.PI * S.p.f * S.t[k]);
+const rlcI = (S, k) => S.x[0][k];
+const rlcVC = (S, k) => S.x[1][k];
+const rlcVR = (S, k) => S.p.R * S.x[0][k];
+const rlcVL = (S, k) => rlcVs(S, k) - rlcVR(S, k) - rlcVC(S, k);
+/** 授業の式（フェーザ） */
+function rlcTheory(p) {
+  const w = 2 * Math.PI * p.f, X = w * p.L - 1 / (w * p.C), Z = Math.hypot(p.R, X), Im = p.Vm / Z;
+  return {w, X, Z, Im, VLm: w * p.L * Im, VCm: Im / (w * p.C), phi: Math.atan2(X, p.R), f0: 1 / (2 * Math.PI * Math.sqrt(p.L * p.C)),
+    ratio: 1 / (w * w * p.L * p.C), dW: 0.5 * Im * Im * Math.abs(p.L - 1 / (w * w * p.C)), Wmean: 0.25 * Im * Im * (p.L + 1 / (w * w * p.C))};
+}
+function rlcMetrics(S) {
+  const p = S.p, T = S.T;
+  const I = acStats(S, rlcI, T, p.f), VL = acStats(S, rlcVL, T, p.f), VC = acStats(S, rlcVC, T, p.f);
+  const VLC = acStats(S, (S, k) => rlcVL(S, k) + rlcVC(S, k), T, p.f);
+  const W = acStats(S, (S, k) => 0.5 * p.L * S.x[0][k] ** 2 + 0.5 * p.C * S.x[1][k] ** 2, T, 0);
+  // 1 周期前の電流の振幅（定常状態に達したかの判定）
+  const n = S.t.length, S2 = {t: S.t.subarray(0, n), x: S.x};
+  let kE = n - 1; while (kE > 0 && S.t[kE] > S.t[n - 1] - T + 1e-12 * T) kE--;
+  const Iprev = acStats({t: S.t.subarray(0, kE + 1), x: [S.x[0].subarray(0, kE + 1)]}, (S, k) => S.x[0][k], T, p.f);
+  return {I, VL, VC, VLC, W, th: rlcTheory(p), steady: !S.capped && Math.abs(Iprev.c1 - I.c1) <= 2e-3 * I.c1, absMax: Math.max(Math.abs(I.max), Math.abs(I.min))};
+}
+// ==SIM-END==
+</script>
+<script src="common.js"></script>
+<script>
+(() => {
+'use strict';
+const H = 240, YM = 120, XL1 = 90, XL2 = 210, XC = 300, XR = 450, XE = 560;
+const C_S = COL.blue, C_I = COL.ink, C_VL = COL.orange, C_VC = COL.green, C_R = COL.ir;
+const f0Of = (P) => 1 / (2 * Math.PI * Math.sqrt(P.L * P.C));
+let app = null, lastS = null;
+
+// ---- インピーダンス特性（p38）：R・ωL・1/(ωC)・|Z| の両対数グラフ ----
+const zcv = document.getElementById('zcv');
+let zMap = null;
+function drawZ(S) {
+  const p = S.p, f0 = f0Of(p);
+  const W = zcv.parentElement.clientWidth - 28, Hh = W < 560 ? 240 : 280, ML = 58, MR = 12, MT = 10, MB = 40;
+  const dpr = window.devicePixelRatio || 1;
+  zcv.width = Math.round(W * dpr); zcv.height = Math.round(Hh * dpr); zcv.style.height = Hh + 'px';
+  const c = zcv.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.fillStyle = '#fff'; c.fillRect(0, 0, W, Hh);
+  const lf0 = Math.log10(f0), fa = Math.floor(lf0 - 3.2), fb = Math.ceil(lf0 + 3.8);
+  const zv = (f) => { const w = 2 * Math.PI * f; return [p.R, w * p.L, 1 / (w * p.C), Math.hypot(p.R, w * p.L - 1 / (w * p.C))]; };
+  let za = Infinity, zb = -Infinity;
+  for (let q = 0; q <= 200; q++) { const f = 10 ** (fa + (fb - fa) * q / 200); for (const z of zv(f)) { za = Math.min(za, z); zb = Math.max(zb, z); } }
+  za = Math.floor(Math.log10(Math.max(za, 1e-9))); zb = Math.ceil(Math.log10(zb));
+  if (zb - za > 9) za = zb - 9;
+  const pw = W - ML - MR, ph = Hh - MT - MB;
+  const X = (f) => ML + (Math.log10(f) - fa) / (fb - fa) * pw, Y = (z) => MT + ph - (Math.log10(z) - za) / (zb - za) * ph;
+  zMap = {ML, pw, fa, fb};
+  c.strokeStyle = '#eef1f4'; c.lineWidth = 1;
+  c.font = '11px Menlo, monospace'; c.fillStyle = COL.sub;
+  for (let e = fa; e <= fb; e++) {
+    for (let m = 1; m < 10 && e + Math.log10(m) <= fb; m++) { const x = X(m * 10 ** e); c.strokeStyle = m === 1 ? '#d5dbe2' : '#f1f3f5'; c.beginPath(); c.moveTo(x, MT); c.lineTo(x, MT + ph); c.stroke(); }
+    c.textAlign = e === fb ? 'right' : e === fa ? 'left' : 'center'; c.fillText(fmtSI(10 ** e, 'Hz', 1).replace('.0 ', ' '), X(10 ** e) + (e === fb ? 2 : 0), MT + ph + 14);
+  }
+  const zs = zb - za > 6 ? 2 : 1;
+  for (let e = za; e <= zb; e += zs) { const y = Y(10 ** e); c.strokeStyle = '#d5dbe2'; c.beginPath(); c.moveTo(ML, y); c.lineTo(ML + pw, y); c.stroke(); c.textAlign = 'right'; c.fillText(fmtSI(10 ** e, 'Ω', 1).replace('.0 ', ' '), ML - 4, y + 4); }
+  c.strokeStyle = '#d5dbe2'; c.strokeRect(ML + 0.5, MT + 0.5, pw - 1, ph - 1);
+  c.textAlign = 'center'; c.fillText('周波数 f', ML + pw / 2, Hh - 6);
+  c.save(); c.beginPath(); c.rect(ML, MT, pw, ph); c.clip();
+  const cols = [COL.blue, COL.orange, COL.green, COL.ink], lws = [2, 2, 2, 3.2];
+  for (let j = 0; j < 4; j++) {
+    c.strokeStyle = cols[j]; c.lineWidth = lws[j]; c.beginPath();
+    for (let q = 0; q <= 600; q++) { const f = 10 ** (fa + (fb - fa) * q / 600), x = X(f), y = Y(zv(f)[j]); if (q) c.lineTo(x, y); else c.moveTo(x, y); }
+    c.stroke();
+  }
+  // 共振の周波数と、今の周波数
+  c.setLineDash([5, 4]); c.strokeStyle = COL.sub; c.lineWidth = 1.2;
+  c.beginPath(); c.moveTo(X(f0), MT); c.lineTo(X(f0), MT + ph); c.stroke();
+  c.setLineDash([]); c.strokeStyle = COL.fuchsia; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(X(p.f), MT); c.lineTo(X(p.f), MT + ph); c.stroke();
+  const zf = zv(p.f)[3];
+  c.fillStyle = COL.fuchsia; c.beginPath(); c.arc(X(p.f), Y(zf), 5, 0, 7); c.fill();
+  c.restore();
+  // 凡例
+  const items = [['R', COL.blue], ['ωL', COL.orange], ['1/(ωC)', COL.green], ['|Z|', COL.ink]];
+  c.font = `italic 14px ${SERIF}`; c.textAlign = 'left';
+  let lx = ML + 8, ly = MT + 18;
+  c.fillStyle = 'rgba(255,255,255,0.88)'; c.fillRect(ML + 3, MT + 3, 220, 22);
+  for (const [t, col] of items) { c.fillStyle = col; c.fillRect(lx, ly - 5, 14, 3); c.fillText(t, lx + 18, ly); lx += c.measureText(t).width + 34; }
+  c.font = `italic 13px ${SERIF}`; c.fillStyle = COL.sub;
+  const fx = X(f0), right = fx > ML + pw - 80;
+  c.textAlign = right ? 'right' : 'left'; c.fillText('f₀', fx + (right ? -4 : 4), MT + ph - 6);
+  document.getElementById('zsub').innerHTML = `共振 <span class="eq">f<sub>0</sub></span> = ${fmtSI(f0, 'Hz', 4)}（破線）。今の <span class="eq">f</span> = ${fmtSI(p.f, 'Hz', 4)}、<span class="eq">|Z|</span> = ${fmtSI(zf, 'Ω', 4)}（赤紫）。グラフをクリックで周波数を選ぶ`;
+}
+zcv.addEventListener('click', (e) => {
+  if (!zMap || !app) return;
+  const r = zcv.getBoundingClientRect(), u = (e.clientX - r.left - zMap.ML) / zMap.pw;
+  if (u < 0 || u > 1) return;
+  app.P.f = Math.min(100e3, Math.max(10, sig2(10 ** (zMap.fa + (zMap.fb - zMap.fa) * u))));
+  app.sliders.f.set(); app.schedule();
+});
+
+// ---- エネルギーの図（p39〜41）：v_L・v_C と ½Li²・½Cv_C² ----
+const ecv = document.getElementById('ecv');
+function drawE(S) {
+  const p = S.p, T = S.T, np = Math.min(3, S.periods), tE = S.t[S.t.length - 1], t0 = tE - np * T;
+  const W = ecv.parentElement.clientWidth - 28, wide = W >= 620, PH = wide ? 150 : 120, ML = 62, MR = 12;
+  const pw = wide ? (W - 16) / 2 : W, Hh = wide ? PH + 30 : 2 * PH + 50;
+  const dpr = window.devicePixelRatio || 1;
+  ecv.width = Math.round(W * dpr); ecv.height = Math.round(Hh * dpr); ecv.style.height = Hh + 'px';
+  const c = ecv.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.fillStyle = '#fff'; c.fillRect(0, 0, W, Hh);
+  let k0 = 0; while (k0 < S.t.length - 1 && S.t[k0] < t0) k0++;
+  const k1 = S.t.length - 1;
+  const panel = (x0, y0, series, unit, title) => {
+    const gw = pw - ML - MR, X = (t) => x0 + ML + (t - t0) / (tE - t0) * gw;
+    let mn = 0, mx = 0;
+    for (const sr of series) for (let k = k0; k <= k1; k++) { const v = sr.f(S, k); mn = Math.min(mn, v); mx = Math.max(mx, v); }
+    if (mx - mn < 1e-15) mx = mn + 1;
+    const pad = (mx - mn) * 0.08; mn -= pad; mx += pad;
+    const Y = (v) => y0 + PH - (v - mn) / (mx - mn) * PH;
+    c.strokeStyle = '#d5dbe2'; c.lineWidth = 1; c.strokeRect(x0 + ML + 0.5, y0 + 0.5, gw - 1, PH - 1);
+    const raw = (mx - mn) / 3, e = 10 ** Math.floor(Math.log10(raw)), mm = raw / e, st = (mm < 1.5 ? 1 : mm < 3 ? 2 : mm < 7 ? 5 : 10) * e;
+    c.font = '11px Menlo, monospace'; c.textAlign = 'right'; c.fillStyle = COL.sub;
+    for (let v = Math.ceil(mn / st) * st; v <= mx + 1e-15; v += st) {
+      const y = Y(v); c.strokeStyle = Math.abs(v) < st * 1e-6 ? '#b8c2cc' : '#eef1f4';
+      c.beginPath(); c.moveTo(x0 + ML, y); c.lineTo(x0 + ML + gw, y); c.stroke();
+      c.fillText(fmtSI(Math.abs(v) < st * 1e-6 ? 0 : v, unit, 3).replace(/\.0+ /, ' '), x0 + ML - 5, y + 4);
+    }
+    c.save(); c.beginPath(); c.rect(x0 + ML, y0, gw, PH); c.clip();
+    series.forEach(sr => {
+      c.strokeStyle = sr.color; c.lineWidth = sr.w || 2; c.beginPath();
+      for (let k = k0; k <= k1; k++) { const x = X(S.t[k]), y = Y(sr.f(S, k)); if (k === k0) c.moveTo(x, y); else c.lineTo(x, y); }
+      c.stroke();
+    });
+    c.restore();
+    c.fillStyle = 'rgba(255,255,255,0.88)'; c.fillRect(x0 + ML + 3, y0 + 3, gw - 6, 20);
+    c.textAlign = 'left'; let lx = x0 + ML + 8;
+    c.font = '12px sans-serif'; c.fillStyle = COL.sub; c.fillText(title, lx, y0 + 17); lx += c.measureText(title).width + 10;
+    c.font = `italic 14px ${SERIF}`;
+    for (const sr of series) {
+      c.fillStyle = sr.color;
+      for (const [txt, sub] of sr.nm) {
+        c.font = sub ? `italic 10px ${SERIF}` : `italic 14px ${SERIF}`;
+        c.fillText(txt, lx, y0 + 17 + (sub ? 3 : 0)); lx += c.measureText(txt).width;
+      }
+      lx += 12;
+    }
+    c.font = '11px Menlo, monospace'; c.fillStyle = COL.sub; c.textAlign = 'center';
+    c.fillText(`最後の ${np} 周期`, x0 + ML + gw / 2, y0 + PH + 16);
+  };
+  panel(0, 0, [{nm: [['v'], ['L', 1]], color: C_VL, f: rlcVL}, {nm: [['v'], ['C', 1]], color: C_VC, f: rlcVC}, {nm: [['v'], ['L', 1], [' + v'], ['C', 1]], color: COL.ink, w: 2.6, f: (S, k) => rlcVL(S, k) + rlcVC(S, k)}], 'V', '電圧');
+  const wL = (S, k) => 0.5 * p.L * S.x[0][k] ** 2, wC = (S, k) => 0.5 * p.C * S.x[1][k] ** 2;
+  panel(wide ? pw + 16 : 0, wide ? 0 : PH + 40, [{nm: [['½Li²']], color: C_VL, f: wL}, {nm: [['½Cv'], ['C', 1], ['²']], color: C_VC, f: wC}, {nm: [['和']], color: COL.ink, w: 2.6, f: (S, k) => wL(S, k) + wC(S, k)}], 'J', 'エネルギー');
+  const r = rlcTheory(p).ratio;
+  const vLh = '<span class="eq">v<sub>L</sub></span>', vCh = '<span class="eq">v<sub>C</sub></span>';
+  document.getElementById('esub').innerHTML = Math.abs(r - 1) < 0.02 ? '共振：' + vLh + ' と ' + vCh + ' は同じ大きさで逆向き。L と C の間でエネルギーをやり取りし、和は一定' :
+    r > 1 ? `共振より低い周波数：C のエネルギーの蓄積と放出がほとんど（${vCh}/${vLh} の振幅の比 = ${r.toPrecision(3)}）` : `共振より高い周波数：L のエネルギーの蓄積と放出がほとんど（${vLh}/${vCh} の振幅の比 = ${(1 / r).toPrecision(3)}）`;
+}
+window.addEventListener('resize', () => { if (lastS) { drawZ(lastS); drawE(lastS); } });
+
+app = SimApp({
+  pdef: [
+    {k: 'Vm', b: 'V', s: 'm', up: false, title: '電源の電圧の振幅', min: 1, max: 100, step: 0.5, log: false, unit: 'V', def: 10},
+    {k: 'f', b: 'f', s: '', title: '電源の周波数', min: 10, max: 100e3, log: true, unit: 'Hz', def: 1 / (2 * Math.PI * Math.sqrt(1e-3 * 10e-6))},
+    {k: 'L', b: 'L', s: '', min: 10e-6, max: 100e-3, log: true, unit: 'H', def: 1e-3},
+    {k: 'C', b: 'C', s: '', min: 0.1e-6, max: 1e-3, log: true, unit: 'F', def: 10e-6},
+    {k: 'R', b: 'R', s: '', min: 0.1, max: 100, log: true, unit: 'Ω', def: 1},
+  ],
+  extraParams(el, a) {
+    const d = document.createElement('div');
+    d.className = 'crow';
+    d.innerHTML = `<button class="xbtn">f = f₀ = 1/(2π√(LC)) にする（共振）</button>`;
+    d.querySelector('button').onclick = () => { a.P.f = +f0Of(a.P).toPrecision(6); a.sliders.f.set(); a.schedule(); };
+    el.appendChild(d);
+  },
+  presets: [
+    {name: 'p38〜39：共振 f = f₀（≈ 1.59 kHz）', v: {Vm: 10, L: 1e-3, C: 10e-6, R: 1}, apply: (a) => { a.P.f = f0Of(a.P); }},
+    {name: 'p40：低い周波数 f = f₀/2.5', v: {Vm: 10, L: 1e-3, C: 10e-6, R: 1}, apply: (a) => { a.P.f = f0Of(a.P) / 2.5; }},
+    {name: 'p41：高い周波数 f = 2.5f₀', v: {Vm: 10, L: 1e-3, C: 10e-6, R: 1}, apply: (a) => { a.P.f = f0Of(a.P) * 2.5; }},
+    {name: 'p38：ωL = R になる 159 Hz', v: {Vm: 10, L: 1e-3, C: 10e-6, R: 1}, apply: (a) => { a.P.f = 1 / (2 * Math.PI * 1e-3); }},
+    {name: '共振で R = 10 Ω（電流が小さい）', v: {Vm: 10, L: 1e-3, C: 10e-6, R: 10}, apply: (a) => { a.P.f = f0Of(a.P); }},
+  ],
+  simulate: (P) => simulateRlc({Vm: P.Vm, f: P.f, L: P.L, C: P.C, R: P.R}),
+  metrics: rlcMetrics,
+  initWin: 'last',
+  onRun(S) { lastS = S; drawZ(S); drawE(S); },
+  gatePane: {h: 0, draw() {}},
+  probes: {
+    'n:a':   {b: 'v', s: 'S', color: C_S, q: 'V', what: '電源の上の節点の電位（= vS）', f: rlcVs},
+    'n:b':   {b: 'v', s: 'b', color: COL.violet, q: 'V', what: 'L と C の間の節点の電位（= vC + vR）', f: (S, k) => rlcVC(S, k) + rlcVR(S, k)},
+    'n:c':   {b: 'v', s: 'c', color: COL.teal, q: 'V', what: 'C と R の間の節点の電位（= vR）', f: rlcVR},
+    'n:gnd': {b: 'GND', s: '', color: COL.sub, q: 'V', what: '下の線（0 V）', f: () => 0},
+    'i:V':   {b: 'i', s: '', color: C_I, q: 'I', what: '電源の電流（上向きが正。直列なので全部同じ i）', f: rlcI},
+    'v:V':   {b: 'v', s: 'S', color: C_S, q: 'V', what: '電源の電圧（上が＋）', f: rlcVs},
+    'i:L':   {b: 'i', s: '', color: C_I, q: 'I', what: 'コイルの電流（右向きが正。= i）', f: rlcI},
+    'v:L':   {b: 'v', s: 'L', color: C_VL, q: 'V', what: 'コイルの両端の電圧（左が＋、p39 の矢印）', f: rlcVL},
+    'i:C':   {b: 'i', s: '', color: C_I, q: 'I', what: 'コンデンサの電流（右向きが正。= i）', f: rlcI},
+    'v:C':   {b: 'v', s: 'C', color: C_VC, q: 'V', what: 'コンデンサの両端の電圧（左が＋、p39 の矢印）', f: rlcVC},
+    'i:R':   {b: 'i', s: '', color: C_I, q: 'I', what: '抵抗の電流（右向きが正。= i）', f: rlcI},
+    'v:R':   {b: 'v', s: 'R', color: C_R, q: 'V', what: '抵抗の両端の電圧（左が＋）', f: rlcVR},
+    'v:LC':  {b: 'v', s: 'L+C', up: true, color: COL.ink2, q: 'V', what: 'vL + vC（p39 の和。共振で 0）', f: (S, k) => rlcVL(S, k) + rlcVC(S, k)},
+  },
+  defaultProbes: ['v:L', 'v:C', 'i:L'],
+  extraButtons: [{key: 'v:LC', label: '<span class="eq">v<sub>L</sub> + v<sub>C</sub></span>（p39）'}, {key: 'n:a', label: '<span class="eq">v<sub>S</sub></span>（電源）'}],
+  build(K) {
+    const {el, W, gWire} = K;
+    const nodeW = {
+      a: [[[0, YM - 28], [0, 0], [XL1, 0]]],
+      b: [[[XL2, 0], [XC - 10, 0]]],
+      c: [[[XC + 10, 0], [XR - 45, 0]]],
+      gnd: [[[XR + 45, 0], [XE, 0], [XE, H], [0, H], [0, YM + 28]]],
+    };
+    for (const n in nodeW) nodeW[n].forEach(pp => W(pp));
+    K.acsrc(0, YM, 28);
+    K.name(-44, YM + 10, 'v', 'end', 30, 'S');
+    K.coil([XL1, 0], [XL2, 0], 4, 1);
+    el('line', {x1: XC - 10, y1: -26, x2: XC - 10, y2: 26}, gWire);
+    el('line', {x1: XC + 10, y1: -26, x2: XC + 10, y2: 26}, gWire);
+    K.resH(XR, 0);
+    K.name((XL1 + XL2) / 2, 52, 'L'); K.name(XC, 62, 'C'); K.name(XR, 52, 'R');
+    K.box(XL1 - 16, -38, XR + 45 - XL1 + 32, 112, COL.sub);
+    K.name(XR + 70, 70, 'Z', 'start', 30);
+    const I = 26;
+    const box = [[I, I], [XE - I, I], [XE - I, H - I], [I, H - I]];
+    return {
+      nodeW,
+      hits: [['e:V', [-30, YM - 30, 60, 60]], ['e:L', [XL1 + 4, -24, XL2 - XL1 - 8, 40]], ['e:C', [XC - 22, -30, 44, 60]], ['e:R', [XR - 46, -16, 92, 32]]],
+      arrows: {
+        'i:V': [[44, YM + 26], [44, YM - 26], 'R'], 'v:V': [[-80, YM + 44], [-80, YM - 44], 'L'],
+        'i:L': [[105, 104], [195, 104], 'B'], 'v:L': [[XL2 - 8, -60], [XL1 + 8, -60], 'T'],
+        'i:C': [[XC - 34, 104], [XC + 34, 104], 'B'], 'v:C': [[XC + 34, -60], [XC - 34, -60], 'T'],
+        'i:R': [[XR - 40, 104], [XR + 40, 104], 'B'], 'v:R': [[XR + 40, -60], [XR - 40, -60], 'T'],
+      },
+      nodeTag: {a: [45, 0, 0, -16], b: [(XL2 + XC) / 2, 0, 0, -16], c: [(XC + XR - 45) / 2 + 6, 0, 0, -16], gnd: [280, H, 0, 40]},
+      loops: {cw: box, ccw: box.slice().reverse()},
+      sw: {},
+    };
+  },
+  state(S, k, MET) {
+    const p = S.p, i = S.x[0][k], vL = rlcVL(S, k), vC = rlcVC(S, k);
+    const th = ((S.t[k] * 360 * p.f) % 360 + 360) % 360;
+    let html = `<span class="eq">ωt</span> = ${Math.round(th) % 360}°：電流 <span class="eq">i</span> = ${fmtSI(i, 'A', 3)}${Math.abs(i) > 1e-9 * MET.absMax ? (i > 0 ? '（右回り）' : '（左回り）') : ''}。`;
+    const pL = vL * i, pC = vC * i, tiny = 1e-6 * MET.absMax * p.Vm;
+    const s1 = Math.abs(pL) < tiny ? '' : pL > 0 ? 'L のエネルギー蓄積' : 'L のエネルギー放出';
+    const s2 = Math.abs(pC) < tiny ? '' : pC > 0 ? 'C のエネルギー蓄積' : 'C のエネルギー放出';
+    if (s1 || s2) html += ' ' + [s2, s1].filter(Boolean).join('・') + '。';
+    const fr = Math.abs(i) / Math.max(1e-15, MET.absMax);
+    return {loops: Math.abs(i) > 1e-9 * MET.absMax ? [[i > 0 ? 'cw' : 'ccw', fr]] : [], html};
+  },
+  metricsHtml(S, m) {
+    const p = S.p, th = m.th;
+    const F = (x, u) => fmtSI(x, u, 4);
+    const mark = (a, b, tol, sc) => Math.abs(a - b) <= tol * Math.max(Math.abs(b), sc) ? '<span class="ok">一致</span>' : '<span class="ng">ずれる</span>';
+    const R = (nm, sim, eq, val, u, sc, tol = 0.01) => `<tr><td>${nm}</td><td class="num">${u ? F(sim, u) : sim.toPrecision(4)}</td><td class="eq">${eq}</td><td class="num">${u ? F(val, u) : val.toPrecision(4)}</td><td>${Math.abs(val) > 1e-12 * (sc || 1) ? pctDiff(sim, val) : '差 ' + (u ? F(sim - val, u) : (sim - val).toPrecision(2))} ${mark(sim, val, tol, sc || 0)}</td></tr>`;
+    let rows = `<tr><th>量</th><th>シミュレーション</th><th>授業の式</th><th>式の値</th><th>差</th></tr>`;
+    rows += R('電流の振幅 <span class="eq">I<sub>m</sub></span>', m.I.c1, 'V<sub>m</sub> / |Z|', th.Im, 'A');
+    rows += R('インピーダンスの大きさ <span class="eq">|Z|</span>', p.Vm / m.I.c1, '√(R² + (ωL − 1/(ωC))²)', th.Z, 'Ω');
+    rows += R('<span class="eq">v<sub>L</sub></span> の振幅', m.VL.c1, 'ωL I<sub>m</sub>', th.VLm, 'V');
+    rows += R('<span class="eq">v<sub>C</sub></span> の振幅', m.VC.c1, 'I<sub>m</sub> / (ωC)', th.VCm, 'V');
+    rows += R('<span class="eq">v<sub>C</sub></span> と <span class="eq">v<sub>L</sub></span> の振幅の比', m.VC.c1 / m.VL.c1, '(1/(ωC)) / (ωL) = (f<sub>0</sub>/f)²', th.ratio, '');
+    rows += R('<span class="eq">v<sub>L</sub> + v<sub>C</sub></span> の振幅', m.VLC.c1, 'I<sub>m</sub>|ωL − 1/(ωC)|', th.Im * Math.abs(th.X), 'V', th.VLm);
+    const phs = -m.I.ph * 180 / Math.PI, pht = th.phi * 180 / Math.PI;
+    rows += `<tr><td>電流の位相の遅れ <span class="eq">φ</span></td><td class="num">${phs.toFixed(2)}°</td><td class="eq">tan<sup>−1</sup>{(ωL − 1/(ωC))/R}</td><td class="num">${pht.toFixed(2)}°</td><td>差 ${(phs - pht).toFixed(2)}° ${Math.abs(phs - pht) < 0.5 ? '<span class="ok">一致</span>' : '<span class="ng">ずれる</span>'}</td></tr>`;
+    rows += R('エネルギーの和の変動（最大 − 最小）', m.W.max - m.W.min, '½I<sub>m</sub>²|L − 1/(ω²C)|（共振で 0）', th.dW, 'J', th.Wmean, 0.02);
+    rows += R('エネルギーの和の平均', m.W.avg, '¼I<sub>m</sub>²(L + 1/(ω²C))', th.Wmean, 'J');
+    const sub = `最後の 1 周期で計算（${S.periods} 周期を計算）。<span class="eq">f<sub>0</sub></span> = ${F(th.f0, 'Hz')}、<span class="eq">f/f<sub>0</sub></span> = ${(p.f / th.f0).toPrecision(3)}` +
+      (m.steady ? '' : ' <span class="ng">まだ定常状態に達していません（固有の振動の減衰が遅すぎるため打ち切り）</span>');
+    return {rows, sub};
+  },
+});
+})();
+</script>
+</body>
+</html>

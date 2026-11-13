@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>昇圧チョッパーのシミュレーター — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<header>
+  <nav class="hnav"><a href="../index.html">← 科目のページへ戻る</a><a href="index.html">回路を選ぶ（シミュレーターの一覧）</a></nav>
+  <h1>昇圧チョッパーのシミュレーター</h1>
+  <div class="subtitle">パワーエレクトロニクス 第5回 直流-直流変換（１）p26〜36 / 大阪工業大学</div>
+</header>
+<main>
+  <div class="notice">
+    回路図の<b>線（節点）をクリック</b>すると、その点の電位（GND を 0 V とする）が下のグラフに出ます。
+    <b>素子をクリック</b>すると、その素子の電流が出ます（矢印の向きが正）。もう一度クリックすると消えます。
+    値を変えると、スイッチを入れた瞬間（t = 0、電流も電圧も 0）から計算し直します。
+  </div>
+
+  <div class="top">
+    <section class="card">
+      <div class="card-h">
+        <span class="ttl">回路</span>
+        <span class="small">素子をクリックしたとき：</span>
+        <span class="seg" id="emode"><button data-m="i" class="on">電流</button><button data-m="v">両端の電圧</button></span>
+      </div>
+      <svg id="sch" viewBox="-120 -128 960 434" aria-label="昇圧チョッパーの回路図"></svg>
+      <div id="state"></div>
+    </section>
+
+    <section class="card params">
+      <div class="card-h"><span class="ttl">回路の値</span></div>
+      <div class="card-b" id="params"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-h">
+      <span class="ttl">波形</span>
+      <span class="seg" id="win">
+        <button data-w="all" class="on">起動から最後まで</button><button data-w="first">起動直後</button><button data-w="last">定常状態</button>
+      </span>
+    </div>
+    <div class="ctl">
+      <button id="play">▶ 再生</button>
+      <label>速さ <select id="speed"><option value="0.25">×0.25</option><option value="0.5">×0.5</option><option value="1" selected>×1</option><option value="2">×2</option><option value="4">×4</option></select></label>
+      <label id="nper">周期の数 <select id="nP"><option>2</option><option selected>3</option><option>5</option><option>10</option></select></label>
+      <label>グラフ <select id="lay"><option value="vi">電圧と電流の2段</option><option value="each">1本ずつ別の段</option></select></label>
+    </div>
+    <div class="scrubrow"><input type="range" id="scrub" min="0" max="10000" value="0" aria-label="時刻"><span class="tc" id="tc"></span></div>
+    <div id="legend"></div>
+    <div id="plotwrap"><canvas id="plot"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">定常状態の値と、授業の式の比較</span><span class="small" id="msub"></span></div>
+    <div class="card-b" style="overflow-x:auto"><table class="m" id="metrics"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">このシミュレーターの前提</span></div>
+    <div class="card-b">
+      <ul class="notes">
+        <li>スイッチとダイオードは理想（オンで 0 Ω・オフで電流 0、電圧降下なし）。コイル・コンデンサ・抵抗も理想の素子です。</li>
+        <li>スライド p36 の LTspice の波形（<span class="eq">v<sub>C</sub></span> ≈ 11.17 V）はダイオードのオン電圧を含んでいます。ここでは理想のダイオードなので、p35 の値では <span class="eq">V<sub>0</sub> / (1 − D)</span> = 12.0 V になります。</li>
+        <li>オフの間にコイルの電流が 0 になると、ダイオードが止まって電流 0 のまま（電流不連続モード）になります。このときは <span class="eq">V<sub>0</sub> / (1 − D)</span> より高い電圧になります。</li>
+        <li><span class="eq">v<sub>sw</sub></span> はスイッチの両端の電圧（スイッチ・コイル・ダイオードがつながる節点の電位）です。オンで 0 V、オフで <span class="eq">v<sub>C</sub></span>（電流が止まっている間は <span class="eq">V<sub>0</sub></span>）。</li>
+        <li>起動の直後は <span class="eq">v<sub>C</sub></span> が <span class="eq">V<sub>0</sub></span> より低いので、スイッチがオフでもコイルの電流は増えます（突入電流）。</li>
+        <li>計算は 4 次のルンゲ・クッタ法（1 周期を 80〜400 分割）で、コイルの電流が 0 になる時刻は二分法で求めています。</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<footer>パワーエレクトロニクス ｜ 神野 崇馬 ｜ 試作版</footer>
+<div id="tip"></div>
+
+<script src="common.js"></script>
+<script>
+// ==SIM-BEGIN==
+/**
+ * 昇圧チョッパー：電源 V0 → コイル L → 節点 x。x と GND の間に制御スイッチ、x → ダイオード → 出力（C と R）。
+ * i = コイルの電流（右向き）、v = v_C。オン：L di/dt = V0、C dv/dt = −v/R。オフ（ダイオードが流れる）：L di/dt = V0 − v、C dv/dt = i − v/R。
+ */
+function boostModel(p) {
+  const V0 = p.V0, D = p.D, L = p.L, C = p.C, R = p.R;
+  return {
+    T: 1 / p.f, D, R, C, Vs: V0 / (1 - D),
+    fx: (g, i, v) => g ? [V0 / L, -v / (R * C)] : [(V0 - v) / L, (i - v / R) / C],
+    sigma: slowRate(L / ((1 - D) * (1 - D)), C, R),
+  };
+}
+function simulateBoost(p) { const s = simPWL(boostModel(p)); s.p = Object.assign({}, p); return s; }
+function boostMetrics(S) {
+  const a = lastStats(S, (S, k) => S.i[k]), b = lastStats(S, (S, k) => S.v[k]);
+  return Object.assign({vAvg: b.avg, vMax: b.max, vMin: b.min, dV: b.pp, iAvg: a.avg, iMax: a.max, iMin: a.min, dI: a.pp}, settleInfo(S, S.p.V0));
+}
+// ==SIM-END==
+</script>
+<script>
+(() => {
+'use strict';
+const H = 240, YM = 120;
+const X = {B: 0, L1: 90, L2: 230, J: 330, D1: 395, D2: 485, C: 590, R: 710};
+// 節点 x の電位：オン 0、オフで流れている v、止まっている V0
+const vx = (S, k) => S.m[k] === 1 ? 0 : S.m[k] === 0 ? S.v[k] : S.p.V0;
+const iD = (S, k) => S.m[k] === 0 ? S.i[k] : 0;
+const iS = (S, k) => S.m[k] === 1 ? S.i[k] : 0;
+
+SimApp({
+  pdef: [
+    {k: 'V0', b: 'V', s: '0', up: true, min: 1, max: 30, step: 0.5, log: false, unit: 'V', def: 5},
+    {k: 'D', b: 'D', s: '', min: 0.05, max: 0.9, step: 0.01, log: false, unit: '', def: 0.583},
+    {k: 'f', b: 'f', s: 'sw', min: 500, max: 100e3, log: true, unit: 'Hz', def: 20e3},
+    {k: 'L', b: 'L', s: '', min: 10e-6, max: 100e-3, log: true, unit: 'H', def: 700e-6},
+    {k: 'C', b: 'C', s: '', min: 1e-6, max: 2200e-6, log: true, unit: 'F', def: 500e-6},
+    {k: 'R', b: 'R', s: '', min: 1, max: 500, log: true, unit: 'Ω', def: 28.8},
+  ],
+  presets: [
+    {name: '第5回 p35 の回路（5 V → 12 V）', v: {V0: 5, D: 0.583, f: 20e3, L: 700e-6, C: 500e-6, R: 28.8}},
+    {name: '同じ回路で C = 47 μF（早く定常に）', v: {V0: 5, D: 0.583, f: 20e3, L: 700e-6, C: 47e-6, R: 28.8}},
+    {name: '電流不連続モードの例', v: {V0: 5, D: 0.3, f: 20e3, L: 20e-6, C: 100e-6, R: 50}},
+    {name: '12 V → 24 V（D = 0.5）', v: {V0: 12, D: 0.5, f: 20e3, L: 1e-3, C: 100e-6, R: 24}},
+  ],
+  simulate: (P) => simulateBoost({V0: P.V0, D: P.D, f: P.f, L: P.L, C: P.C, R: P.R}),
+  metrics: boostMetrics,
+  probes: {
+    'n:in':  {b: 'V', s: '0', up: true, color: COL.blue, q: 'V', what: '電源の＋側の節点の電位', f: (S) => S.p.V0},
+    'n:sw':  {b: 'v', s: 'sw', color: COL.fuchsia, q: 'V', what: 'コイル・スイッチ・ダイオードの節点の電位（スイッチの電圧）', f: vx},
+    'n:out': {b: 'v', s: 'C', color: COL.orange, q: 'V', what: '出力の節点の電位（C と R の電圧）', f: (S, k) => S.v[k]},
+    'n:gnd': {b: 'GND', s: '', color: COL.sub, q: 'V', what: '基準の節点（0 V）', f: () => 0},
+    'i:V0':  {b: 'i', s: 'in', color: COL.iin, q: 'I', what: '電源から出る電流（上向きが正）', f: (S, k) => S.i[k]},
+    'i:L':   {b: 'i', s: 'L', color: COL.ink, q: 'I', what: 'コイルの電流（右向きが正）', f: (S, k) => S.i[k]},
+    'i:S':   {b: 'i', s: 'S', color: COL.isw, q: 'I', what: 'スイッチの電流（下向きが正）', f: iS},
+    'i:D':   {b: 'i', s: 'D', color: COL.teal, q: 'I', what: 'ダイオードの電流（右向きが正）', f: iD},
+    'i:C':   {b: 'i', s: 'C', color: COL.violet, q: 'I', what: 'コンデンサの電流（下向き＝充電が正）', f: (S, k) => iD(S, k) - S.v[k] / S.p.R},
+    'i:R':   {b: 'i', s: 'R', color: COL.ir, q: 'I', what: '抵抗の電流（下向きが正）', f: (S, k) => S.v[k] / S.p.R},
+    'v:V0':  {b: 'V', s: '0', up: true, color: COL.blue, q: 'V', what: '電源の電圧（上が＋）', f: (S) => S.p.V0},
+    'v:L':   {b: 'v', s: 'L', color: COL.ink, q: 'V', what: 'コイルの両端の電圧（左が＋）', f: (S, k) => S.p.V0 - vx(S, k)},
+    'v:S':   {b: 'v', s: 'sw', color: COL.fuchsia, q: 'V', what: 'スイッチの両端の電圧（上が＋）', f: vx},
+    'v:D':   {b: 'v', s: 'D', color: COL.teal, q: 'V', what: 'ダイオードの両端の電圧（右のカソードが＋。逆向きにかかる電圧）', f: (S, k) => S.v[k] - vx(S, k)},
+    'v:C':   {b: 'v', s: 'C', color: COL.orange, q: 'V', what: 'コンデンサの両端の電圧（上が＋）', f: (S, k) => S.v[k]},
+    'v:R':   {b: 'v', s: 'R', color: COL.orange, q: 'V', what: '抵抗の両端の電圧（上が＋）', f: (S, k) => S.v[k]},
+  },
+  defaultProbes: ['v:L', 'n:out', 'i:L', 'i:C'],
+  refLines: [{keys: ['n:out', 'v:C', 'v:R'], val: (S) => S.p.V0 / (1 - S.p.D), label: 'V₀/(1−D)'}],
+  build(K) {
+    const {W} = K;
+    const nodeW = {
+      in: [[[X.B, YM - 9], [X.B, 0], [X.L1, 0]]],
+      sw: [[[X.L2, 0], [X.D1, 0]], [[X.J, 0], [X.J, YM - 40]]],
+      out: [[[X.D2, 0], [X.R, 0], [X.R, YM - 45]], [[X.C, 0], [X.C, YM - 10]]],
+      gnd: [[[X.B, YM + 9], [X.B, H], [X.R, H], [X.R, YM + 45]], [[X.J, YM + 40], [X.J, H]], [[X.C, YM + 10], [X.C, H]]],
+    };
+    for (const n in nodeW) nodeW[n].forEach(p => W(p));
+    K.battery(X.B, YM);
+    K.ground(X.B, H);
+    K.coil([X.L1, 0], [X.L2, 0], 4, 1);
+    const sw = K.switch([X.J, YM + 40], [X.J, YM - 40], -1);
+    K.box(X.J - 30, YM - 54, 60, 108, COL.fuchsia);
+    K.text(X.J + 22, YM + 82, '制御スイッチ', COL.fuchsia, 18, 'start');
+    K.diode([X.D1, 0], [X.D2, 0]);
+    K.box(X.D1 - 10, -28, X.D2 - X.D1 + 20, 56, COL.teal);
+    K.text((X.D1 + X.D2) / 2, 52, 'ダイオード', COL.teal, 18);
+    K.cap(X.C, YM);
+    K.res(X.R, YM);
+    [[X.J, 0], [X.J, H], [X.C, 0], [X.C, H]].forEach(([x, y]) => K.dot(x, y));
+    K.name((X.L1 + X.L2) / 2, 44, 'L');
+    K.name(X.C + 38, YM + 34, 'C', 'start');
+    K.name(X.R - 22, YM + 8, 'R', 'end');
+    const INS = 26;
+    const box = (x0, x1) => [[x0 + INS, INS], [x1 - INS, INS], [x1 - INS, H - INS], [x0 + INS, H - INS]];
+    return {
+      nodeW,
+      hits: [['e:V0', [-34, YM - 26, 68, 52]], ['e:L', [X.L1 + 4, -24, X.L2 - X.L1 - 8, 40]], ['e:S', [X.J - 26, YM - 46, 52, 92]],
+        ['e:D', [X.D1 + 6, -24, X.D2 - X.D1 - 12, 48]], ['e:C', [X.C - 36, YM - 24, 72, 48]], ['e:R', [X.R - 22, YM - 50, 44, 100]]],
+      arrows: {
+        'i:V0': [[-22, 62], [-22, 14], 'L'], 'v:V0': [[-62, YM + 44], [-62, YM - 44], 'L'],
+        'i:L': [[22, -22], [X.L1 - 8, -22], 'T'], 'v:L': [[X.L2 - 8, -50], [X.L1 + 8, -50], 'T'],
+        'i:S': [[X.J + 42, YM - 30], [X.J + 42, YM + 30], 'R'], 'v:S': [[X.J - 48, YM + 40], [X.J - 48, YM - 40], 'L'],
+        'i:D': [[X.D1 + 8, -44], [X.D2 - 8, -44], 'T'], 'v:D': [[X.D1 + 8, -84], [X.D2 - 8, -84], 'T'],
+        'i:C': [[X.C - 48, YM - 30], [X.C - 48, YM + 30], 'L'], 'v:C': [[X.C - 48, YM + 40], [X.C - 48, YM - 40], 'L'],
+        'i:R': [[X.R + 34, YM - 30], [X.R + 34, YM + 30], 'R'], 'v:R': [[X.R + 70, YM + 44], [X.R + 70, YM - 44], 'R'],
+      },
+      nodeTag: {in: [50, 0, 0, -16], sw: [X.J + 32, 0, 0, -16], out: [X.C + 60, 0, 0, -16], gnd: [X.J + 60, H, 0, 40]},
+      loops: {on: box(X.B, X.J), off: box(X.B, X.R), cr: box(X.C, X.R)},
+      sw: {S: sw},
+    };
+  },
+  state(S, k, MET) {
+    const g = S.g[k], m = S.m[k], i = S.i[k], v = S.v[k], V0 = S.p.V0;
+    const fr = (x) => Math.abs(x) / Math.max(1e-15, MET.iMax);
+    if (m === 1) return {sw: {S: 1}, loops: [['on', fr(i)], ['cr', fr(v / S.p.R)]],
+      html: `<span class="sw-on">スイッチ オン</span>：電源 → コイル → スイッチ → 電源。コイルに <span class="eq">V<sub>0</sub></span> がかかり、<span class="eq">i<sub>L</sub></span> が増える（コイルにエネルギーをためる）。出力は C が R に放電して支える。`};
+    if (m === 0) return {sw: {S: 0}, loops: [['off', fr(i)]],
+      html: `<span class="sw-off">スイッチ オフ</span>：電源 → コイル → ダイオード → C・R → 電源。コイルの電圧は <span class="eq">V<sub>0</sub> − v<sub>C</sub></span>` +
+        (v > V0 ? `（マイナス）で、<span class="eq">i<sub>L</sub></span> が減る。電源とコイルの電圧が足されて出力に出る。` : `。まだ <span class="eq">v<sub>C</sub> &lt; V<sub>0</sub></span> なので <span class="eq">i<sub>L</sub></span> は増える（起動の直後）。`)};
+    return {sw: {S: g}, loops: [['cr', fr(v / S.p.R)]], html: `<span class="dcm">コイルの電流が 0</span>：ダイオードも止まっている（電流不連続）。C が R に放電して、出力の電圧を支えている。`};
+  },
+  metricsHtml(S, m) {
+    // 定常状態に達する前に打ち切ったときは、判定を「ずれる」ではなく「目安」にする
+    // 出力の電圧の揺れが平均の半分を超えるほど大きいとき（f_sw が低く L・C が小さい極端な値）も、式の前提（出力の電圧はほぼ一定）が崩れるので「目安」
+    const bigRip = m.dV > 0.5 * Math.abs(m.vAvg);
+    const mk = (a, b, tol) => !m.steady ? '<span class="small">目安（定常に達していない）</span>' : bigRip && /ずれる/.test(okMark(a, b, tol)) ? '<span class="small">目安（出力の揺れが大きい）</span>' : okMark(a, b, tol);
+    const p = S.p, T = S.T, D = p.D;
+    const vth = p.V0 / (1 - D), dIth = p.V0 * D * T / p.L, dVth = (m.vAvg / p.R) * D * T / p.C, iTh = m.vAvg * m.vAvg / (p.R * p.V0);
+    const Mdcm = (1 + Math.sqrt(1 + 2 * D * D * p.R * T / p.L)) / 2;
+    let rows = `<tr><th>量</th><th>シミュレーション</th><th>授業の式</th><th>式の値</th><th>差</th></tr>`;
+    rows += `<tr><td>出力の電圧の平均</td><td class="num">${fmtSI(m.vAvg, 'V', 4)}</td><td class="eq">v<sub>C</sub> = V<sub>0</sub> / (1 − D)</td><td class="num">${fmtSI(vth, 'V', 4)}</td><td>${pctDiff(m.vAvg, vth)} ${m.dcm ? '' : mk(m.vAvg, vth, 0.02)}</td></tr>`;
+    rows += `<tr><td>コイルの電流の振れ幅</td><td class="num">${fmtSI(m.dI, 'A', 4)}</td><td class="eq">ΔI = V<sub>0</sub>DT / L</td><td class="num">${fmtSI(dIth, 'A', 4)}</td><td>${pctDiff(m.dI, dIth)} ${mk(m.dI, dIth, 0.05)}</td></tr>`;
+    rows += `<tr><td>出力の電圧の振れ幅</td><td class="num">${fmtSI(m.dV, 'V', 3)}</td><td class="eq">(v<sub>C</sub>/R)·DT / C</td><td class="num">${fmtSI(dVth, 'V', 3)}</td><td>${pctDiff(m.dV, dVth)}</td></tr>`;
+    rows += `<tr><td>コイルの電流の平均</td><td class="num">${fmtSI(m.iAvg, 'A', 4)}</td><td class="eq">v<sub>C</sub><sup>2</sup> / (RV<sub>0</sub>)（入力と出力の電力が等しい）</td><td class="num">${fmtSI(iTh, 'A', 4)}</td><td>${pctDiff(m.iAvg, iTh)}</td></tr>`;
+    if (m.dcm) rows += `<tr><td colspan="5"><span class="dcm" style="color:#7c3aed;font-weight:700">電流不連続モード</span>：オフの途中でコイルの電流が 0 になっています。<span class="eq">V<sub>0</sub> / (1 − D)</span> は「電流が 0 にならない」ときの式なので合いません（出力の電圧はそれより高くなる）。参考：不連続モードの式 <span class="eq">v<sub>C</sub> = V<sub>0</sub>(1 + √(1 + 2D<sup>2</sup>RT/L)) / 2</span> = ${fmtSI(Mdcm * p.V0, 'V', 4)}（差 ${pctDiff(m.vAvg, Mdcm * p.V0)}）</td></tr>`;
+    if (bigRip && m.steady) rows += `<tr><td colspan="5" class="small">出力の電圧の揺れ（${fmtSI(m.dV, 'V', 3)}）が平均の半分を超えています。授業の式は「出力の電圧はほぼ一定（揺れは小さい）」として求めたものなので、合わない行は「目安」としています（<span class="eq">f<sub>sw</sub></span>・<span class="eq">L</span>・<span class="eq">C</span> を大きくすると式に近づきます）。</td></tr>`;
+    const sub = `最後の 1 周期で計算。定常状態まで約 ${fmtSI(m.settle, 's', 2)}（${Math.max(1, Math.round(m.settle / T))} 周期）` +
+      (m.steady ? '' : ` <span class="ng">まだ定常状態に達していません（${S.periods} 周期で打ち切り）</span>`);
+    return {rows, sub};
+  },
+});
+})();
+</script>
+</body>
+</html>

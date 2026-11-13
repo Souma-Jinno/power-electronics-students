@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>交流位相調整回路のシミュレーター — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<header>
+  <nav class="hnav"><a href="../index.html">← 科目のページへ戻る</a><a href="index.html">回路を選ぶ（シミュレーターの一覧）</a></nav>
+  <h1>交流位相調整回路（サイリスタ・トライアック）のシミュレーター</h1>
+  <div class="subtitle">パワーエレクトロニクス 第13回 交流-交流変換 p7・p13〜16 / 大阪工業大学</div>
+</header>
+<main>
+  <div class="notice">
+    回路図の<b>線（節点）をクリック</b>すると、その点の電位（電源の下の線を 0 V とする）が下のグラフに出ます。
+    <b>素子をクリック</b>すると、その素子の電流が出ます（矢印の向きが正）。<b>位相制御角 α</b> を動かすと、サイリスタがオンする時刻が変わり、負荷電圧の実効値が変わります。
+    値を変えると、電源を入れた瞬間（t = 0、電流 0）から計算し直します。
+    最初はスライド p15〜16 の例（トライアック、抵抗だけ、α = 60°）です。「負荷」を「R + L」にするとコイルの影響が見られます。
+  </div>
+
+  <div class="top">
+    <section class="card">
+      <div class="card-h">
+        <span class="ttl">回路</span>
+        <span class="small">素子をクリックしたとき：</span>
+        <span class="seg" id="emode"><button data-m="i" class="on">電流</button><button data-m="v">両端の電圧</button></span>
+      </div>
+      <svg id="sch" viewBox="-120 -125 820 445" aria-label="交流位相調整回路の回路図"></svg>
+      <div id="state"></div>
+    </section>
+
+    <section class="card params">
+      <div class="card-h"><span class="ttl">回路の値</span></div>
+      <div class="card-b" id="params"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-h">
+      <span class="ttl">波形</span>
+      <span class="seg" id="win">
+        <button data-w="all">起動から最後まで</button><button data-w="first">起動直後</button><button data-w="last" class="on">定常状態</button>
+      </span>
+    </div>
+    <div class="ctl">
+      <button id="play">▶ 再生</button>
+      <label>速さ <select id="speed"><option value="0.25">×0.25</option><option value="0.5">×0.5</option><option value="1" selected>×1</option><option value="2">×2</option><option value="4">×4</option></select></label>
+      <label id="nper">周期の数 <select id="nP"><option>1</option><option selected>2</option><option>3</option><option>5</option><option>10</option></select></label>
+      <label>グラフ <select id="lay"><option value="vi">電圧と電流の2段</option><option value="each">1本ずつ別の段</option></select></label>
+    </div>
+    <div class="scrubrow"><input type="range" id="scrub" min="0" max="10000" value="0" aria-label="時刻"><span class="tc" id="tc"></span></div>
+    <div id="legend"></div>
+    <div id="plotwrap"><canvas id="plot"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">定常状態の値と、授業の式の比較</span><span class="small" id="msub"></span></div>
+    <div class="card-b" style="overflow-x:auto"><table class="m" id="metrics"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">このシミュレーターの前提</span></div>
+    <div class="card-b">
+      <ul class="notes">
+        <li>電源は <span class="eq">v<sub>S</sub> = V<sub>0</sub> sin ωt</span>（<span class="eq">θ = ωt</span>）。サイリスタは理想で、「順方向の電圧がかかっているときにゲート信号が来るとオンし、電流が 0 になるとオフする」とします（オンの間の電圧降下は 0）。</li>
+        <li>T<sub>1</sub> のゲート信号は <span class="eq">θ = α</span>（+ 2π の倍数）、T<sub>2</sub> は <span class="eq">θ = π + α</span>。T<sub>1</sub> と T<sub>2</sub> の逆並列（p14〜15）は、1 つの素子にまとめたトライアックと同じ動きです。</li>
+        <li>抵抗だけの負荷では、電流は電圧と同時に 0 になるので、サイリスタは <span class="eq">θ = π</span>（T<sub>2</sub> は 2π）でオフします。p16 の負荷電圧の実効値は
+          <span class="eq">V<sub>R,rms</sub> = V<sub>0</sub>√{(π − α + ½ sin 2α) / (2π)}</span>（サイリスタ 1 個の p13 は 2π が 4π）。</li>
+        <li>コイルを入れると、電流は電圧より遅れて、<span class="eq">θ = π</span> を過ぎても流れ続けます（オフする角度 β は
+          <span class="eq">sin(β − φ) = sin(α − φ) e<sup>−(β−α)/tan φ</sup></span>、<span class="eq">φ = tan<sup>−1</sup>(ωL/R)</span>）。その間、負荷には負の電圧がかかります。</li>
+        <li><b>α &lt; φ</b> のとき：短いゲートパルスだと、T<sub>2</sub> のパルスが来た時刻にまだ T<sub>1</sub> が流れていて、T<sub>2</sub> はオンできません（パルスが無駄になる）。T<sub>1</sub> だけが動いて、負荷に直流が流れます。「半周期の終わりまでゲート信号を続ける」にすると、T<sub>1</sub> の電流が 0 になった瞬間に T<sub>2</sub> がオンして、ふつうの正弦波（α によらない）になります。</li>
+        <li>力率は <span class="eq">PF = P / (V<sub>S,rms</sub> I<sub>rms</sub>)</span>。電源は正弦波なので <span class="eq">PF = (I<sub>1</sub>/I<sub>rms</sub>) cos φ<sub>1</sub></span>（第10回の「ひずみ率 × 変位率」）。THD は電流の基本波 <span class="eq">I<sub>1</sub></span> に対する、それ以外（直流も含む）の実効値の比です。</li>
+        <li>計算は 4 次のルンゲ・クッタ法（1 周期を 720 分割）で、電流が 0 になる時刻は二分法で求めています。</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<footer>パワーエレクトロニクス ｜ 神野 崇馬 ｜ 試作版</footer>
+<div id="tip"></div>
+
+<script src="common.js"></script>
+<script>
+// ==SIM-BEGIN==
+/**
+ * 交流位相調整回路。p = {V0, f, al（α [°]）, R, L（0 なら抵抗だけ）, n（サイリスタの数 1 / 2）, wide（ゲート信号を半周期の終わりまで続けるか）}
+ * 離散状態 s：0 どれもオフ / 1 T1 オン / 2 T2 オン。状態変数は負荷の電流 i（L = 0 のときは無し、i = vS/R）。
+ */
+function acphaseModel(p) {
+  const T = 1 / p.f, w = 2 * Math.PI * p.f, V0 = p.V0, R = p.R, L = p.L, a = p.al * Math.PI / 180;
+  const vs = (t) => V0 * Math.sin(w * t);
+  const ph = (t) => { const q = (w * t) % (2 * Math.PI); return q < 0 ? q + 2 * Math.PI : q; };
+  const eps = 1e-9;
+  // T1 は θ ∈ [0, π)、T2 は θ ∈ [π, 2π) で順方向（どれもオフのとき、サイリスタの電圧 = vS）
+  const fwd = (k, t) => { const q = ph(t + eps * T); return k === 1 ? q < Math.PI : q >= Math.PI; };
+  // ゲート信号が出ているか（短いパルスなら α の瞬間だけ、長いなら α から半周期の終わりまで）
+  const gateOn = (k, t) => {
+    const q = ph(t + eps * T) - (k === 2 ? Math.PI : 0);
+    return q >= a - 1e-7 && q < Math.PI;
+  };
+  const cur = (t, x) => L > 0 ? x[0] : vs(t) / R;
+  const tryFire = (t, x) => {
+    for (const k of p.n === 2 ? [1, 2] : [1]) if (gateOn(k, t) && fwd(k, t)) return k;
+    return 0;
+  };
+  // 定常状態までの周期の数：L/R の 8 倍 + 3 周期（少なくとも 4、多くても 300）
+  const periods = Math.max(4, Math.min(300, Math.ceil(8 * (L / R) * p.f) + 3));
+  return {
+    T, periods, h: T / 720, x0: L > 0 ? [0] : [], s0: 0,
+    f: (t, x, s) => L > 0 ? [s ? (vs(t) - R * x[0]) / L : 0] : [],
+    breaks: (t0, t1) => {
+      const r = [];
+      for (let m = Math.floor(t0 / T) - 1; m * T < t1; m++) {
+        r.push((m + a / (2 * Math.PI)) * T);
+        if (p.n === 2) r.push((m + 0.5 + a / (2 * Math.PI)) * T);
+      }
+      return r.filter(b => b >= t0 && b < t1).sort((x, y) => x - y);
+    },
+    onBreak: (t, x, s) => {
+      // 片方が流れている間は、もう片方の両端は 0 V（オンの電圧）なのでパルスは効かない。
+      // ただし電流がちょうど 0 になる瞬間（抵抗だけで α = 0 のときの θ = π など）はオフとみなす
+      if (s && Math.abs(cur(t, x)) > 1e-9 * V0 / R) return s;
+      if (s && L > 0) x[0] = 0;
+      const k = Math.round((ph(t + eps * T) - a) / Math.PI) ? 2 : 1;
+      if (k === 2 && p.n !== 2) return 0;
+      return fwd(k, t) ? k : 0;
+    },
+    guards: (t, x, s) => s === 1 ? [cur(t, x)] : s === 2 ? [-cur(t, x)] : [],
+    onGuard: (t, x, s) => {
+      if (L > 0) x[0] = 0;
+      return p.wide ? tryFire(t, x) : 0;
+    },
+    vs,
+  };
+}
+function simulateAcphase(p) {
+  const M = acphaseModel(p), S = simEv(M);
+  S.p = Object.assign({}, p);
+  return S;
+}
+/** 負荷の電流（L = 0 のときは vS/R） */
+function acI(S, k) {
+  if (S.p.L > 0) return S.x[0][k];
+  if (!S.s[k]) return 0;
+  return S.p.V0 * Math.sin(2 * Math.PI * S.p.f * S.t[k]) / S.p.R;
+}
+function acVs(S, k) { return S.p.V0 * Math.sin(2 * Math.PI * S.p.f * S.t[k]); }
+function acVo(S, k) { return S.s[k] ? acVs(S, k) : 0; }
+function acphaseMetrics(S) {
+  const p = S.p, T = S.T;
+  const I = acStats(S, acI, T, p.f), Vo = acStats(S, acVo, T, p.f), VR = acStats(S, (S, k) => p.R * acI(S, k), T, p.f);
+  const Vs = p.V0 / Math.SQRT2, P = p.R * I.rms * I.rms;
+  // 最後の 2 周期で、T1 がオンしてからオフするまで（β = オンした角度 + 導通角）
+  const n = S.t.length;
+  let on = NaN, off = NaN, k2 = 0;
+  while (k2 < n && S.t[k2] < S.t[n - 1] - 2 * T - 1e-12) k2++;
+  for (let k = Math.max(1, k2); k < n; k++) {
+    if (S.s[k] === 1 && S.s[k - 1] !== 1 && isNaN(on)) on = S.t[k];
+    if (!isNaN(on) && S.s[k - 1] === 1 && S.s[k] !== 1) { off = S.t[k]; break; }
+  }
+  const aOn = isNaN(on) ? NaN : ((on * 360 * p.f) % 360 + 360) % 360;
+  const beta = isNaN(on) || isNaN(off) ? NaN : aOn + (off - on) * 360 * p.f;
+  const I1 = I.c1 / Math.SQRT2, cosph1 = Math.cos(I.ph); // vS = V0 sin ωt に対する電流の基本波の位相
+  const thd = Math.sqrt(Math.max(0, I.rms * I.rms - I1 * I1)) / I1;
+  return {I, Vo, VR, Vs, P, pf: P / (Vs * I.rms), I1, cosph1, thd, beta, aOn, idc: I.avg, th: acphaseTheory(p)};
+}
+/** 授業の式（抵抗だけ / R-L）。n = 2（逆並列）なら半周期ごと、1 なら 1 周期に 1 回 */
+function acphaseTheory(p) {
+  const a = p.al * Math.PI / 180, V0 = p.V0, w = 2 * Math.PI * p.f, phi = Math.atan2(w * p.L, p.R), Z = Math.hypot(p.R, w * p.L);
+  const div = p.n === 2 ? 2 * Math.PI : 4 * Math.PI;
+  if (!(p.L > 0)) {
+    const vrms = V0 * Math.sqrt(Math.max(0, Math.PI - a + Math.sin(2 * a) / 2) / div);
+    return {vrms, irms: vrms / p.R, pf: vrms / (V0 / Math.SQRT2), beta: Math.PI, phi: 0, mode: 'R'};
+  }
+  if (p.n === 2 && a < phi) {
+    if (p.wide) return {vrms: V0 / Math.SQRT2, irms: V0 / Z / Math.SQRT2, pf: Math.cos(phi), beta: phi + Math.PI, phi, mode: 'full'};
+    return {phi, mode: 'asym'};
+  }
+  // i(θ) = (V0/Z)[sin(θ − φ) − sin(α − φ) e^{−(θ−α)/tanφ}] が 0 になる最初の角度 β（α の後）
+  const g = (b) => Math.sin(b - phi) - Math.sin(a - phi) * Math.exp(-(b - a) / Math.tan(phi));
+  let lo = a + 1e-9, hi = NaN;
+  const dth = Math.PI / 720;
+  for (let b = a + dth; b <= a + 2 * Math.PI; b += dth) { if (g(b) <= 0) { hi = b; break; } lo = b; }
+  if (isNaN(hi)) return {phi, mode: 'none'};
+  for (let it = 0; it < 60; it++) { const m = (lo + hi) / 2; if (g(m) > 0) lo = m; else hi = m; }
+  const beta = (lo + hi) / 2;
+  const vrms = V0 * Math.sqrt(Math.max(0, beta - a - (Math.sin(2 * beta) - Math.sin(2 * a)) / 2) / div);
+  // 電流の実効値：i(θ)² を α〜β で数値積分（シンプソン）
+  const iq = (th) => { const v = V0 / Z * g(th); return v * v; };
+  const N = 2000, hh = (beta - a) / N;
+  let s = iq(a) + iq(beta);
+  for (let k = 1; k < N; k++) s += (k % 2 ? 4 : 2) * iq(a + k * hh);
+  const irms = Math.sqrt(s * hh / 3 * 2 / div); // 1 周期（2π）に div/(2π)·… 回：逆並列なら 2 回、1 個なら 1 回
+  return {vrms, irms, pf: p.R * irms * irms / (V0 / Math.SQRT2 * irms), beta, phi, mode: 'RL'};
+}
+// ==SIM-END==
+</script>
+<script>
+(() => {
+'use strict';
+const X = {S: 0, A: 180, B: 380, Ld: 560}, Y = {T: 0, B: 270, T1: -55, T2: 55, Rc: 85, L1: 150, L2: 230};
+const CT1 = COL.fuchsia, CT2 = COL.violet, CR = COL.ir;
+const vT = (S, k) => S.s[k] ? 0 : acVs(S, k); // サイリスタの両端（左が＋）。どちらかがオンなら 0
+const vL = (S, k) => acVo(S, k) - S.p.R * acI(S, k);
+const deg = (x) => Math.round(x) + '°';
+let gLcoil = null, gLwire = null, swT1 = null, swT2 = null, gT2 = null;
+let loadSel = 'R', nSel = 2, wide = false; // 最初はスライド p15〜16 の例（トライアック・抵抗だけ、α = 60°）
+
+SimApp({
+  pdef: [
+    {k: 'V0', b: 'V', s: '0', up: true, title: '電源の電圧の振幅', min: 10, max: 300, step: 1, log: false, unit: 'V', def: 141},
+    {k: 'f', b: 'f', s: '', title: '電源の周波数', min: 10, max: 400, log: true, unit: 'Hz', def: 60},
+    {k: 'al', b: 'α', s: '', title: '位相制御角（ゲート信号を出す角度）', min: 0, max: 180, step: 1, log: false, unit: '°', def: 60, fmt: deg},
+    {k: 'R', b: 'R', s: '', min: 1, max: 200, log: true, unit: 'Ω', def: 10},
+    {k: 'L', b: 'L', s: '', title: '負荷のコイル', min: 0.1e-3, max: 500e-3, log: true, unit: 'H', def: 30e-3},
+  ],
+  extraParams(el, app) {
+    const mk = (label, opts, get, set) => {
+      const d = document.createElement('div');
+      d.className = 'crow';
+      d.innerHTML = `<span style="min-width:4.6em">${label}</span><span class="seg">${opts.map(([v, t]) => `<button data-v="${v}">${t}</button>`).join('')}</span>`;
+      const bs = d.querySelectorAll('button');
+      const show = () => bs.forEach(b => b.classList.toggle('on', b.dataset.v === String(get())));
+      bs.forEach(b => b.onclick = () => { set(b.dataset.v); show(); refresh(); app.schedule(); });
+      el.appendChild(d);
+      return show;
+    };
+    const refresh = () => { app.sliders.L.row.style.display = loadSel === 'RL' ? '' : 'none'; };
+    app.showSel = [
+      mk('素子', [['1', 'サイリスタ 1 個（p13）'], ['2', '逆並列 2 個＝トライアック']], () => nSel, (v) => { nSel = +v; }),
+      mk('負荷', [['R', 'R だけ'], ['RL', 'R + L']], () => loadSel, (v) => { loadSel = v; }),
+      mk('ゲート', [['0', '短いパルス'], ['1', '半周期の終わりまで']], () => wide ? 1 : 0, (v) => { wide = v === '1'; }),
+    ];
+    app.refreshSel = () => { app.showSel.forEach(f => f()); refresh(); };
+    app.refreshSel();
+  },
+  presets: [
+    {name: 'p13：サイリスタ 1 個・抵抗', v: {V0: 141, f: 60, al: 60, R: 10}, apply: (a) => { nSel = 1; loadSel = 'R'; wide = false; a.refreshSel(); }},
+    {name: 'p15〜16：トライアック・抵抗', v: {V0: 141, f: 60, al: 60, R: 10}, apply: (a) => { nSel = 2; loadSel = 'R'; wide = false; a.refreshSel(); }},
+    {name: 'R + L（π を過ぎても流れる）', v: {V0: 141, f: 60, al: 60, R: 10, L: 30e-3}, apply: (a) => { nSel = 2; loadSel = 'RL'; wide = false; a.refreshSel(); }},
+    {name: 'α < φ：短いパルスで片方だけ', v: {V0: 141, f: 60, al: 30, R: 10, L: 50e-3}, apply: (a) => { nSel = 2; loadSel = 'RL'; wide = false; a.refreshSel(); }},
+    {name: 'α < φ：ゲートを続ける', v: {V0: 141, f: 60, al: 30, R: 10, L: 50e-3}, apply: (a) => { nSel = 2; loadSel = 'RL'; wide = true; a.refreshSel(); }},
+  ],
+  simulate: (P) => simulateAcphase({V0: P.V0, f: P.f, al: P.al, R: P.R, L: loadSel === 'RL' ? P.L : 0, n: nSel, wide}),
+  metrics: acphaseMetrics,
+  initWin: 'last',
+  gatePane: gateRowsPane([
+    {label: 'T₁ オン', color: CT1, on: (S, k) => S.s[k] === 1},
+    {label: 'T₂ オン', color: CT2, on: (S, k) => S.s[k] === 2},
+  ], (S, t0, t1) => {
+    const T = S.T, a = S.p.al / 360, r = [];
+    for (let m = Math.floor(t0 / T) - 1; m * T < t1; m++) {
+      r.push([(m + a) * T, 0]);
+      if (S.p.n === 2) r.push([(m + 0.5 + a) * T, 1]);
+    }
+    return r.filter(q => q[0] >= t0 && q[0] <= t1);
+  }),
+  probes: {
+    'n:a':   {b: 'v', s: 'S', color: COL.blue, q: 'V', what: '電源の上の端の電位（= 電源の電圧 vS）', f: acVs},
+    'n:b':   {b: 'v', s: 'o', color: COL.green, q: 'V', what: '負荷の上の端の電位（= 負荷の電圧）', f: acVo},
+    'n:m':   {b: 'v', s: 'm', color: COL.teal, q: 'V', what: '抵抗とコイルの間の節点の電位（= コイルの電圧）', f: vL, hidden: (S) => !(S.p.L > 0)},
+    'n:gnd': {b: 'GND', s: '', color: COL.sub, q: 'V', what: '電源の下の線（0 V）', f: () => 0},
+    'i:V':   {b: 'i', s: 'S', color: COL.iin, q: 'I', what: '電源の電流（上向きが正）', f: acI},
+    'v:V':   {b: 'v', s: 'S', color: COL.blue, q: 'V', what: '電源の電圧（上が＋）', f: acVs},
+    'i:T1':  {b: 'i', s: 'T1', color: CT1, q: 'I', what: 'サイリスタ T₁ の電流（右向きが正）', f: (S, k) => S.s[k] === 1 ? acI(S, k) : 0},
+    'v:T1':  {b: 'v', s: 'T', color: CT1, q: 'V', what: 'サイリスタの両端の電圧（左が＋。T₁ と T₂ は同じ）', f: vT},
+    'i:T2':  {b: 'i', s: 'T2', color: CT2, q: 'I', what: 'サイリスタ T₂ の電流（左向きが正）', f: (S, k) => S.s[k] === 2 ? -acI(S, k) : 0, hidden: (S) => S.p.n !== 2},
+    'v:T2':  {b: 'v', s: 'T', color: CT1, q: 'V', what: 'サイリスタの両端の電圧（左が＋。T₁ と T₂ は同じ）', f: vT, hidden: (S) => S.p.n !== 2},
+    'i:R':   {b: 'i', s: 'R', color: CR, q: 'I', what: '負荷の電流（下向きが正）', f: acI},
+    'v:R':   {b: 'v', s: 'R', color: COL.green, q: 'V', what: '抵抗の両端の電圧（上が＋）', f: (S, k) => S.p.R * acI(S, k)},
+    'i:L':   {b: 'i', s: 'L', color: CR, q: 'I', what: 'コイルの電流（下向きが正）', f: acI, hidden: (S) => !(S.p.L > 0)},
+    'v:L':   {b: 'v', s: 'L', color: COL.teal, q: 'V', what: 'コイルの両端の電圧（上が＋）', f: vL, hidden: (S) => !(S.p.L > 0)},
+  },
+  defaultProbes: ['n:a', 'n:b', 'i:R'],
+  build(K) {
+    const {W, el, gWire} = K;
+    const nodeW = {
+      a: [[[X.S, Y.B / 2 - 28], [X.S, Y.T], [X.A, Y.T]], [[X.A, Y.T1], [X.A, Y.T]]],
+      b: [[[X.B, Y.T1], [X.B, Y.T]], [[X.B, Y.T], [X.Ld, Y.T], [X.Ld, Y.Rc - 45]]],
+      m: [[[X.Ld, Y.Rc + 45], [X.Ld, Y.L1]]],
+      gnd: [[[X.S, Y.B / 2 + 28], [X.S, Y.B], [X.Ld, Y.B], [X.Ld, Y.L2]]],
+    };
+    for (const nn in nodeW) nodeW[nn].forEach(p => W(p));
+    K.acsrc(X.S, Y.B / 2, 28);
+    K.ground(X.S, Y.B);
+    swT1 = K.thyristor([X.A, Y.T1], [X.B, Y.T1], 18, -1);
+    K.name((X.A + X.B) / 2, Y.T1 - 30, 'T', 'middle', 30, '1');
+    // T2 とその線（サイリスタ 1 個のときは隠す）
+    const n0 = gWire.childElementCount;
+    swT2 = K.thyristor([X.B, Y.T2], [X.A, Y.T2], 18, -1);
+    K.name((X.A + X.B) / 2, Y.T2 + 58, 'T', 'middle', 30, '2');
+    W([[X.A, Y.T], [X.A, Y.T2]]); W([[X.B, Y.T], [X.B, Y.T2]]);
+    gT2 = el('g', {}, gWire);
+    while (gWire.childElementCount > n0 + 1) gT2.appendChild(gWire.children[n0]);
+    K.box(X.A - 20, Y.T1 - 66, X.B - X.A + 40, Y.T2 - Y.T1 + 132, COL.fuchsia);
+    K.text((X.A + X.B) / 2, Y.T1 - 76, 'トライアック（T₁・T₂ の逆並列）', COL.fuchsia, 20);
+    K.res(X.Ld, Y.Rc);
+    K.name(X.Ld + 26, Y.Rc + 10, 'R', 'start');
+    gLcoil = K.coil([X.Ld, Y.L1], [X.Ld, Y.L2], 4, 1);
+    gLwire = W([[X.Ld, Y.L1], [X.Ld, Y.L2]]);
+    const lname = K.name(X.Ld + 30, Y.L2 - 20, 'L', 'start');
+    gLcoil.lname = lname;
+    K.name(X.S - 42, Y.B / 2 + 10, 'v', 'end', 30, 'S');
+    [[X.A, Y.T], [X.B, Y.T]].forEach(([x, y]) => K.dot(x, y));
+    const I = 20;
+    return {
+      nodeW,
+      hits: [['e:V', [X.S - 30, Y.B / 2 - 30, 60, 60]], ['e:T1', [X.A + 20, Y.T1 - 24, X.B - X.A - 40, 48]], ['e:T2', [X.A + 20, Y.T2 - 24, X.B - X.A - 40, 48]],
+        ['e:R', [X.Ld - 22, Y.Rc - 46, 44, 92]], ['e:L', [X.Ld - 24, Y.L1 + 2, 48, Y.L2 - Y.L1 - 4]]],
+      arrows: {
+        'i:V': [[X.S + 44, Y.B / 2 + 26], [X.S + 44, Y.B / 2 - 26], 'R'], 'v:V': [[X.S - 74, Y.B / 2 + 44], [X.S - 74, Y.B / 2 - 44], 'L'],
+        'i:T1': [[X.A + 40, Y.T1 - 40], [X.B - 40, Y.T1 - 40], 'T'], 'v:T1': [[X.B - 40, Y.T2 + 90], [X.A + 40, Y.T2 + 90], 'B'],
+        'i:T2': [[X.B - 40, Y.T2 + 34], [X.A + 40, Y.T2 + 34], 'B'], 'v:T2': [[X.B - 40, Y.T2 + 90], [X.A + 40, Y.T2 + 90], 'B'],
+        'i:R': [[X.Ld - 40, Y.Rc - 30], [X.Ld - 40, Y.Rc + 30], 'L'], 'v:R': [[X.Ld + 80, Y.Rc + 40], [X.Ld + 80, Y.Rc - 40], 'R'],
+        'i:L': [[X.Ld - 40, Y.L1 + 10], [X.Ld - 40, Y.L2 - 10], 'L'], 'v:L': [[X.Ld + 80, Y.L2 - 4], [X.Ld + 80, Y.L1 + 4], 'R'],
+      },
+      nodeTag: {a: [X.S + 90, Y.T, 0, -14], b: [X.B + 90, Y.T, 0, -14], m: [X.Ld, (Y.Rc + 45 + Y.L1) / 2, 30, 8, 'start'], gnd: [X.S + 200, Y.B, 0, 40]},
+      loops: {
+        T1: [[X.S + I, Y.B - I], [X.S + I, Y.T + I], [X.A - I, Y.T + I], [X.A - I, Y.T1 - I - 10], [X.B + I, Y.T1 - I - 10], [X.B + I, Y.T + I], [X.Ld - I, Y.T + I], [X.Ld - I, Y.B - I]],
+        T2: [[X.Ld - I, Y.B - I], [X.Ld - I, Y.T + I], [X.B + I, Y.T + I], [X.B + I, Y.T2 + I + 10], [X.A - I, Y.T2 + I + 10], [X.A - I, Y.T + I], [X.S + I, Y.T + I], [X.S + I, Y.B - I]],
+      },
+      sw: {},
+    };
+  },
+  onRun(S, app) {
+    const rl = S.p.L > 0, two = S.p.n === 2;
+    gLcoil.style.display = rl ? '' : 'none'; gLcoil.lname.style.display = rl ? '' : 'none'; gLwire.style.display = rl ? 'none' : '';
+    if (app.hitEl['e:L']) app.hitEl['e:L'].style.display = rl ? '' : 'none';
+    if (app.hitEl['e:T2']) app.hitEl['e:T2'].style.display = two ? '' : 'none';
+    gT2.style.display = two ? '' : 'none';
+  },
+  state(S, k, MET) {
+    const s = S.s[k], p = S.p, i = acI(S, k);
+    swT1.set(s === 1); swT2.set(s === 2);
+    const fr = Math.abs(i) / Math.max(1e-12, Math.max(Math.abs(MET.I.max), Math.abs(MET.I.min)));
+    const th = ((S.t[k] * 360 * p.f) % 360 + 360) % 360;
+    let html = `<span class="eq">θ = ωt</span> = ${Math.round(th) % 360}°：`;
+    if (s === 1) html += `<span class="sw-on">T<sub>1</sub> オン</span>：電源 → T<sub>1</sub> → 負荷 → 電源（右回り）。負荷の電圧 = <span class="eq">v<sub>S</sub></span>` + (p.L > 0 && acVs(S, k) < 0 ? '。<b>電源は負なのに、コイルが電流を流し続けている</b>' : '') + '。';
+    else if (s === 2) html += `<span class="sw-on">T<sub>2</sub> オン</span>：電源 → 負荷 → T<sub>2</sub> → 電源（左回り、負の電流）。負荷の電圧 = <span class="eq">v<sub>S</sub></span>` + (p.L > 0 && acVs(S, k) > 0 ? '。<b>電源は正なのに、コイルが負の電流を流し続けている</b>' : '') + '。';
+    else html += `<span class="sw-off">どちらもオフ</span>：電流 0、負荷の電圧 0。サイリスタに <span class="eq">v<sub>S</sub></span> がかかっている（次のゲート信号を待っている）。`;
+    let warn = '';
+    if (MET.th.mode === 'asym') warn = ` <span class="warn">α &lt; φ = ${(MET.th.phi * 180 / Math.PI).toFixed(1)}° なので、T₂ のゲートパルスが来たときにまだ T₁ が流れていて、T₂ がオンできない（負荷に直流が流れる）。</span>`;
+    return {loops: s ? [[s === 1 ? 'T1' : 'T2', fr]] : [], html: html + warn};
+  },
+  metricsHtml(S, m) {
+    const p = S.p, th = m.th;
+    const half = p.n === 1 ? '4π' : '2π';
+    const why4 = p.n === 1 ? '<br><span class="small">（サイリスタ 1 個は 1 周期に 1 回しか流れないので、分母が 2π の 2 倍の 4π）</span>' : '';
+    let rows = `<tr><th>量</th><th>シミュレーション</th><th>授業の式</th><th>式の値</th><th>差</th></tr>`;
+    const F = (x, unit) => !isFinite(x) ? '—' : unit ? fmtSI(x, unit, 4) : x.toFixed(4);
+    // 電流がほぼ 0（α = 180° など）のとき、力率・ひずみ率・THD は 0 ÷ 0 で決まらないので「—」
+    const noI = !(m.I.rms > 1e-9 * p.V0 / p.R), noI1 = noI || !(m.I1 > 1e-6 * m.I.rms), noIwhy = '電流が流れないので決まらない';
+    const R = (nm, sim, eq, val, unit, tol = 0.01) => `<tr><td>${nm}</td><td class="num">${F(sim, unit)}</td><td class="eq">${eq}</td><td class="num">${isFinite(val) ? F(val, unit) : '—'}</td><td>${!isFinite(sim) ? `—<span class="small">（${noIwhy}）</span>` : isFinite(val) ? pctDiff(sim, val) + ' ' + okMark(sim, val, tol) : ''}</td></tr>`;
+    const pfSim = noI ? NaN : m.pf;
+    if (th.mode === 'R') {
+      rows += R('負荷電圧の実効値 <span class="eq">V<sub>R,rms</sub></span>' + why4, m.Vo.rms, `V<sub>0</sub>√{(π − α + ½sin 2α)/(${half})}`, th.vrms, 'V');
+      rows += R('負荷電流の実効値', m.I.rms, 'V<sub>R,rms</sub> / R', th.irms, 'A');
+      rows += R('力率 <span class="eq">PF</span>', pfSim, `V<sub>R,rms</sub> / V<sub>S,rms</sub>`, th.pf, '');
+    } else if (th.mode === 'RL' || th.mode === 'full') {
+      const bsim = m.beta, bth = th.beta * 180 / Math.PI;
+      rows += `<tr><td>電流が 0 になる角度 β（T<sub>1</sub>）</td><td class="num">${isFinite(bsim) ? bsim.toFixed(2) + '°' : '—'}</td><td class="eq">${th.mode === 'full' ? '180° + φ（連続）' : 'sin(β − φ) = sin(α − φ)e<sup>−(β−α)/tanφ</sup>'}</td><td class="num">${bth.toFixed(2)}°</td><td>${isFinite(bsim) ? (bsim - bth).toFixed(2) + '° ' + (Math.abs(bsim - bth) < 0.5 ? '<span class="ok">一致</span>' : '<span class="ng">ずれる</span>') : ''}</td></tr>`;
+      rows += R('負荷電圧（R + L）の実効値' + why4, m.Vo.rms, th.mode === 'full' ? 'V<sub>0</sub>/√2' : `V<sub>0</sub>√{(β − α − ½(sin 2β − sin 2α))/(${half})}`, th.vrms, 'V');
+      rows += R('負荷電流の実効値', m.I.rms, th.mode === 'full' ? 'V<sub>0</sub>/(√2 Z)' : 'i(θ) の 2 乗平均（式を数値積分）', th.irms, 'A');
+      rows += R('力率 <span class="eq">PF</span>', pfSim, th.mode === 'full' ? 'cos φ' : 'R I<sub>rms</sub>² / (V<sub>S,rms</sub> I<sub>rms</sub>)', th.pf, '');
+    } else {
+      rows += `<tr><td>負荷電圧の実効値</td><td class="num">${fmtSI(m.Vo.rms, 'V', 4)}</td><td colspan="3">α &lt; φ（${(th.phi * 180 / Math.PI).toFixed(1)}°）で短いパルスなので、T<sub>2</sub> がオンできません。授業の式は使えません（電流の平均 = ${fmtSI(m.idc, 'A', 3)} の直流が流れている）。</td></tr>`;
+      rows += `<tr><td>負荷電流の実効値</td><td class="num">${fmtSI(m.I.rms, 'A', 4)}</td><td colspan="3"></td></tr>`;
+    }
+    rows += `<tr><td>電力 <span class="eq">P = R I<sub>rms</sub>²</span></td><td class="num">${fmtSI(m.P, 'W', 4)}</td><td colspan="3"></td></tr>`;
+    rows += `<tr><td>電流の基本波（実効値）<span class="eq">I<sub>1</sub></span></td><td class="num">${fmtSI(m.I1, 'A', 4)}</td><td colspan="3">${noI1 ? `変位率・ひずみ率・その積：—（${noIwhy}）` : `変位率 <span class="eq">cos φ<sub>1</sub></span> = ${m.cosph1.toFixed(4)}、ひずみ率 <span class="eq">I<sub>1</sub>/I<sub>rms</sub></span> = ${(m.I1 / m.I.rms).toFixed(4)} → 積 = ${(m.cosph1 * m.I1 / m.I.rms).toFixed(4)}（上の力率と ${pctDiff(m.cosph1 * m.I1 / m.I.rms, m.pf)}）`}</td></tr>`;
+    rows += `<tr><td>電流の THD</td><td class="num">${noI1 || !isFinite(m.thd) ? '—' : (m.thd * 100).toFixed(1) + ' %'}</td><td colspan="3">基本波以外（直流も含む）の実効値 / <span class="eq">I<sub>1</sub></span>${Math.abs(m.idc) > 1e-3 * m.I.rms ? `。直流分 ${fmtSI(m.idc, 'A', 3)}` : ''}</td></tr>`;
+    const sub = `最後の 1 周期で計算（${S.periods} 周期を計算）。<span class="eq">φ = tan<sup>−1</sup>(ωL/R)</span> = ${(th.phi * 180 / Math.PI).toFixed(1)}°`;
+    return {rows, sub};
+  },
+});
+})();
+</script>
+</body>
+</html>

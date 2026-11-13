@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>第3回 演習問題 — パワーエレクトロニクス</title>
+  <style>
+
+    :root {
+      --accent: #1a73e8;
+      --accent-light: #e8f0fe;
+      --text: #202124;
+      --text-secondary: #5f6368;
+      --surface: #ffffff;
+      --bg: #f8f9fa;
+      --border: #dadce0;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
+      --shadow-hover: 0 4px 12px rgba(26,115,232,0.18);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Sans', 'Noto Sans JP', 'Meiryo', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    a { color: inherit; text-decoration: none; }
+    header {
+      background: var(--accent);
+      color: #fff;
+      padding: 18px 20px 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+    }
+    header .subtitle {
+      font-size: 0.78rem;
+      opacity: 0.85;
+      margin-top: 2px;
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+    footer {
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      padding: 20px 16px;
+      border-top: 1px solid var(--border);
+      margin-top: 24px;
+    }
+
+    header h1 { font-size: 1.05rem; font-weight: 700; line-height: 1.4; }
+    header .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.8rem;
+      opacity: 0.88;
+      margin-bottom: 8px;
+    }
+    header .back-link:hover { opacity: 1; }
+    .lesson-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .lesson-num {
+      font-size: 0.8rem;
+      color: var(--accent);
+      font-weight: 700;
+      border: 1.5px solid var(--accent);
+      border-radius: 6px;
+      padding: 2px 10px;
+    }
+    .cat-badge {
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 20px;
+      background: #d8f5f6;
+      color: #0d7377;
+    }
+    .ch-count {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+    }
+    .video-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+    .ch-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px 10px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .ch-num {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--accent-light);
+      padding: 2px 9px;
+      border-radius: 5px;
+      white-space: nowrap;
+    }
+    .ch-title {
+      font-size: 0.93rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    video {
+      display: block;
+      background: #000;
+    }
+    .render-note {
+      padding: 20px 16px;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+    .back-bottom {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      padding: 10px 20px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      transition: opacity 0.15s;
+    }
+    .back-bottom:hover { opacity: 0.88; }
+  </style>
+  <script>
+    window.MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+  <style>
+    .notice {
+      background: var(--accent-light); border-left: 4px solid var(--accent);
+      border-radius: 8px; padding: 12px 16px; margin: 16px 0 24px;
+      font-size: 0.86rem; color: var(--text);
+    }
+    .notice ul, .aims ul { margin: 6px 0 0; padding-left: 1.2em; }
+    .notice li, .aims li { margin: 3px 0; }
+    /* 理解度の箱。提出についての青枠と並ぶので、こちらは枠線だけにして
+       区別をつける（2026-09-25）。 */
+    .aims {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px 18px; margin: 0 0 28px;
+      font-size: 0.86rem; color: var(--text-secondary);
+    }
+    .aims > p { margin: 0 0 4px; color: var(--text); font-weight: 600; }
+    .aims h3 { font-size: 0.88rem; margin: 14px 0 2px; color: var(--text); }
+    .aims h3:first-of-type { margin-top: 10px; }
+    .q { margin: 32px 0; }
+    .q h2 { font-size: 1.05rem; margin-bottom: 8px; }
+    .q .lead { margin: 0 0 14px; }
+    .q figure { margin: 0 0 14px; text-align: center; }
+    .q figure img { max-width: 100%; height: auto; }
+    .q ol { padding-left: 1.4em; }
+    .q ol li { margin: 10px 0; }
+  </style>
+  <style>
+    /* 小問の番号は (1)(2)… で出す */
+    ol, .q ol { list-style: none; counter-reset: sub; padding-left: 2.2em; }
+    ol > li { counter-increment: sub; position: relative; }
+    ol > li::before { content: "(" counter(sub) ")"; position: absolute; left: -2.2em; }
+    .q h3 { font-size: 0.95rem; margin: 24px 0 8px; }
+    .q .eq { margin: 4px 0 14px; overflow-x: auto; }
+    .q ul { padding-left: 1.4em; }
+    .q ul > li { margin: 12px 0; }
+    .q li > .lead:last-child { margin-bottom: 0; }
+    /* 元の図は 1000〜1900px あり、幅いっぱいだと大きすぎるので抑える */
+    .q figure img { max-width: min(100%, 600px); }
+  </style>
+<script>
+if (!/github\.io$/.test(location.hostname)) document.addEventListener("DOMContentLoaded", () => {
+  const b = document.createElement("div");
+  b.textContent = "確認用（Mac mini の作業中の版）。学生に見えるのは git push した後です";
+  b.style.cssText = "background:#fff3cd;color:#664d03;border-bottom:1px solid #e0c36a;padding:6px 12px;font-size:14px;text-align:center";
+  document.body.prepend(b);
+});
+</script>
+</head>
+<body>
+  <header>
+    <a class="back-link" href="../index.html">← 科目のページへ戻る</a>
+    <h1>第3回 演習問題</h1>
+    <div class="subtitle">パワー半導体の動作原理 / パワーエレクトロニクス / 大阪工業大学</div>
+  </header>
+  <main>
+    <div class="lesson-meta">
+      <span class="lesson-num">第3回</span>
+      <span class="cat-badge">演習問題</span>
+      <span class="ch-count">全4問</span>
+    </div>
+    <div class="notice">
+      <strong>提出について</strong>
+      <ul><li>解答用紙は各自で準備すること。コピー用紙でも構いません。</li><li>解答用紙の左上に第何回目の授業の演習問題かを記入し、右上には自分の学生番号と名前を記入する。</li><li>解答用紙を写真で撮って、Google Classroom の演習問題の該当先に提出する。</li></ul>
+    </div>
+    <div class="aims">
+      <p>この演習問題は、下記の理解度を確認することを目的としています。</p>
+    <h3>問題1：スイッチの構造と特徴</h3>
+    <ul><li>パワーエレクトロニクスで使用される主要な半導体スイッチ素子（ダイオード、トランジスタ類）を識別できているか。</li><li>各スイッチング素子の回路記号を正しく描けるか。</li><li>半導体のエネルギーバンド図を用いてオン状態を説明できるか。</li><li>pn接合における各端子のバイアス条件（順方向・逆方向）を正しく示せるか。</li><li>各素子のオン・オフ制御方法の違いを説明できるか。</li><li>各スイッチング素子の特徴（長所・短所・用途）を調べてまとめることができるか。</li></ul>
+    <h3>問題2：空乏層の解析</h3>
+    <ul><li>ポアソン方程式から、空乏層内の電場と電荷密度の関係を範囲ごとに式で書けるか。</li><li>微分方程式を積分し、境界条件と連続条件を使って電場の分布を求め、グラフに描けるか。</li><li>電場を積分すると電位差になることを使って、空乏層幅をドーピング濃度と電圧で表せるか。</li><li>逆電圧をかけたときに空乏層にかかる電圧を考え、最大電場と空乏層幅を結びつけられるか。</li></ul>
+    <h3>問題3：ワイドギャップ半導体</h3>
+    <ul><li>問題２で導いた最大電場と空乏層幅の関係を使えるか。</li><li>絶縁破壊電界強度とパワー半導体性能の関係を理解しているか。</li><li>ワイドギャップ半導体（GaN）の絶縁破壊電界強度を用いて、かけられる電圧の比を計算できるか。</li><li>決まった耐圧に対して、空乏層幅とドーピング濃度を数値で求められるか。</li><li>抵抗率と層の厚さからオン抵抗を求め、SiとGaNで比べられるか。</li><li>耐圧と損失のトレードオフが、ワイドギャップ半導体でなぜ緩むかを説明できるか。</li></ul>
+    <h3>問題4：オン時の損失の比較</h3>
+    <ul><li>問題1で描いたオン時のエネルギーバンドから、電流の通り道にpn接合の障壁があるかを読み取れるか。</li><li>IGBTのオン電圧に、電流によらない電圧が加わる理由をpn接合の障壁で説明できるか。</li><li>導通損失 P = VI から、MOSFETとIGBTの損失を計算し、損失の大小が入れ替わる電流を求められるか。</li><li>IGBTのオン抵抗が小さくなる理由を、正孔の注入（伝導度変調）で説明できるか。</li></ul>
+    </div>
+    <section class="q">
+      <h2>問題１：スイッチの構造と特徴</h2>
+      <p class="lead">下記の図(a)から(e)は、パワーエレクトロニクスで用いられる半導体スイッチである。それぞれについて下記の項目をまとめよ。</p>
+      <ol>
+        <li>名称・回路記号</li>
+        <li>オン時（電流が流れている時）のエネルギーバンドと各端子のバイアス</li>
+        <li>オン・オフの制御方法</li>
+        <li>特徴（ネットや教科書で調べる）</li>
+      </ol>
+      <figure><img src="img/pe03_q1_switches.png" alt="(a) A・C 端子の p・n、(b) E・B・C 端子の n・p・n、(c) S・D 端子の n・p・n の下に絶縁体と導体、導体に G 端子、(d) E・C 端子の n・p・n・p の下に絶縁体と導体、導体に G 端子、(e) C・A 端子の n・p・n・p、左の p に G 端子"></figure>
+      <p class="lead">(2)の各端子のバイアスは、下記の回路素子を接続すること。</p>
+      <figure><img src="img/pe03_q1_bias_elements.png" alt="端子と接地の間に入れる3種類の素子：向きの違う2つの直流電圧源と、ただの導線（接地）"></figure>
+      <p class="lead">エネルギーバンドとバイアスの書き方は講義スライドを参考にすること。</p>
+    </section>
+    <section class="q">
+      <h2>問題２：空乏層の解析</h2>
+      <figure><img src="img/pe03_q2_band_depletion.png" alt="pn接合のエネルギーバンド図：左が n、右が p。x = −x_n から x_p までが空乏層で、n 側にドナーイオン ⊕、p 側にアクセプタイオン ⊖。左端に V_d"></figure>
+      <p class="lead">図に示す空乏層の解析を行う。目標は、熱平衡状態で空乏層にかかる電圧（拡散電位）$V_{d}$から、空乏層内の電場$F_{x}(x)$と空乏層幅$(x_{n}+x_{p})$を求めることである。空乏層の解析には下記のポアソン方程式を用いる。</p>
+      <div class="eq">$${\boldsymbol \nabla}^2\phi=-\frac{q}{\varepsilon}$$</div>
+      <p class="lead">ここで、$\phi$は電位、$q$は電荷密度、$\varepsilon$は誘電率を表す。さらに、電場${\boldsymbol F}$と電位$\phi$の関係は下記の式で表される。</p>
+      <div class="eq">$${\boldsymbol F}=-{\boldsymbol \nabla}\phi$$</div>
+      <p class="lead">今回は、p型半導体とn型半導体が$x=0$で接触し、その後、平衡状態になった時の空乏層について考える。$yz$方向は一様に分布し、$x$方向で変化しているとする。よって、上の二つの方程式の$y$方向と$z$方向の微分は$0$となり、用いる式は下記の通りに簡略化できる。</p>
+      <div class="eq">$$\frac{d^2 \phi(x)}{d x^2}=-\frac{q(x)}{\varepsilon}$$</div>
+      <div class="eq">$$F_{x}(x)=-\frac{d \phi(x)}{dx}$$</div>
+      <p class="lead">この2式より、電位を消去すると、電場と電荷密度の関係式を得ることができる。</p>
+      <div class="eq">$$\frac{d F_{x}(x)}{d x}=\frac{q(x)}{\varepsilon} \tag{1}$$</div>
+      <p class="lead">この式を用いて、空乏層内の電場分布$F_{x}(x)$を導出する。空乏層内の電荷密度の分布は、ドナーイオンとアクセプタイオンの濃度によって変化する。空乏層内では、下記のグラフのように階段状に電荷密度が分布しているとする。</p>
+      <figure><img src="img/pe03_q2_charge_density.png" alt="電荷密度 q(x) のグラフ：−x_n ≤ x ≤ 0 で eN_d、0 ≤ x ≤ x_p で −eN_a の階段"></figure>
+      <p class="lead">ここで、$e$は電気素量、$N_{d}$、$N_{a}$はそれぞれドナー濃度とアクセプタ濃度を表す。電荷密度$q(x)$と電気素量$e$は別の量であることに注意すること。</p>
+      <p class="lead">以上の内容をもとに空乏層内の電場の分布と空乏層幅を求める。</p>
+      <h3>問題2-1：空乏層内で満たす微分方程式</h3>
+      <p class="lead">下記の(i)と(ii)の範囲の場合で空乏層内の電荷分布$q(x)$が階段状に変化する。それぞれの場合における式(1)を求めよ。</p>
+      <div class="eq">$$\begin{aligned}({\rm i}) &: -x_{n}\leq x\leq 0\\({\rm ii}) &: 0\leq x\leq x_{p}\end{aligned}$$</div>
+      <h3>問題2-2：空乏層内の電場の空間分布</h3>
+      <ul>
+        <li>問題2-1で求めた電場と電荷密度の微分方程式を不定積分することで、問題2-1の(i)と(ii)の範囲における電場$F_{x}^{\rm (i)}(x),F_{x}^{\rm (ii)}(x)$を導出せよ（答えに積分定数を含める）。</li>
+        <li>
+          <p class="lead">次に、境界条件を用いて積分定数を求める。空乏層の境界$(x=-x_{n}, x=x_{p})$において、電位の変化が$0$になる。つまり、境界では電場は$0$になり、下記の関係が成り立つ。</p>
+          <div class="eq">$$\begin{gathered}F_{x}^{\rm (i)}(-x_{n})=0,\\F_{x}^{\rm (ii)}(x_{p})=0\end{gathered}$$</div>
+          <p class="lead">この条件を用いて、不定積分で求めた積分定数を求めて、電場の式を書き換えよ。また、$-x_{n}\leq x \leq x_{p}$における電場の分布をグラフで表せ。</p>
+        </li>
+        <li>
+          <p class="lead">さらに、$x=0$において、電場は連続しているため、(i)と(ii)の範囲で求めた電場は$x=0$において等しくなる。つまり、下記の条件が成り立つ。</p>
+          <div class="eq">$$F_{x}^{\rm (i)}(0)=F_{x}^{\rm (ii)}(0)$$</div>
+          <p class="lead">この条件から、$x_{n},x_{p},N_{d},N_{a}$が満たす関係を求めよ。</p>
+        </li>
+      </ul>
+      <h3>問題2-3：空乏層幅</h3>
+      <ul>
+        <li>
+          <p class="lead">空乏層間に電位差$V_{d}\,{\rm [V]}$がかかっている。エネルギーバンド図では、電子のエネルギーを表しているため、エネルギーバンド図の低い方が電位が高い方になる。よって、</p>
+          <div class="eq">$$\phi(-x_{n})-\phi(x_{p})=V_{d}$$</div>
+          <p class="lead">となる。また、下記の式から、電場を積分すると電位差になる。</p>
+          <div class="eq">$$V_{d}=\int_{-x_{n}}^{x_{p}}F_{x}(x)\,dx$$</div>
+          <p class="lead">この関係を用いて、n型半導体の空乏層幅$x_{n}$を$e,\varepsilon,N_{d},N_{a},V_{d}$を用いて表せ。</p>
+        </li>
+        <li>同様に、p型半導体の空乏層幅$x_{p}$を$e,\varepsilon,N_{d},N_{a},V_{d}$を用いて表せ。</li>
+        <li>求めたい空乏層幅は$d=x_{n}+x_{p}$である。空乏層幅$d$を$e,\varepsilon,N_{d},N_{a},V_{d}$を用いて表せ。</li>
+      </ul>
+      <h3>問題2-4：最大電場と空乏層幅</h3>
+      <p class="lead">ここまでは熱平衡状態（電圧をかけていない状態）を考えた。素子に逆電圧をかけると、空乏層にかかる電圧は、拡散電位$V_{d}$に逆電圧を足した$V$になり、問題2-2、2-3の式は$V_{d}$を$V$に置き換えればそのまま成り立つ。以下では、空乏層にかかる電圧を$V$とする。</p>
+      <p class="lead">空乏層内の電場が最大になる位置を答え、その最大値$F_{\rm max}$を$e,\varepsilon,N_{d},N_{a},V$を用いて表せ。さらに、$F_{\rm max}$と空乏層幅$d$の間に、下記の関係が成り立つことを示せ。</p>
+      <div class="eq">$$F_{\rm max}=\frac{2V}{d}$$</div>
+    </section>
+    <section class="q">
+      <h2>問題３：ワイドギャップ半導体</h2>
+      <p class="lead">講義でワイドギャップ半導体について学んだ。ワイドギャップ半導体はSiCやGaNを指し、絶縁破壊電界強度が高い特徴がある。それによるパワー半導体への利点について考察する。問題２で、空乏層にかかる電圧$V$と空乏層幅$d$を用いて、空乏層内の最大電場が$F_{\rm max}=2V/d$となることを導出した。$F_{\rm max}$が材料で決まる絶縁破壊電界強度を超えると、素子は壊れてしまう。</p>
+      <p class="lead">ここで、$V$は空乏層にかかる電圧である。素子に大きな逆電圧をかけるときは拡散電位$V_{d}$は小さいので、$V$を半導体素子にかけられる電圧とみなす。</p>
+      <p class="lead">Siの絶縁破壊電界強度を$0.3\, {\rm [MV/cm]}$、GaNの絶縁破壊電界強度を$3.3\, {\rm [MV/cm]}$とする。このとき、問題２の結果を用いて、下記の問いに答えよ。数値は、この問題で与えた値を使って計算し、有効数字2桁で答えること。</p>
+      <ol>
+        <li>同じ空乏層幅$d$で、GaNにはSiの何倍の電圧$V$をかけられるか求めよ。</li>
+        <li>$300\,{\rm [V]}$に耐える素子を設計する。$N_{a}=N_{d}=N$とし、$F_{\rm max}$が絶縁破壊電界強度にちょうど等しくなるようにする。SiとGaNのそれぞれについて、空乏層幅$d\,{\rm [\mu m]}$とドーピング濃度$N\,{\rm [cm^{-3}]}$を求めよ。比誘電率はSiが$11.8$、GaNが$9.5$とし（講義スライドの表）、$\varepsilon_{0}=8.85\times10^{-12}\,{\rm [F/m]}$、$e=1.60\times10^{-19}\,{\rm [C]}$とする。</li>
+        <li>オン時、電流は(2)の厚さ$d$、濃度$N$のn型の層を流れるとし、その層の抵抗$R=\rho d/S$をオン抵抗とみなす。ここで、抵抗率は$\rho=1/(eN\mu_{n})$、断面積は$S=1\,{\rm [cm^{2}]}$とする。電子移動度$\mu_{n}$はSiが$1400\,{\rm [cm^{2}/(V\cdot s)]}$、GaNが$900\,{\rm [cm^{2}/(V\cdot s)]}$とする。SiとGaNの$R\,{\rm [\Omega]}$を求め、GaNの$R$はSiの何分の1か答えよ。</li>
+        <li>(3)の結果を、講義の「耐圧と損失のトレードオフ」（オフ時は濃度を小さく、オン時は濃度を大きくしたい）と結びつけて説明せよ。また、GaNの移動度はSiより小さいのに、なぜオン抵抗は小さくなるのか説明せよ。</li>
+      </ol>
+    </section>
+    <section class="q">
+      <h2>問題４：オン時の損失の比較</h2>
+      <p class="lead">問題１(2)で描いた、(c) MOSFETと(d) IGBTのオン時のエネルギーバンド（電流の通り道に沿ったもの。MOSFETはSからD、IGBTはEからCへ向かう方向）を使って、2つの素子のオン時の損失を比べる。</p>
+      <p class="lead">オン時に素子で消費される電力を導通損失という。素子にかかる電圧を$V$、流れる電流を$I$とすると、導通損失は下記の式で表される。</p>
+      <div class="eq">$$P=VI$$</div>
+      <p class="lead">オン時の電圧は、MOSFETとIGBTでそれぞれ下記のように表せるとする。</p>
+      <div class="eq">$$\begin{aligned}{\rm MOSFET} &: V_{\rm DS}=R_{\rm on}I\\{\rm IGBT} &: V_{\rm CE}=V_{0}+r_{\rm on}I\end{aligned}$$</div>
+      <p class="lead">MOSFETの導通損失は$P=V_{\rm DS}I=I^{2}R_{\rm on}$となる。</p>
+      <ol>
+        <li>問題１(2)で描いた(c)と(d)のエネルギーバンドを見比べて、電流の通り道にpn接合の障壁があるのはどちらの素子か答えよ。また、そのことを使って、MOSFETのオン時の電圧はチャネル（反転層）とn層の抵抗だけで$R_{\rm on}I$と表せるのに対し、IGBTのオン時の電圧には、電流によらない電圧$V_{0}$が加わる理由を説明せよ。</li>
+        <li>$600\,{\rm [V]}$用のMOSFETとIGBTがあり、MOSFETは$R_{\rm on}=60\,{\rm [m\Omega]}$、IGBTは$V_{0}=0.9\,{\rm [V]}$、$r_{\rm on}=15\,{\rm [m\Omega]}$とする。電流$10\,{\rm [A]}$と$40\,{\rm [A]}$を流したときの、それぞれの素子の導通損失を求めよ。また、2つの素子の導通損失が等しくなる電流を求め、それより小さい電流と大きい電流では、どちらの素子の損失が小さいか答えよ。</li>
+        <li>(2)では、IGBTの$r_{\rm on}$（$15\,{\rm [m\Omega]}$）が、同じ$600\,{\rm [V]}$用のMOSFETの$R_{\rm on}$（$60\,{\rm [m\Omega]}$）より小さい。この理由を、問題１(2)で描いた(d)のエネルギーバンド（コレクタ側のp層から、n層へ正孔が入っていく様子）を使って説明せよ。問題３(3)で使った抵抗率の式$\rho=1/(eN\mu_{n})$では、$N$はn層のキャリア（電子）の濃度だったことを思い出すこと。</li>
+      </ol>
+    </section>
+  </main>
+  <footer>パワーエレクトロニクス（2026年度） ｜ 神野 崇馬</footer>
+</body>
+</html>

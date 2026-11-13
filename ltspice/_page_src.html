@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<!-- LTspice のページの元（generate.py が ltspice/index.html と回ごとのページ ltspice/NN.html を作る）。出力の HTML を直接直さず、ここを直す。
+     ・index:only の印で囲んだところ（入れ方・動かし方と回の一覧）は ltspice/index.html にだけ入る。
+     ・round:only の印で囲んだところ（回のページの冒頭の案内）は回ごとのページにだけ入る。
+     ・回ごとの節は ltspice:NN の印で囲む。回のページ NN.html にはその回の節だけが入り、index.html には入らない。
+     ・回の一覧の表の行（href が NN.html の行）は、学生用トップの「LTspice」の表にも使う（回・テーマ・入っている回路）。
+     ・公開版ではチェックの無い回の行を消し、その回のページも作らない。
+     ・波かっこ2つで囲んだ印（TITLE・H1・SUBTITLE・NAV・ROUNDS）は generate.py が置き換える。この注記は出力から消す。2026-10-23 -->
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}} — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="../sim/common.css">
+<style>
+  h2.sec { font-size: 1rem; margin: 26px 0 10px; padding-left: 10px; border-left: 4px solid var(--accent); }
+  h2.sec .small { font-weight: 400; margin-left: 8px; }
+  .steps { padding-left: 1.4em; font-size: 0.88rem; }
+  .steps li { margin: 5px 0; }
+  .card-h .dl { margin-left: auto; font-size: 0.82rem; font-weight: 700; color: #fff; background: var(--accent); border-radius: 16px; padding: 3px 12px; white-space: nowrap; }
+  .card-h .dl:hover { background: #1557b0; }
+  .card-h .size { font-size: 0.74rem; color: var(--text-secondary); white-space: nowrap; }
+  .lead { font-size: 0.86rem; padding: 10px 14px 4px; }
+  .ckt { border-top: 1px solid var(--border); padding: 10px 14px 12px; }
+  .ckt .nm { font-weight: 700; font-size: 0.92rem; }
+  .ckt .fd { font-family: Menlo, monospace; font-size: 0.74rem; color: var(--text-secondary); margin-left: 6px; word-break: break-all; }
+  .ckt .ds { font-size: 0.85rem; margin-top: 3px; }
+  .ckt .cond { font-size: 0.78rem; color: var(--text-secondary); margin-top: 2px; }
+  .ckt .q { font-size: 0.85rem; margin-top: 6px; padding: 6px 10px; background: #fff8e6; border-left: 3px solid var(--orange); border-radius: 0 6px 6px 0; }
+  .ckt .q::before { content: "やってみよう　"; color: var(--orange); font-weight: 700; font-size: 0.78rem; }
+  .ckt .web { font-size: 0.78rem; margin-top: 5px; }
+  .ckt .web a { color: var(--accent); }
+  .ckt .web a:hover { text-decoration: underline; }
+  .tblwrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.ov { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 0.84rem; background: var(--surface); }
+  table.ov th, table.ov td { border-bottom: 1px solid var(--border); padding: 7px 8px; text-align: left; vertical-align: top; }
+  table.ov th { font-weight: 600; color: var(--text-secondary); font-size: 0.76rem; background: var(--bg); }
+  table.ov td.n { white-space: nowrap; font-weight: 700; }
+  table.ov a { color: var(--accent); }
+  table.ov a:hover { text-decoration: underline; }
+  code { font-family: Menlo, monospace; font-size: 0.82em; background: #f1f3f4; padding: 0 4px; border-radius: 4px; }
+  footer { text-align: center; color: var(--text-secondary); font-size: 0.76rem; padding: 10px 16px 30px; }
+</style>
+</head>
+<body>
+<header>
+  <nav class="hnav">{{NAV}}</nav>
+  <h1>{{H1}}</h1>
+  <div class="subtitle">{{SUBTITLE}}</div>
+</header>
+<main>
+  <!-- round:only -->
+  <div class="notice">
+    この回の授業で見せた回路の LTspice（無料の回路シミュレーター）のファイルです。下の「ダウンロード」から zip を落として<u>展開</u>し、中の <code>.asc</code> を開いて Run すると波形が出ます。LTspice をまだ入れていない人、動かし方がわからない人は、先に<a href="index.html#howto" style="color:var(--accent);font-weight:700">LTspice の入れ方・動かし方</a>を見てください。
+  </div>
+  <!-- /round:only -->
+
+  <!-- index:only -->
+  <div class="notice">
+    授業で見せた回路を、LTspice（回路シミュレーター）のファイルにしてあります。回ごとに zip にまとめてあるので、ダウンロードして自分のパソコンで動かしてみてください。ブラウザで動くシミュレーターより手間はかかりますが、素子の値も回路そのものも自由に変えられます。卒業研究で回路を扱う人は、ここで慣れておくと後が楽です。
+  </div>
+
+  <div class="card" id="howto">
+    <div class="card-h"><span class="ttl">はじめに：LTspice の入れ方と動かし方</span></div>
+    <div class="card-b">
+      <ol class="steps">
+        <li>LTspice は Analog Devices が無料で配っています。Windows 版と Mac 版があります。<a href="https://www.analog.com/jp/resources/design-tools-and-calculators/ltspice-simulator.html" target="_blank" rel="noopener" style="color:var(--accent)">ダウンロードのページ</a>から入れてください。</li>
+        <li>下の「回の一覧」からその回のページを開き、zip をダウンロードして<u>展開</u>します。zip を開いただけの状態で中のファイルをダブルクリックすると、うまく動かないことがあります。いったんデスクトップなどに展開してください。</li>
+        <li>回路ごとにフォルダが分かれています。中の <code>.asc</code>（回路図）をダブルクリックすると LTspice で開きます。</li>
+        <li>Run（Windows は走っている人のアイコン、Mac は回路図の上で右クリック → Run）で計算が始まります。同じフォルダに <code>.plt</code> がある回路は、授業で見せた波形がそのまま出ます。</li>
+        <li>波形を足したいときは、回路図の線をクリックすると電圧、素子をクリックすると電流が出ます。素子の値は、値の文字を右クリックすると書き換えられます。</li>
+      </ol>
+      <p class="small" style="margin-top:6px">回路図の下のほうにある <code>.tran</code> は「何秒ぶん計算するか」、<code>.param</code> は「スイッチング周波数やデューティー比をここで決めている」という指令です。<code>.step</code> がある回路は、値を変えた何本かの波形が重ねて出ます。</p>
+    </div>
+  </div>
+
+  <h2 class="sec">回の一覧</h2>
+  <div class="tblwrap">
+  <table class="ov">
+    <tr><th>回</th><th>テーマ</th><th>入っている回路</th><th></th></tr>
+    <tr><td class="n">第4回</td><td>LCR回路の復習</td><td>RLC直列回路の共振</td><td><a href="04.html">開く</a></td></tr>
+    <tr><td class="n">第5回</td><td>直流-直流変換（１）</td><td>降圧・昇圧・昇降圧チョッパー、PWM の作り方、演習3つ</td><td><a href="05.html">開く</a></td></tr>
+    <tr><td class="n">第6回</td><td>直流-直流変換（２）</td><td>変圧器の励磁電流、フォワード・フライバックコンバータ</td><td><a href="06.html">開く</a></td></tr>
+    <tr><td class="n">第7回</td><td>直流-直流変換（３）</td><td>リニアレギュレータ4種類</td><td><a href="07.html">開く</a></td></tr>
+    <tr><td class="n">参考</td><td>リニア方式の増幅</td><td>B級プッシュプル増幅回路</td><td><a href="08.html">開く</a></td></tr>
+    <tr><td class="n">第9回</td><td>交流-直流変換（１）</td><td>半波・全波整流（L 負荷、C 負荷）</td><td><a href="09.html">開く</a></td></tr>
+    <tr><td class="n">第10回</td><td>交流-直流変換（２）</td><td>整流回路の力率（C 平滑と L 平滑）</td><td><a href="10.html">開く</a></td></tr>
+    <tr><td class="n">第14回</td><td>電力変換で生じる電磁ノイズ</td><td>寄生成分でリンギングする降圧チョッパー</td><td><a href="14.html">開く</a></td></tr>
+  </table>
+  </div>
+  <p class="small">フォルダ名の <code>Fig.3.1</code> などは、教科書の図の番号です。同じ図の回路だと思って見てください。</p>
+  <!-- /index:only -->
+
+  <!-- ltspice:04 -->
+  <!-- ===== 第4回 ===== -->
+  <h2 class="sec" id="r04">第4回<span class="small">LCR回路の復習</span></h2>
+  <div class="card">
+    <div class="card-h"><span class="ttl">ltspice_04_lcr.zip</span><span class="size">1 KB</span><a class="dl" href="ltspice_04_lcr.zip">ダウンロード</a></div>
+    <div class="ckt">
+      <div><span class="nm">RLC直列回路の共振</span><span class="fd">RLC_seriese/</span></div>
+      <div class="ds">L = 1 mH、C = 10 µF、R = 1 Ω の直列回路に、振幅 1 V の正弦波を加えます。周波数は共振周波数ちょうどの 1591 Hz にしてあるので、電流は 1 V ÷ 1 Ω まで大きくなります。L と C の電圧がそれぞれ電源電圧よりずっと大きくなっているところを見てください。</div>
+      <div class="cond">.tran 20m（20 ms ぶん）</div>
+      <div class="q">電源の周波数を 1 kHz や 3 kHz にずらすと、電流の振幅はどれくらい小さくなるでしょう。R を 10 Ω にするとどうなるかも比べてみてください。</div>
+      <div class="web">ブラウザ版：<a href="../sim/rlc.html">RLC直列回路（共振）</a></div>
+    </div>
+  </div>
+  <!-- /ltspice:04 -->
+
+  <!-- ltspice:05 -->
+  <!-- ===== 第5回 ===== -->
+  <h2 class="sec" id="r05">第5回<span class="small">直流-直流変換（１）チョッパー</span></h2>
+  <div class="card">
+    <div class="card-h"><span class="ttl">ltspice_05_dcdc1.zip</span><span class="size">18 KB・10回路</span><a class="dl" href="ltspice_05_dcdc1.zip">ダウンロード</a></div>
+    <div class="lead">スイッチは「ON のとき 1 mΩ、OFF のとき 1 GΩ」の理想に近いスイッチ、ダイオードも順電圧 0 V の理想ダイオードにしてあります。損失のことは考えずに、波形の形だけを見るための設定です。</div>
+    <div class="ckt">
+      <div><span class="nm">RL にパルス電圧を加える</span><span class="fd">Fig3.1_pulse/</span></div>
+      <div class="ds">スイッチの代わりに 0 V と 10 V を行き来するパルス電源を、L = 30 mH と R = 10 Ω につないだだけの回路です。降圧チョッパーの出発点として、コイルの電流が三角波になっていく様子を見ます。</div>
+      <div class="cond">1 kHz、デューティー比 0.5、.tran 20m</div>
+      <div class="q">L を 3 mH に減らすと、電流の波形はどう変わるでしょう。時定数 L/R と周期 1 ms を比べて考えてみてください。</div>
+      <div class="web">ブラウザ版：<a href="../sim/lswitch.html">コイルにスイッチング電圧</a></div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">降圧チョッパー（基本形）</span><span class="fd">Fig3.1_back/</span></div>
+      <div class="ds">入力 10 V、L = 30 mH、R = 10 Ω、スイッチとダイオードでできた降圧チョッパーです。出力電圧の平均がデューティー比 × 入力電圧（ここでは 5 V）になることを確かめます。</div>
+      <div class="cond">fsw = 1 kHz、D = 0.5、.tran 20m</div>
+      <div class="q">.param D=0.5 を 0.3 にすると、出力電圧の平均は何 V になるでしょう。先に計算してから Run してください。</div>
+      <div class="web">ブラウザ版：<a href="../sim/buck.html">降圧チョッパー</a></div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">降圧チョッパー（出力にコンデンサ）</span><span class="fd">back_withC/</span></div>
+      <div class="ds">上の回路の負荷に C = 100 µF を並列に入れたものです。出力電圧の波打ち（リプル）がどれだけ小さくなるかを見ます。</div>
+      <div class="cond">fsw = 1 kHz、D = 0.5、.tran 20m</div>
+      <div class="q">C を 10 µF にすると、リプルはおよそ何倍になるでしょう。</div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">演習1：負荷を軽くする</span><span class="fd">ensyu_back/</span></div>
+      <div class="ds">基本形の降圧チョッパーで、負荷 R を 10 Ω、100 Ω、500 Ω と変えた波形を重ねて出します（.step）。R が大きいと時定数 L/R が短くなり、スイッチが OFF のあいだにコイルの電流がほぼ 0 まで下がります。</div>
+      <div class="cond">fsw = 1 kHz、L = 30 mH、.step param Rx list 10 100 500</div>
+      <div class="q">R = 500 Ω のとき、L/R は何 µs でしょう。周期 1 ms と比べて、電流の波形がなぜこうなるのか説明してみてください。</div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">演習2：スイッチング周波数を上げる</span><span class="fd">ensyu_back2/</span></div>
+      <div class="ds">演習1と同じ回路で、スイッチング周波数を 10 kHz にしたものです。最後の 0.35 ms だけを表示しています。</div>
+      <div class="cond">fsw = 10 kHz、.step param Rx list 10 100 500</div>
+      <div class="q">演習1と比べて、R = 500 Ω の電流の波形はどう変わったでしょう。なぜそうなるかを説明してみてください。</div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">演習3：インダクタンスを大きくする</span><span class="fd">ensyu_back3/</span></div>
+      <div class="ds">今度は周波数を 1 kHz に戻して、L を 300 mH にしたものです。定常状態になるまで時間がかかるので、0.5 秒ぶん計算して最後の 5 ms を表示しています。</div>
+      <div class="cond">L = 300 mH、fsw = 1 kHz、.tran 500m 500m 495m</div>
+      <div class="q">演習2（周波数を10倍）と演習3（L を10倍）で、電流のリプルの大きさを比べてみてください。同じくらいになるのはなぜでしょう。</div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">PWM の作り方（比較器で D を決める）</span><span class="fd">Fig3.13_pwm/</span></div>
+      <div class="ds">0〜1 V の三角波（20 kHz）と 0.417 V の直流を比べて、三角波のほうが低いあいだだけスイッチを ON にします。こうするとデューティー比は 0.417 になり、入力 12 V の降圧チョッパーから約 5 V が出ます。</div>
+      <div class="cond">V3 = 0.417 V、三角波 20 kHz、L = 700 µH、R = 5 Ω、.tran 20m 11m 10m</div>
+      <div class="q">V3 を 0.25 V に変えると出力の平均は何 V になるでしょう。スイッチの ON の時間が変わる様子も見てください。</div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">昇圧チョッパー</span><span class="fd">Fig.3.20_boost/</span></div>
+      <div class="ds">入力 5 V から 12 V を作る昇圧チョッパーです（L = 700 µH、C = 500 µF、R = 28.8 Ω で 5 W）。出力電圧が入力 ÷ (1 − D) になることを確かめます。1 秒ぶん計算して最後の 1 ms を表示するので、Run してから少し待ちます。</div>
+      <div class="cond">fsw = 20 kHz、D = 0.583、.tran 1000m 1000m 999m</div>
+      <div class="q">D を 0.5 にすると出力は何 V でしょう。D を 0.9 まで上げたとき、式どおりに出力が上がり続けるかも試してみてください。</div>
+      <div class="web">ブラウザ版：<a href="../sim/boost.html">昇圧チョッパー</a></div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">昇降圧チョッパー（降圧として使う）</span><span class="fd">Fig.3.25(a)_back_boost_back/</span></div>
+      <div class="ds">入力 12 V から 5 V を作ります。出力の向きが入力と逆（マイナス）になるのがこの回路の特徴です。出力電圧の大きさが入力 × D/(1 − D) になることを確かめます。</div>
+      <div class="cond">fsw = 20 kHz、D = 0.2941、R = 5 Ω、.tran 500m 500m 499m</div>
+      <div class="q">D が 0.5 のとき、入力と出力の大きさの関係はどうなるでしょう。</div>
+      <div class="web">ブラウザ版：<a href="../sim/buckboost.html">昇降圧チョッパー</a></div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">昇降圧チョッパー（昇圧として使う）</span><span class="fd">Fig.3.25(b)_back_boost_boost/</span></div>
+      <div class="ds">同じ回路で D = 0.7059 にして、入力 5 V から 12 V を作ります。(a) と回路は同じで、D を変えただけです。</div>
+      <div class="cond">fsw = 20 kHz、D = 0.7059、R = 28.8 Ω、.tran 500m 500m 499m</div>
+      <div class="q">昇圧チョッパー（Fig.3.20）と同じ 5 V → 12 V なのに、D が違います。式で確かめてみてください。</div>
+    </div>
+  </div>
+  <!-- /ltspice:05 -->
+
+  <!-- ltspice:06 -->
+  <!-- ===== 第6回 ===== -->
+  <h2 class="sec" id="r06">第6回<span class="small">直流-直流変換（２）絶縁形</span></h2>
+  <div class="card">
+    <div class="card-h"><span class="ttl">ltspice_06_dcdc2.zip</span><span class="size">11 KB・6回路</span><a class="dl" href="ltspice_06_dcdc2.zip">ダウンロード</a></div>
+    <div class="lead">変圧器は、結合係数 1 で結合した2つのコイル（<code>K1 L1 L2 1</code> という指令）で表しています。コイルのインダクタンスの比が、巻数比の2乗になります。</div>
+    <div class="ckt">
+      <div><span class="nm">変圧器の励磁電流（負荷なし）</span><span class="fd">exitation_current/</span></div>
+      <div class="ds">1 mH : 1 mH の変圧器の1次側に、+10 V と −10 V のパルスを交互に加えます。2次側はほぼ開放（100 MΩ）なので、1次側に流れるのは鉄心を磁化するための励磁電流だけです。</div>
+      <div class="cond">パルス幅 1 µs、周期 10 µs、.tran 10m 10m 9.97m</div>
+      <div class="q">L1 を 2 mH にすると、励磁電流の山の高さはどうなるでしょう。</div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">変圧器の励磁電流（負荷あり）</span><span class="fd">exitation_current2/</span></div>
+      <div class="ds">上と同じで、2次側に 500 Ω の負荷をつないだものです。1次側の電流が「負荷電流＋励磁電流」になることを、上の回路と見比べて確かめます。</div>
+      <div class="cond">R1 = 500 Ω、.tran 10m 10m 9.97m</div>
+      <div class="q">負荷を 100 Ω にすると、1次電流のうち変わるのはどちらの成分でしょう。</div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">スイッチで変圧器に電圧を加える</span><span class="fd">exitation_current_switch/</span></div>
+      <div class="ds">直流 10 V をスイッチで ON/OFF して変圧器に加えます（ON は 1 µs、周期 10 µs）。スイッチが OFF になったあと、励磁電流がどこを流れるかを見ます。</div>
+      <div class="cond">fsw = 100 kHz、R1 = 500 Ω、.tran 10m 10m 9.97m</div>
+      <div class="q">スイッチの両端の電圧は、OFF になった瞬間にどうなっているでしょう。フォワードコンバータにリセット巻線がある理由と結びつけてみてください。</div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">フォワードコンバータ</span><span class="fd">foward_converter/</span></div>
+      <div class="ds">入力 100 V、1次巻線とリセット巻線が 10 mH、2次巻線が 0.1 mH（巻数比 10 : 1）のフォワードコンバータです。出力が入力 × 巻数比 × D（ここでは約 3 V）になることを確かめます。</div>
+      <div class="cond">fsw = 20 kHz、D = 0.3、出力 L = 1 mH、C = 500 µF、R = 5 Ω、.tran 51m 51m 50.85m</div>
+      <div class="q">D を 0.6 にすると、リセット巻線の電流はどうなるでしょう。D に上限がある理由を考えてみてください。</div>
+      <div class="web">ブラウザ版：<a href="../sim/forward.html">フォワードコンバータ</a></div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">フライバックコンバータ（降圧）</span><span class="fd">flyback_converter_back/</span></div>
+      <div class="ds">巻数比 1 : 1 のフライバックコンバータで、入力 12 V から 5 V を作ります。第5回の昇降圧チョッパー（Fig.3.25(a)）と同じ D = 0.2941 なので、波形を見比べてください。</div>
+      <div class="cond">fsw = 20 kHz、D = 0.2941、R = 5 Ω、.tran 500m 500m 499.83m</div>
+      <div class="q">2次側の L2 を 4 倍（巻数で2倍）にすると、出力は何 V になるでしょう。</div>
+      <div class="web">ブラウザ版：<a href="../sim/flyback.html">フライバックコンバータ</a></div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">フライバックコンバータ（昇圧）</span><span class="fd">flyback_converter_boost/</span></div>
+      <div class="ds">同じ回路で D = 0.7059 にして、入力 5 V から 12 V を作ります。</div>
+      <div class="cond">fsw = 20 kHz、D = 0.7059、R = 28.8 Ω、.tran 500m 500m 499.83m</div>
+      <div class="q">変圧器の 1 次電流と 2 次電流が同時に流れていないことを確かめてください。フォワードとの一番の違いはそこです。</div>
+    </div>
+  </div>
+  <!-- /ltspice:06 -->
+
+  <!-- ltspice:07 -->
+  <!-- ===== 第7回 ===== -->
+  <h2 class="sec" id="r07">第7回<span class="small">直流-直流変換（３）リニアレギュレータ</span></h2>
+  <div class="card">
+    <div class="card-h"><span class="ttl">ltspice_07_dcdc3.zip</span><span class="size">7 KB・4回路</span><a class="dl" href="ltspice_07_dcdc3.zip">ダウンロード</a></div>
+    <div class="lead">スイッチを使わずに、トランジスタを「可変抵抗」として使って電圧を下げる方式です。チョッパーと比べて、どこで電力が熱になっているかを考えながら見てください。</div>
+    <div class="ckt">
+      <div><span class="nm">基本のリニアレギュレータ</span><span class="fd">seriese_regurator/</span></div>
+      <div class="ds">入力 10 V、トランジスタ 2N2222 のベースに 6 V の基準電圧を加えたエミッタフォロワです。出力はおよそ 6 V − 0.7 V になります。負荷を 10 Ω、50 Ω、100 Ω と変えて重ねて出します。</div>
+      <div class="cond">.step param R list 10 50 100、.tran 1m</div>
+      <div class="q">負荷が 10 Ω のとき、トランジスタで熱になっている電力は何 W でしょう。効率も計算してみてください。</div>
+      <div class="web">ブラウザ版：<a href="../sim/linreg.html">リニアレギュレータ</a></div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">ツェナーダイオードで基準電圧を作る</span><span class="fd">seriese_regurator_zener_diode/</span></div>
+      <div class="ds">基準電圧の電源の代わりに、抵抗 400 Ω とツェナーダイオード 1N750（約 4.7 V）で基準を作ったものです。</div>
+      <div class="cond">.step param R list 10 50 100、.tran 1m</div>
+      <div class="q">負荷を変えたとき、出力電圧はどれくらい動いているでしょう。基本形と比べてみてください。</div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">オペアンプで出力を見張る</span><span class="fd">seriese_regurator_opamp/</span></div>
+      <div class="ds">出力電圧を抵抗（6 kΩ と 12 kΩ）で分けてオペアンプに戻し、基準 5 V と一致するようにトランジスタを動かします。トランジスタのベース-エミッタ間の 0.7 V に左右されなくなるのがポイントです。</div>
+      <div class="cond">基準 5 V（0.2 ms で立ち上げ）、負荷 10 Ω、.tran 1m</div>
+      <div class="q">出力は何 V になっているでしょう。抵抗の比から先に計算してみてください。</div>
+      <div class="web">ブラウザ版：<a href="../sim/opreg.html">オペアンプのフィードバック制御</a></div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">トランジスタを MOSFET に替える</span><span class="fd">seriese_regurator_opamp_mosfet/</span></div>
+      <div class="ds">上の回路のトランジスタを MOSFET（RTQ020N05）に替え、負荷を 10 Ω、50 Ω、100 Ω と変えます。</div>
+      <div class="cond">.step param R list 10 50 100、.tran 1m</div>
+      <div class="q">負荷を変えたとき、出力電圧がどれくらい動くか見てください。オペアンプのない基本形と比べてみましょう。</div>
+    </div>
+  </div>
+  <!-- /ltspice:07 -->
+
+  <!-- ltspice:08 -->
+  <!-- ===== 参考 ===== -->
+  <h2 class="sec" id="r08">参考<span class="small">B級プッシュプル増幅回路</span></h2>
+  <div class="card">
+    <div class="card-h"><span class="ttl">ltspice_08_classb.zip</span><span class="size">2 KB</span><a class="dl" href="ltspice_08_classb.zip">ダウンロード</a></div>
+    <div class="ckt">
+      <div><span class="nm">B級プッシュプル増幅回路</span><span class="fd">pushpull/</span></div>
+      <div class="ds">npn（2N2222）と pnp（2N2907）を上下に組み合わせ、±5 V の電源で 10 Ω の負荷に振幅 2 V の正弦波を出します。トランジスタを「可変抵抗」として使う増幅のやり方で、リニアレギュレータの仲間です。入力が 0 V の近くで出力が欠ける（クロスオーバーひずみ）ところも見てください。</div>
+      <div class="cond">10 kHz、.tran 200u</div>
+      <div class="q">入力の振幅を 0.5 V にすると、ひずみは目立つようになるでしょうか、目立たなくなるでしょうか。</div>
+    </div>
+  </div>
+  <!-- /ltspice:08 -->
+
+  <!-- ltspice:09 -->
+  <!-- ===== 第9回 ===== -->
+  <h2 class="sec" id="r09">第9回<span class="small">交流-直流変換（１）整流回路</span></h2>
+  <div class="card">
+    <div class="card-h"><span class="ttl">ltspice_09_acdc1.zip</span><span class="size">4 KB・6回路</span><a class="dl" href="ltspice_09_acdc1.zip">ダウンロード</a></div>
+    <div class="lead">どれも振幅 100 V（半波整流は 144 V）、60 Hz の交流が入力です。ダイオードは理想ダイオードにしてあります。</div>
+    <div class="ckt">
+      <div><span class="nm">コイルだけの交流回路</span><span class="fd">Diode_L/</span></div>
+      <div class="ds">整流の前の準備として、交流電源に L = 1 H だけをつないだ回路です。コイルの電流がどんな形になるかを見ます。</div>
+      <div class="cond">.tran 100m</div>
+      <div class="q">電流が 0 を中心に振れず、片側に寄っているのはなぜでしょう。電源を入れた瞬間（t = 0）の電圧と電流から考えてみてください。</div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">半波整流（L 負荷）</span><span class="fd">half_Diode_L/</span></div>
+      <div class="ds">上の回路にダイオードを1つ入れたものです。電源電圧がマイナスになってもしばらく電流が流れ続けるところを見ます。</div>
+      <div class="cond">振幅 144 V、L = 1 H、.tran 100m</div>
+      <div class="q">電流が流れ続けるのはなぜでしょう。コイルにたまったエネルギーの行き先を考えてみてください。</div>
+      <div class="web">ブラウザ版：<a href="../sim/rect1.html">単相半波整流</a></div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">全波整流（L と R の負荷）</span><span class="fd">full_Diode_L/</span></div>
+      <div class="ds">ダイオードブリッジに L = 1 H と R = 100 Ω を直列につないだものです。L のおかげで負荷電流がほぼ一定になります。</div>
+      <div class="cond">.tran 100m</div>
+      <div class="q">L を 0.1 H にすると、負荷電流の波打ちはどうなるでしょう。</div>
+      <div class="web">ブラウザ版：<a href="../sim/rect2.html">単相全波整流</a></div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">半波整流（C だけ）</span><span class="fd">Diode_C/</span></div>
+      <div class="ds">ダイオード1つと C = 1 mF の回路です。負荷がないので、C は電源電圧のピークまで充電されたあと、そのまま止まります。</div>
+      <div class="cond">.tran 100m</div>
+      <div class="q">ダイオードに電流が流れているのは、最初の何 ms だけでしょう。</div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">半波整流（C と R）</span><span class="fd">Diode_C_R/</span></div>
+      <div class="ds">上の回路に R = 100 Ω の負荷を足したものです。C が放電するあいだ電圧が下がり、ピークの近くだけダイオードに電流が流れます。</div>
+      <div class="cond">.tran 100m</div>
+      <div class="q">R を 10 Ω にすると、出力電圧の波打ちとダイオードの電流の形はどう変わるでしょう。</div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">全波整流（C と R）</span><span class="fd">full_Diode_C/</span></div>
+      <div class="ds">ダイオードブリッジに C = 1000 µF と R = 10 Ω をつないだ、コンデンサインプット形の全波整流です。</div>
+      <div class="cond">.tran 100m</div>
+      <div class="q">半波整流（Diode_C_R）と比べて、波打ちの周期はどうなっているでしょう。</div>
+    </div>
+  </div>
+  <!-- /ltspice:09 -->
+
+  <!-- ltspice:10 -->
+  <!-- ===== 第10回 ===== -->
+  <h2 class="sec" id="r10">第10回<span class="small">交流-直流変換（２）力率</span></h2>
+  <div class="card">
+    <div class="card-h"><span class="ttl">ltspice_10_acdc2.zip</span><span class="size">3 KB・2回路</span><a class="dl" href="ltspice_10_acdc2.zip">ダウンロード</a></div>
+    <div class="lead">この2つは、計算が終わると力率（PF）などが自動で計算されます。View → SPICE Error Log（Mac は回路図の上で右クリックしたメニューの中）を開くと、一番下に P、S、PF の値と、入力電流の高調波（.FOUR）の表が出ています。</div>
+    <div class="ckt">
+      <div><span class="nm">コンデンサで平滑した整流回路の力率</span><span class="fd">full_Diode_CR_PowerFactor/</span></div>
+      <div class="ds">ダイオードブリッジ＋C = 0.1 mF＋R = 500 Ω。入力電流がピークの近くだけ尖って流れるので、電圧と同じ位相でも力率は 1 になりません。</div>
+      <div class="cond">振幅 100 V、60 Hz、.tran 300m（後半 200 ms で力率を計算）</div>
+      <div class="q">C を 10 倍にすると、力率は上がるでしょうか、下がるでしょうか。入力電流の形と一緒に見てください。</div>
+      <div class="web">ブラウザ版：<a href="../sim/powerfactor.html">交流回路の電力と力率</a></div>
+    </div>
+    <div class="ckt">
+      <div><span class="nm">コイルで平滑した整流回路の力率</span><span class="fd">full_Diode_LR_PowerFactor/</span></div>
+      <div class="ds">ダイオードブリッジ＋L = 100 H＋R = 50 Ω（C = 1 µF）。負荷電流がほぼ一定なので、入力電流は矩形波に近くなります。定常になるまで時間がかかるので 2 秒ぶん計算します。</div>
+      <div class="cond">.tran 2000m（最後の 400 ms で力率を計算）</div>
+      <div class="q">C 平滑のときと比べて、力率はどちらが高いでしょう。矩形波の力率は理論では約 0.9 です。</div>
+    </div>
+  </div>
+  <!-- /ltspice:10 -->
+
+  <!-- ltspice:14 -->
+  <!-- ===== 第14回 ===== -->
+  <h2 class="sec" id="r14">第14回<span class="small">電力変換で生じる電磁ノイズ</span></h2>
+  <div class="card">
+    <div class="card-h"><span class="ttl">ltspice_14_noise.zip</span><span class="size">2 KB</span><a class="dl" href="ltspice_14_noise.zip">ダウンロード</a></div>
+    <div class="ckt">
+      <div><span class="nm">寄生成分でリンギングする降圧チョッパー</span><span class="fd">back_withC_ringing/</span></div>
+      <div class="ds">1 MHz で動く降圧チョッパー（L = 30 µH、C = 1 µF、R = 10 Ω）に、配線のインダクタンス 5 nH とスイッチの容量 1 nF を足したものです。スイッチが切り替わるたびに、電圧が細かく振動（リンギング）するのを見ます。これが電磁ノイズの元になります。</div>
+      <div class="cond">fsw = 1 MHz、D = 0.5、.tran 0.2m（時間刻み 1 ns）</div>
+      <div class="q">リンギングの周波数を波形から読んで、5 nH と 1 nF から計算した共振周波数と比べてみてください。</div>
+      <div class="web">ブラウザ版：<a href="../sim/ringing.html">寄生成分によるリンギング</a></div>
+    </div>
+  </div>
+  <!-- /ltspice:14 -->
+
+  <p class="small" style="margin-top:20px">うまく動かないとき：zip を展開したか、<code>.asc</code> と <code>.plt</code> が同じフォルダにあるかを確かめてください。計算が長い回路（昇圧チョッパー、力率の L 平滑など）は、数十秒かかることがあります。</p>
+</main>
+<footer>パワーエレクトロニクス / 大阪工業大学 神野崇馬</footer>
+<script>
+if (!/github\.io$/.test(location.hostname)) {
+  var b = document.createElement('div');
+  b.textContent = '確認用（Mac mini の作業中の版）。学生に見えるのは git push した後です';
+  b.style.cssText = 'background:#fff3cd;color:#664d03;border-bottom:1px solid #e0c36a;padding:6px 12px;font-size:14px;text-align:center';
+  document.body.prepend(b);
+}
+</script>
+</body>
+</html>

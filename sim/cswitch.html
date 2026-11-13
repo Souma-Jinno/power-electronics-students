@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>コンデンサとスイッチング電流のシミュレーター — パワーエレクトロニクス</title>
+<link rel="stylesheet" href="common.css">
+<style>#ecv { display: block; width: 100%; }</style>
+</head>
+<body>
+<header>
+  <nav class="hnav"><a href="../index.html">← 科目のページへ戻る</a><a href="index.html">回路を選ぶ（シミュレーターの一覧）</a></nav>
+  <h1>コンデンサにスイッチング電流を流すシミュレーター</h1>
+  <div class="subtitle">パワーエレクトロニクス 第4回 LCR回路の復習 p24〜35 / 大阪工業大学</div>
+</header>
+<main>
+  <div class="notice">
+    スイッチング電流 <span class="eq">i<sub>in</sub>(t)</span>（<span class="eq">0 ≤ t &lt; DT</span> で <span class="eq">I<sub>0</sub></span>、残りは 0 を周期 <span class="eq">T</span> でくり返す）をコンデンサ <span class="eq">C</span> に流します。コイルのページ（p9〜23）の電圧と電流を入れ替えた回路です（p26）。
+    「回路の値」の<b>負荷</b>のボタンで「なし（p24〜28）」「電流源 <span class="eq">I<sub>1</sub></span>（p29〜31）」「抵抗 <span class="eq">R</span>（p32〜35）」から選べます。
+    回路図の<b>線をクリック</b>するとその点の電位、<b>素子をクリック</b>すると電流（矢印の向きが正）が下のグラフに出ます。値を変えると、<span class="eq">t = 0</span>（<span class="eq">v<sub>C</sub>(0) = 0</span>）から計算し直します。
+  </div>
+
+  <div class="top">
+    <section class="card">
+      <div class="card-h">
+        <span class="ttl">回路</span>
+        <span class="small">素子をクリックしたとき：</span>
+        <span class="seg" id="emode"><button data-m="i" class="on">電流</button><button data-m="v">両端の電圧</button></span>
+      </div>
+      <svg id="sch" viewBox="-140 -90 740 390" aria-label="スイッチング電流源・コンデンサ・負荷の回路図"></svg>
+      <div id="state"></div>
+    </section>
+
+    <section class="card params">
+      <div class="card-h"><span class="ttl">回路の値</span></div>
+      <div class="card-b" id="params"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-h">
+      <span class="ttl">波形</span>
+      <span class="seg" id="win">
+        <button data-w="all" class="on">起動から最後まで</button><button data-w="first">起動直後</button><button data-w="last">定常状態</button>
+      </span>
+    </div>
+    <div class="ctl">
+      <button id="play">▶ 再生</button>
+      <label>速さ <select id="speed"><option value="0.25">×0.25</option><option value="0.5">×0.5</option><option value="1" selected>×1</option><option value="2">×2</option><option value="4">×4</option></select></label>
+      <label id="nper">周期の数 <select id="nP"><option>2</option><option selected>3</option><option>5</option><option>10</option></select></label>
+      <label>グラフ <select id="lay"><option value="vi">電圧と電流の2段</option><option value="each">1本ずつ別の段</option></select></label>
+    </div>
+    <div class="scrubrow"><input type="range" id="scrub" min="0" max="10000" value="0" aria-label="時刻"><span class="tc" id="tc"></span></div>
+    <div id="legend"></div>
+    <div id="plotwrap"><canvas id="plot"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">コンデンサに流出入するエネルギー（p35）</span><span class="small" id="esub"></span></div>
+    <div class="card-b"><canvas id="ecv" aria-label="コンデンサの電圧と電気エネルギーの波形"></canvas></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">最後の周期の値と、授業の式の比較</span><span class="small" id="msub"></span></div>
+    <div class="card-b" style="overflow-x:auto"><table class="m" id="metrics"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><span class="ttl">このシミュレーターの前提</span></div>
+    <div class="card-b">
+      <ul class="notes">
+        <li><span class="eq">i<sub>in</sub>(t)</span> は理想の電流源（両端がどんな電圧になっても決まった電流を流す）。コンデンサ・抵抗・負荷の電流源 <span class="eq">I<sub>1</sub></span> も理想の素子です。<span class="eq">t = 0</span> で <span class="eq">v<sub>C</sub> = 0</span>。</li>
+        <li>KCL（p29）：<span class="eq">−i<sub>in</sub> + i<sub>C</sub> + i<sub>out</sub> = 0</span>、枝構成式：<span class="eq">i<sub>C</sub> = C dv<sub>C</sub>/dt</span>。負荷なしは <span class="eq">i<sub>out</sub> = 0</span>、電流源は <span class="eq">i<sub>out</sub> = I<sub>1</sub></span>（下向き）、抵抗は <span class="eq">i<sub>out</sub> = v<sub>C</sub>/R</span>。</li>
+        <li>p29〜33 の図では負荷の電流源の丸の中の矢印が上向きですが、横の <span class="eq">I<sub>1</sub></span> の矢印と KCL の式に合わせて、ここでは下向き（上の線から電流を引き抜く向き）に描いています。</li>
+        <li>負荷なしでは、オフの間 <span class="eq">i<sub>C</sub> = 0</span> なので電圧は一定のまま、オンのたびに <span class="eq">I<sub>0</sub>DT/C</span> ずつ上がります（p25・p27、定常状態にならない）。電流源では、<span class="eq">I<sub>1</sub> = DI<sub>0</sub></span> のときだけ定常状態になります（p30）。<span class="eq">I<sub>1</sub> ≠ DI<sub>0</sub></span> だと、1 周期ごとに <span class="eq">T(DI<sub>0</sub> − I<sub>1</sub>)/C</span> ずつ上がり（下がり）続けます（負の電圧にもなる）。</li>
+        <li>抵抗のときの <span class="eq">Δv = DT(1 − D)I<sub>0</sub>/C</span>（p31）は、抵抗の電流を一定 <span class="eq">DI<sub>0</sub></span> とみなした 1 回目の近似（p32）の式です。厳密な振れ幅は <span class="eq">RI<sub>0</sub>(1 − a)(1 − b)/(1 − ab)</span>（<span class="eq">a = e<sup>−DT/τ</sup></span>、<span class="eq">b = e<sup>−(1−D)T/τ</sup></span>、<span class="eq">τ = RC</span>）で、<span class="eq">τ</span> が <span class="eq">T</span> の数倍以上あれば差は 0.1 % 以下です。抵抗の電流の平均 <span class="eq">DI<sub>0</sub></span> は厳密です（1 周期で <span class="eq">i<sub>C</sub></span> の平均が 0 になるため）。</li>
+        <li>起動の時定数：抵抗のとき、電圧の 1 周期ごとの平均は <span class="eq">DI<sub>0</sub>R</span> に <span class="eq">e<sup>−t/τ</sup></span>（<span class="eq">τ = RC</span>）で近づきます。表の値は、最初の 2 周期の平均の差の比から求めています。</li>
+        <li>p35 の <span class="eq">i<sub>in</sub>(t)</span> のグラフの「<span class="eq">V<sub>0</sub></span>」は <span class="eq">I<sub>0</sub></span>、p25 の「<span class="eq">v<sub>C</sub></span> = 0.0 [A]」は [V] のことです。</li>
+        <li>計算は 4 次のルンゲ・クッタ法（1 周期を 40〜400 分割、<span class="eq">τ</span> が短いときはもっと細かく）で、<span class="eq">i<sub>in</sub></span> の切り替わりの時刻はちょうど刻みの境目に置いています。</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<footer>パワーエレクトロニクス ｜ 神野 崇馬 ｜ 試作版</footer>
+<div id="tip"></div>
+
+<script>
+// ==SIM-BEGIN==
+/**
+ * スイッチング電流源 i_in（0 ≤ t mod T < DT で I0、ほかは 0）→ コンデンサ C ∥ 負荷（なし / 電流源 I1 / 抵抗 R）。
+ * p = {I0, D, f, C, load: 'none' | 'I1' | 'R', I1, R, N?（負荷なし・電流源のときの周期の数）}
+ * 状態変数 x = [vC]、離散状態 s = 1（i_in = I0）/ 0（i_in = 0）。simEv で計算する。
+ */
+function cswOut(p, v) { return p.load === 'I1' ? p.I1 : p.load === 'R' ? v / p.R : 0; }
+function cswModel(p) {
+  const T = 1 / p.f, D = p.D, C = p.C;
+  let periods, n = 400;
+  if (p.load === 'R') {
+    const tau = p.R * C;
+    periods = Math.min(3000, Math.max(10, Math.ceil(8 * tau / T) + 6));
+    n = Math.max(40, Math.min(400, Math.floor(4e5 / periods)));
+    n = Math.min(20000, Math.max(n, Math.ceil(30 * T / tau)));   // τ が短いときは刻みを細かく
+  } else periods = p.N || 8;
+  return {
+    T, periods, h: T / n, x0: [0], s0: 1,
+    f: (t, x, s) => [((s ? p.I0 : 0) - cswOut(p, x[0])) / C],
+    breaks: (t0) => [t0, t0 + D * T],
+    onBreak: (t) => Math.abs(t - Math.round(t / T) * T) < 1e-9 * T ? 1 : 0,
+  };
+}
+function simulateCsw(p) {
+  const S = simEv(cswModel(p));
+  S.p = Object.assign({}, p);
+  return S;
+}
+/** 時刻 t の x[j]（線形補間。切り替わりの瞬間の 2 点は同じ値） */
+function evAt(S, t, j = 0) {
+  const a = S.t; let lo = 0, hi = a.length - 1;
+  if (t <= a[0]) return S.x[j][0];
+  if (t >= a[hi]) return S.x[j][hi];
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (a[m] <= t) lo = m; else hi = m; }
+  const u = a[hi] > a[lo] ? (t - a[lo]) / (a[hi] - a[lo]) : 0;
+  return S.x[j][lo] * (1 - u) + S.x[j][hi] * u;
+}
+/** [t0, t1] での g(S, k) の台形積分 */
+function evInt(S, g, t0, t1) {
+  let s = 0;
+  for (let k = 1; k < S.t.length; k++) {
+    const a = S.t[k - 1], b = S.t[k];
+    if (b <= t0 + 1e-12 * S.T || a >= t1 - 1e-12 * S.T || b <= a) continue;
+    s += (g(S, k - 1) + g(S, k)) / 2 * (b - a);
+  }
+  return s;
+}
+/** 周期ごとの x[0] の平均 */
+function evPerAvg(S) {
+  const n = S.periods, A = new Float64Array(n), T = S.T;
+  for (let k = 1; k < S.t.length; k++) {
+    const a = S.t[k - 1], b = S.t[k];
+    if (b <= a) continue;
+    const q = Math.min(n - 1, Math.floor((a + b) / 2 / T));
+    A[q] += (S.x[0][k - 1] + S.x[0][k]) / 2 * (b - a);
+  }
+  for (let q = 0; q < n; q++) A[q] /= T;
+  return A;
+}
+function cswMetrics(S) {
+  const p = S.p, T = S.T, tE = S.periods * T, tA = tE - T, tB = tA + p.D * T;
+  const vA = evAt(S, tA), vB = evAt(S, tB), vE = evAt(S, tE);
+  const iC = (S, k) => (S.s[k] ? p.I0 : 0) - cswOut(p, S.x[0][k]);
+  const eOn = evInt(S, (S, k) => iC(S, k) * S.x[0][k], tA, tB), eOff = evInt(S, (S, k) => iC(S, k) * S.x[0][k], tB, tE);
+  let vMax = -Infinity, vMin = Infinity, absMax = 0;
+  for (let k = 0; k < S.t.length; k++) {
+    absMax = Math.max(absMax, Math.abs(S.x[0][k]));
+    if (S.t[k] >= tA - 1e-12 * T) { vMax = Math.max(vMax, S.x[0][k]); vMin = Math.min(vMin, S.x[0][k]); }
+  }
+  const vAvg = evInt(S, (S, k) => S.x[0][k], tA, tE) / T;
+  const iOutAvg = evInt(S, (S, k) => cswOut(p, S.x[0][k]), tA, tE) / T;
+  const m = {vA, vB, vE, eOn, eOff, vMax, vMin, vAvg, iOutAvg, absMax};
+  if (p.load === 'R') {
+    const A = evPerAvg(S), fin = A[A.length - 1];
+    const r = (fin - A[1]) / (fin - A[0]);
+    m.tauSim = r > 0 && r < 1 && Math.abs(fin - A[1]) > 0.02 * Math.abs(fin) ? -T / Math.log(r) : NaN;
+    m.steady = Math.abs(A[A.length - 1] - A[A.length - 2]) <= 2e-3 * Math.abs(fin);
+  }
+  return m;
+}
+// ==SIM-END==
+</script>
+<script src="common.js"></script>
+<script>
+(() => {
+'use strict';
+let load = 'none';
+const H = 240, YM = 120, XC = 250, XR = 450;
+const C_IN = COL.blue, C_VC = COL.red, C_IC = COL.iin, C_OUT = COL.orange;
+const iinOf = (S, k) => S.s[k] ? S.p.I0 : 0;
+const vOf = (S, k) => S.x[0][k];
+const iOutOf = (S, k) => cswOut(S.p, S.x[0][k]);
+const iCOf = (S, k) => iinOf(S, k) - iOutOf(S, k);
+let gIs = null, gRes = null, gLoad = null;
+
+// ---- エネルギーの図（p35）：v_C と U_e = ½ C v_C² ----
+const ecv = document.getElementById('ecv');
+let lastS = null;
+function drawEnergy(S) {
+  lastS = S;
+  const p = S.p, T = S.T, np = Math.min(3, S.periods);
+  const t0 = p.load === 'none' ? 0 : (S.periods - np) * T, t1 = t0 + np * T;
+  const W = ecv.parentElement.clientWidth - 28, PH = W < 560 ? 100 : 120, ML = 62, MR = 12, Hh = 3 * PH + 66;
+  const dpr = window.devicePixelRatio || 1;
+  ecv.width = Math.round(W * dpr); ecv.height = Math.round(Hh * dpr); ecv.style.height = Hh + 'px';
+  const c = ecv.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.fillStyle = '#fff'; c.fillRect(0, 0, W, Hh);
+  const pw = W - ML - MR, X = (t) => ML + (t - t0) / (t1 - t0) * pw;
+  let k0 = 0; while (k0 < S.t.length - 1 && S.t[k0] < t0) k0++;
+  let k1 = k0; while (k1 < S.t.length - 1 && S.t[k1] < t1) k1++;
+  const series = [
+    {sym: ['i', 'in'], unit: 'A', color: C_IN, f: iinOf},
+    {sym: ['v', 'C'], unit: 'V', color: C_VC, f: vOf},
+    {sym: ['U', 'e'], unit: 'J', color: COL.ink, f: (S, k) => 0.5 * p.C * S.x[0][k] ** 2},
+  ];
+  series.forEach((sr, q) => {
+    const y0 = 6 + q * (PH + 8);
+    let mn = 0, mx = 0;
+    for (let k = k0; k <= k1; k++) { const v = sr.f(S, k); mn = Math.min(mn, v); mx = Math.max(mx, v); }
+    if (mx - mn < 1e-15) mx = mn + 1;
+    const pad = (mx - mn) * 0.1; mn -= pad; mx += pad;
+    const Y = (v) => y0 + PH - (v - mn) / (mx - mn) * PH;
+    for (let n = Math.round(t0 / T); n * T < t1 - 1e-12; n++) {
+      c.fillStyle = 'rgba(192,38,211,0.06)'; c.fillRect(X(n * T), y0, X(n * T + p.D * T) - X(n * T), PH);
+      if (q === 2) {
+        c.font = `13px ${SERIF}`; c.textAlign = 'center'; c.fillStyle = COL.sub;
+        c.fillText('I', X(n * T + p.D * T / 2), y0 + PH - 6); c.fillText('II', X(n * T + p.D * T + (1 - p.D) * T / 2), y0 + PH - 6);
+      }
+    }
+    c.strokeStyle = '#d5dbe2'; c.lineWidth = 1; c.strokeRect(ML + 0.5, y0 + 0.5, pw - 1, PH - 1);
+    c.font = '11px Menlo, monospace'; c.textAlign = 'right'; c.fillStyle = COL.sub;
+    const st = (() => { const raw = (mx - mn) / 3, e = 10 ** Math.floor(Math.log10(raw)), m = raw / e; return (m < 1.5 ? 1 : m < 3 ? 2 : m < 7 ? 5 : 10) * e; })();
+    for (let v = Math.ceil(mn / st) * st; v <= mx + 1e-15; v += st) {
+      const y = Y(v);
+      c.strokeStyle = Math.abs(v) < st * 1e-6 ? '#b8c2cc' : '#eef1f4';
+      c.beginPath(); c.moveTo(ML, y); c.lineTo(ML + pw, y); c.stroke();
+      c.fillText(fmtSI(Math.abs(v) < st * 1e-6 ? 0 : v, sr.unit, 3).replace(/\.0+ /, ' '), ML - 5, y + 4);
+    }
+    c.save(); c.beginPath(); c.rect(ML, y0, pw, PH); c.clip();
+    c.strokeStyle = sr.color; c.lineWidth = 2.2; c.lineJoin = 'round'; c.beginPath();
+    for (let k = k0; k <= k1; k++) { const x = X(S.t[k]), y = Y(sr.f(S, k)); if (k === k0) c.moveTo(x, y); else c.lineTo(x, y); }
+    c.stroke(); c.restore();
+    c.fillStyle = 'rgba(255,255,255,0.85)'; c.fillRect(ML + 3, y0 + 2, 46, 22);
+    c.fillStyle = sr.color; c.textAlign = 'left';
+    c.font = `italic 17px ${SERIF}`; c.fillText(sr.sym[0], ML + 8, y0 + 18);
+    const w0 = c.measureText(sr.sym[0]).width;
+    c.font = `italic 11px ${SERIF}`; c.fillText(sr.sym[1], ML + 9 + w0, y0 + 22);
+  });
+  c.font = `italic 12px ${SERIF}`; c.textAlign = 'center'; c.fillStyle = COL.sub;
+  const yb = 6 + 3 * (PH + 8) + 12;
+  for (let n = Math.round(t0 / T); n <= Math.round(t1 / T); n++) {
+    const nn = n - Math.round(t0 / T) + (p.load === 'none' ? 0 : S.periods - np);
+    c.fillText(nn === 0 ? '0' : nn === 1 ? 'T' : nn + 'T', X(n * T), yb);
+    if (n * T + p.D * T < t1 - 1e-12) c.fillText(nn === 0 ? 'DT' : (nn === 1 ? 'T' : nn + 'T') + '+DT', X(n * T + p.D * T), yb + 14);
+  }
+  document.getElementById('esub').innerHTML = (p.load === 'none' ? '最初の ' : '最後の ') + np + ' 周期。<span class="eq">U<sub>e</sub> = ½Cv<sub>C</sub><sup>2</sup></span>。I（オン）で蓄積、II（オフ）で放出';
+}
+window.addEventListener('resize', () => { if (lastS) drawEnergy(lastS); });
+
+SimApp({
+  pdef: [
+    {k: 'I0', b: 'I', s: '0', up: true, title: 'スイッチング電流の高さ', min: 0.1, max: 20, step: 0.1, log: false, unit: 'A', def: 1},
+    {k: 'D', b: 'D', s: '', title: 'デューティ比（I0 の時間の割合）', min: 0.05, max: 0.95, step: 0.01, log: false, unit: '', def: 1 / 3},
+    {k: 'f', b: 'f', s: '', title: 'スイッチングの周波数 f = 1/T', min: 100, max: 100e3, log: true, unit: 'Hz', def: 1e3},
+    {k: 'C', b: 'C', s: '', min: 1e-6, max: 10e-3, log: true, unit: 'F', def: 100e-6},
+    {k: 'I1', b: 'I', s: '1', up: true, title: '負荷の電流源の電流', min: 0, max: 10, step: 0.01, log: false, unit: 'A', def: 1 / 3},
+    {k: 'R', b: 'R', s: '', title: '負荷の抵抗', min: 1, max: 1000, log: true, unit: 'Ω', def: 100},
+  ],
+  extraParams(el, a) {
+    const d = document.createElement('div');
+    d.className = 'crow';
+    d.innerHTML = `<span style="min-width:3em">負荷</span><span class="seg"><button data-v="none">なし</button><button data-v="I1">電流源 I₁</button><button data-v="R">抵抗 R</button></span>`;
+    const bs = d.querySelectorAll('button');
+    el.insertBefore(d, a.sliders.I1.row);
+    const b2 = document.createElement('div');
+    b2.className = 'crow';
+    b2.innerHTML = `<button class="xbtn">I₁ = DI₀ にする（定常状態の条件、p30）</button>`;
+    el.insertBefore(b2, a.sliders.R.row);
+    b2.querySelector('button').onclick = () => { a.P.I1 = +(a.P.D * a.P.I0).toPrecision(6); a.sliders.I1.set(); a.schedule(); };
+    a.showLoad = () => {
+      bs.forEach(b => b.classList.toggle('on', b.dataset.v === load));
+      a.sliders.I1.row.style.display = load === 'I1' ? '' : 'none';
+      a.sliders.R.row.style.display = load === 'R' ? '' : 'none';
+      b2.style.display = load === 'I1' ? '' : 'none';
+    };
+    bs.forEach(b => b.onclick = () => { load = b.dataset.v; a.showLoad(); a.schedule(); });
+    a.showLoad();
+  },
+  presets: [
+    {name: 'p24〜27：コンデンサだけ（階段状に上がる）', v: {I0: 1, D: 1 / 3, f: 1e3, C: 100e-6}, apply: (a) => { load = 'none'; a.showLoad(); }},
+    {name: 'p29〜31：電流源 I₁ = DI₀（定常状態）', v: {I0: 1, D: 1 / 3, f: 1e3, C: 100e-6, I1: 1 / 3}, apply: (a) => { load = 'I1'; a.showLoad(); }},
+    {name: 'p29：I₁ が DI₀ より大きい（下がり続ける）', v: {I0: 1, D: 1 / 3, f: 1e3, C: 100e-6, I1: 0.5}, apply: (a) => { load = 'I1'; a.showLoad(); }},
+    {name: 'p32〜33：抵抗 R（τ = RC = 10T）', v: {I0: 1, D: 1 / 3, f: 1e3, C: 100e-6, R: 100}, apply: (a) => { load = 'R'; a.showLoad(); }},
+    {name: 'p34：C を 5 倍（変動が小さい）', v: {I0: 1, D: 1 / 3, f: 1e3, C: 500e-6, R: 100}, apply: (a) => { load = 'R'; a.showLoad(); }},
+  ],
+  simulate: (P) => simulateCsw({I0: P.I0, D: P.D, f: P.f, C: P.C, load, I1: P.I1, R: P.R}),
+  metrics: cswMetrics,
+  onRun(S, a) {
+    gLoad.style.display = S.p.load === 'none' ? 'none' : '';
+    gIs.style.display = S.p.load === 'I1' ? '' : 'none';
+    gRes.style.display = S.p.load === 'R' ? '' : 'none';
+    a.hitEl['e:Ld'].style.display = S.p.load === 'none' ? 'none' : '';
+    drawEnergy(S);
+  },
+  gatePane: gateRowsPane([{label: 'I₀ の間', color: COL.fuchsia, on: (S, k) => S.s[k] === 1}]),
+  probes: {
+    'n:top': {b: 'v', s: 'C', color: C_VC, q: 'V', what: '上の線の電位（= コンデンサの電圧 v_C）', f: vOf},
+    'n:gnd': {b: 'GND', s: '', color: COL.sub, q: 'V', what: '下の線（0 V）', f: () => 0},
+    'i:S':   {b: 'i', s: 'in', color: C_IN, q: 'I', what: 'スイッチング電流（上向きが正）', f: iinOf},
+    'v:S':   {b: 'v', s: 'C', color: C_VC, q: 'V', what: '電流源の両端の電圧（上が＋。= v_C）', f: vOf},
+    'i:C':   {b: 'i', s: 'C', color: C_IC, q: 'I', what: 'コンデンサの電流（下向き＝充電が正、p29 の矢印）', f: iCOf},
+    'v:C':   {b: 'v', s: 'C', color: C_VC, q: 'V', what: 'コンデンサの両端の電圧（上が＋）', f: vOf},
+    'i:Ld':  {b: 'i', s: 'R', color: C_OUT, q: 'I', what: '負荷の電流（下向きが正）。電流源なら I₁、抵抗なら i_R = v_C/R', f: iOutOf},
+    'v:Ld':  {b: 'v', s: 'C', color: C_VC, q: 'V', what: '負荷の両端の電圧（上が＋。= v_C）', f: vOf},
+  },
+  defaultProbes: ['i:S', 'i:C', 'n:top'],
+  refLines: [
+    {keys: ['i:Ld'], val: (S) => S.p.load === 'none' ? NaN : S.p.D * S.p.I0, label: 'DI₀', color: COL.orange},
+  ],
+  hideWire: (n, idx) => load === 'none' && ((n === 'top' && idx === 1) || (n === 'gnd' && idx === 1)),
+  build(K) {
+    const {el, W, gWire} = K;
+    const nodeW = {
+      top: [[[0, YM - 28], [0, 0], [XC, 0], [XC, YM - 10]], [[XC, 0], [XR, 0], [XR, YM - 45]]],
+      gnd: [[[XC, YM + 10], [XC, H], [0, H], [0, YM + 28]], [[XC, H], [XR, H], [XR, YM + 45]]],
+    };
+    W(nodeW.top[0]); W(nodeW.gnd[0]);
+    gLoad = el('g', {}, gWire);
+    W(nodeW.top[1], gLoad); W(nodeW.gnd[1], gLoad);
+    K.dot(XC, 0, gLoad); K.dot(XC, H, gLoad);
+    // パルスの電流源（○ の中に ⎍）
+    el('circle', {cx: 0, cy: YM, r: 28, fill: '#fff'}, gWire);
+    el('path', {d: `M-15 ${YM + 9} H-7 V${YM - 10} H7 V${YM + 9} H15`, 'stroke-width': 2.6}, gWire);
+    K.name(-48, YM + 10, 'i', 'end', 30, 'in');
+    K.cap(XC, YM);
+    K.name(XC - 40, YM + 12, 'C', 'end');
+    // 負荷の電流源（○ の中に下向きの矢印）
+    gIs = el('g', {}, gLoad);
+    W([[XR, YM - 45], [XR, YM - 26]], gIs); W([[XR, YM + 26], [XR, YM + 45]], gIs);
+    el('circle', {cx: XR, cy: YM, r: 26, fill: '#fff'}, gIs);
+    el('line', {x1: XR, y1: YM - 15, x2: XR, y2: YM + 8, 'stroke-width': 2.6}, gIs);
+    el('polygon', {points: `${XR},${YM + 17} ${XR - 7},${YM + 5} ${XR + 7},${YM + 5}`, fill: COL.ink, 'stroke-width': 1}, gIs);
+    gIs.appendChild(K.name(XR - 36, YM + 12, 'I', 'end', 30, '1'));
+    gRes = el('g', {}, gLoad);
+    gRes.appendChild(K.res(XR, YM));
+    gRes.appendChild(K.name(XR - 24, YM + 10, 'R', 'end'));
+    const I = 24;
+    const bx = (x0, x1) => [[x0 + I, I], [x1 - I, I], [x1 - I, H - I], [x0 + I, H - I]];
+    return {
+      nodeW,
+      hits: [['e:S', [-32, YM - 32, 64, 64]], ['e:C', [XC - 36, YM - 26, 72, 52]], ['e:Ld', [XR - 30, YM - 48, 60, 96]]],
+      arrows: {
+        'i:S': [[44, YM + 26], [44, YM - 26], 'R'], 'v:S': [[-96, YM + 44], [-96, YM - 44], 'L'],
+        'i:C': [[XC + 48, YM - 30], [XC + 48, YM + 30], 'R'], 'v:C': [[XC - 100, YM + 40], [XC - 100, YM - 40], 'L'],
+        'i:Ld': [[XR + 40, YM - 30], [XR + 40, YM + 30], 'R'], 'v:Ld': [[XR + 86, YM + 44], [XR + 86, YM - 44], 'R'],
+      },
+      nodeTag: {top: [130, 0, 0, -16], gnd: [130, H, 0, 40]},
+      loops: {sc: bx(0, XC), sl: bx(0, XR), cl: bx(XC, XR), lc: bx(XC, XR).reverse()},
+      sw: {},
+    };
+  },
+  state(S, k, MET) {
+    const p = S.p, s = S.s[k], v = S.x[0][k], iin = s ? p.I0 : 0, io = cswOut(p, v), ic = iin - io;
+    const sc = Math.max(p.I0, Math.abs(p.load === 'I1' ? p.I1 : 0), MET.absMax / (p.R || Infinity), 1e-15);
+    let html = s ? `<span class="sw-on">i<sub>in</sub> = I<sub>0</sub></span>：` : `<span class="sw-off">i<sub>in</sub> = 0</span>：`;
+    html += `コンデンサの電流 <span class="eq">i<sub>C</sub> = i<sub>in</sub> − i<sub>out</sub></span> = ${fmtSI(ic, 'A', 3)}。`;
+    if (Math.abs(ic) < 1e-9 * p.I0) html += `<span class="eq">v<sub>C</sub></span> は変わらない（一定のまま）。`;
+    else html += `<span class="eq">v<sub>C</sub></span> が${ic > 0 ? '上がる' : '下がる'}（傾き <span class="eq">i<sub>C</sub>/C</span>）。`;
+    const pw = ic * v;
+    if (Math.abs(pw) > 1e-9 * p.I0 * MET.absMax) html += pw > 0 ? ' コンデンサに電気エネルギーが蓄積。' : ' コンデンサから電気エネルギーが放出。';
+    if (v < -1e-9 * MET.absMax) html += ' <span class="warn">電圧が負</span>';
+    const loops = [];
+    if (s) {
+      if (ic > 1e-12 * sc) loops.push(['sc', ic / sc]);
+      if (io > 1e-12 * sc) loops.push(['sl', Math.min(io, iin) / sc]);
+      if (ic < -1e-12 * sc) loops.push(['cl', -ic / sc]);
+    } else if (Math.abs(io) > 1e-12 * sc) loops.push([io > 0 ? 'cl' : 'lc', Math.abs(io) / sc]);
+    return {loops, html};
+  },
+  metricsHtml(S, m) {
+    const p = S.p, T = S.T, D = p.D, N = S.periods;
+    const F = (x, u) => fmtSI(x, u, 4);
+    const mark = (a, b, tol, sc) => Math.abs(a - b) <= tol * Math.max(Math.abs(b), sc) ? '<span class="ok">一致</span>' : '<span class="ng">ずれる</span>';
+    const R = (nm, sim, eq, val, u, sc, tol = 0.01) => `<tr><td>${nm}</td><td class="num">${F(sim, u)}</td><td class="eq">${eq}</td><td class="num">${F(val, u)}</td><td>${Math.abs(val) > 1e-15 ? pctDiff(sim, val) : '差 ' + F(sim - val, u)} ${mark(sim, val, tol, sc || 0)}</td></tr>`;
+    const step = p.I0 * D * T / p.C;
+    let rows = `<tr><th>量</th><th>シミュレーション</th><th>授業の式</th><th>式の値</th><th>差</th></tr>`;
+    if (p.load === 'none') {
+      rows += R('オンの間に上がる電圧（最後の周期）', m.vB - m.vA, 'I<sub>0</sub>DT / C', step, 'V');
+      rows += R('オフの間の電圧の変化', m.vE - m.vB, '0（i<sub>C</sub> = 0）', 0, 'V', step);
+      rows += R(`最後の時刻 ${N}T の電圧`, m.vE, `${N} I<sub>0</sub>DT / C`, N * step, 'V');
+    } else if (p.load === 'I1') {
+      rows += R('オンの間に上がる電圧 <span class="eq">v<sub>max</sub> − v<sub>min</sub></span>', m.vB - m.vA, 'DT(I<sub>0</sub> − I<sub>1</sub>) / C', D * T * (p.I0 - p.I1) / p.C, 'V', step);
+      rows += R('オフの間の電圧の変化', m.vE - m.vB, '−(T − DT)I<sub>1</sub> / C', -(1 - D) * T * p.I1 / p.C, 'V', step);
+      rows += R('1 周期での電圧の変化', m.vE - m.vA, 'T(DI<sub>0</sub> − I<sub>1</sub>) / C', T * (D * p.I0 - p.I1) / p.C, 'V', step);
+      const ok = Math.abs(p.I1 - D * p.I0) <= 1e-3 * p.I0;
+      rows += `<tr><td>定常状態になる条件（<span class="eq">I<sub>1</sub> = DI<sub>0</sub></span>）</td><td class="num">${F(p.I1, 'A')}（今の値）</td><td class="eq">I<sub>1</sub> = DI<sub>0</sub></td><td class="num">${F(D * p.I0, 'A')}</td><td>${ok ? '<span class="ok">定常状態</span>' : '<span class="ng">今の値では定常にならない</span>'}</td></tr>`;
+      if (ok) rows += R('電圧の振動の大きさ <span class="eq">v<sub>max</sub> − v<sub>min</sub></span>', m.vMax - m.vMin, 'DT(1 − D)I<sub>0</sub> / C', D * T * (1 - D) * p.I0 / p.C, 'V');
+    } else {
+      const tau = p.R * p.C, a = Math.exp(-D * T / tau), b = Math.exp(-(1 - D) * T / tau);
+      const dVex = p.R * p.I0 * (1 - a) * (1 - b) / (1 - a * b), dVap = D * T * (1 - D) * p.I0 / p.C;
+      rows += R('抵抗の電流の平均 <span class="eq">i<sub>R</sub></span>', m.iOutAvg, 'DI<sub>0</sub>', D * p.I0, 'A');
+      rows += R('コンデンサの電圧の平均', m.vAvg, 'DI<sub>0</sub>R', D * p.I0 * p.R, 'V');
+      rows += R('電圧の振動の大きさ <span class="eq">Δv</span>', m.vMax - m.vMin, 'DT(1 − D)I<sub>0</sub> / C（近似）', dVap, 'V', 0, 0.02);
+      rows += `<tr><td colspan="5" class="small">参考：厳密な振れ幅 <span class="eq">RI<sub>0</sub>(1 − a)(1 − b)/(1 − ab)</span> = ${F(dVex, 'V')}（シミュレーションとの差 ${pctDiff(m.vMax - m.vMin, dVex)}）。<span class="eq">τ/T</span> = ${(tau / T).toPrecision(3)}</td></tr>`;
+      if (isFinite(m.tauSim)) rows += R('起動の時定数（周期平均の近づき方）', m.tauSim, 'τ = RC', tau, 's');
+      else rows += `<tr><td>起動の時定数</td><td class="num">—</td><td class="eq">τ = RC</td><td class="num">${F(tau, 's')}</td><td class="small">τ が T より短く、1 周期で定常になるので周期平均では測れない</td></tr>`;
+    }
+    const eTh = 0.5 * p.C * (m.vB ** 2 - m.vA ** 2);
+    const esc = 0.5 * p.C * Math.max(m.vB ** 2, m.vA ** 2, 1e-30);
+    rows += R('オン（I）でコンデンサに入るエネルギー <span class="eq">∫v<sub>C</sub>i<sub>C</sub>dt</span>', m.eOn, '½C(v(DT)² − v(0)²)', eTh, 'J', esc);
+    if (p.load !== 'none' && (p.load === 'R' || Math.abs(p.I1 - D * p.I0) <= 1e-3 * p.I0)) rows += R('オフ（II）でコンデンサから出るエネルギー', -m.eOff, 'オンで入った分（定常状態）', m.eOn, 'J', esc);
+    const sub = p.load === 'R'
+      ? `最後の 1 周期で計算（${N} 周期を計算）。` + (m.steady ? '' : ' <span class="ng">まだ定常状態に達していません</span>')
+      : `最後の 1 周期で計算（${N} 周期を計算。負荷なし・電流源では起動からの値も使う）`;
+    return {rows, sub};
+  },
+});
+})();
+</script>
+</body>
+</html>

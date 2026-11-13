@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="robots" content="noindex, nofollow">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>第5回 演習問題 — パワーエレクトロニクス</title>
+  <style>
+
+    :root {
+      --accent: #1a73e8;
+      --accent-light: #e8f0fe;
+      --text: #202124;
+      --text-secondary: #5f6368;
+      --surface: #ffffff;
+      --bg: #f8f9fa;
+      --border: #dadce0;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
+      --shadow-hover: 0 4px 12px rgba(26,115,232,0.18);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Sans', 'Noto Sans JP', 'Meiryo', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    a { color: inherit; text-decoration: none; }
+    header {
+      background: var(--accent);
+      color: #fff;
+      padding: 18px 20px 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+    }
+    header .subtitle {
+      font-size: 0.78rem;
+      opacity: 0.85;
+      margin-top: 2px;
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+    footer {
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      padding: 20px 16px;
+      border-top: 1px solid var(--border);
+      margin-top: 24px;
+    }
+
+    header h1 { font-size: 1.05rem; font-weight: 700; line-height: 1.4; }
+    header .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.8rem;
+      opacity: 0.88;
+      margin-bottom: 8px;
+    }
+    header .back-link:hover { opacity: 1; }
+    .lesson-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .lesson-num {
+      font-size: 0.8rem;
+      color: var(--accent);
+      font-weight: 700;
+      border: 1.5px solid var(--accent);
+      border-radius: 6px;
+      padding: 2px 10px;
+    }
+    .cat-badge {
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 20px;
+      background: #d8f5f6;
+      color: #0d7377;
+    }
+    .ch-count {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+    }
+    .video-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+    .ch-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px 10px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .ch-num {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--accent-light);
+      padding: 2px 9px;
+      border-radius: 5px;
+      white-space: nowrap;
+    }
+    .ch-title {
+      font-size: 0.93rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    video {
+      display: block;
+      background: #000;
+    }
+    .render-note {
+      padding: 20px 16px;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+    .back-bottom {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      padding: 10px 20px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      transition: opacity 0.15s;
+    }
+    .back-bottom:hover { opacity: 0.88; }
+  </style>
+  <script>
+    window.MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+  <style>
+    .notice {
+      background: var(--accent-light); border-left: 4px solid var(--accent);
+      border-radius: 8px; padding: 12px 16px; margin: 16px 0 24px;
+      font-size: 0.86rem; color: var(--text);
+    }
+    .notice ul, .aims ul { margin: 6px 0 0; padding-left: 1.2em; }
+    .notice li, .aims li { margin: 3px 0; }
+    /* 理解度の箱。提出についての青枠と並ぶので、こちらは枠線だけにして
+       区別をつける（2026-09-25）。 */
+    .aims {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px 18px; margin: 0 0 28px;
+      font-size: 0.86rem; color: var(--text-secondary);
+    }
+    .aims > p { margin: 0 0 4px; color: var(--text); font-weight: 600; }
+    .aims h3 { font-size: 0.88rem; margin: 14px 0 2px; color: var(--text); }
+    .aims h3:first-of-type { margin-top: 10px; }
+    .q { margin: 32px 0; }
+    .q h2 { font-size: 1.05rem; margin-bottom: 8px; }
+    .q .lead { margin: 0 0 14px; }
+    .q figure { margin: 0 0 14px; text-align: center; }
+    .q figure img { max-width: 100%; height: auto; }
+    .q ol { padding-left: 1.4em; }
+    .q ol li { margin: 10px 0; }
+  </style>
+  <style>
+    /* 小問の番号は (1)(2)… で出す */
+    ol, .q ol { list-style: none; counter-reset: sub; padding-left: 2.2em; }
+    ol > li { counter-increment: sub; position: relative; }
+    ol > li::before { content: "(" counter(sub) ")"; position: absolute; left: -2.2em; }
+    .q h3 { font-size: 0.95rem; margin: 24px 0 8px; }
+    .q .eq { margin: 4px 0 14px; overflow-x: auto; }
+    .q ul { padding-left: 1.4em; }
+    .q ul > li { margin: 12px 0; }
+    .q li > .lead:last-child { margin-bottom: 0; }
+    /* 元の図は 1000〜1900px あり、幅いっぱいだと大きすぎるので抑える */
+    .q figure img { max-width: min(100%, 600px); }
+  </style>
+<script>
+if (!/github\.io$/.test(location.hostname)) document.addEventListener("DOMContentLoaded", () => {
+  const b = document.createElement("div");
+  b.textContent = "確認用（Mac mini の作業中の版）。学生に見えるのは git push した後です";
+  b.style.cssText = "background:#fff3cd;color:#664d03;border-bottom:1px solid #e0c36a;padding:6px 12px;font-size:14px;text-align:center";
+  document.body.prepend(b);
+});
+</script>
+</head>
+<body>
+  <header>
+    <a class="back-link" href="../index.html">← 科目のページへ戻る</a>
+    <h1>第5回 演習問題</h1>
+    <div class="subtitle">直流-直流変換（１） / パワーエレクトロニクス / 大阪工業大学</div>
+  </header>
+  <main>
+    <div class="lesson-meta">
+      <span class="lesson-num">第5回</span>
+      <span class="cat-badge">演習問題</span>
+      <span class="ch-count">全4問</span>
+    </div>
+    <div class="notice">
+      <strong>提出について</strong>
+      <ul><li>解答用紙は各自で準備すること。コピー用紙でも構いません。</li><li>解答用紙の左上に第何回目の授業の演習問題かを記入し、右上には自分の学生番号と名前を記入する。</li><li>解答用紙を写真で撮って、Google Classroom の演習問題の該当先に提出する。</li></ul>
+    </div>
+    <div class="aims">
+      <p>この演習問題は、下記の理解度を確認することを目的としています。</p>
+    <h3>問題1：降圧チョッパー回路の動作と出力電圧</h3>
+    <ul><li>スイッチのオンとオフで等価回路を作り、電流の経路とダイオードの役割を説明できるか。</li><li>KVL からコイルにかかる電圧を求め、定常状態の条件から $v_R = DV_0$ を導けるか。</li><li>スイッチとダイオードの部分を方形波の電圧源とみなすと、第4回の問題1と同じ回路になることを説明できるか。</li><li>2つのスイッチを同時にオン・オフしてはいけない理由を、枝構成式で説明できるか。</li></ul>
+    <h3>問題2：電流の振動の大きさと、計算の近似</h3>
+    <ul><li>オンの区間のコイルの電圧と枝構成式から、電流の振動の大きさの式を導けるか。</li><li>式から、$L$ やスイッチング周波数を変えると振動の大きさがどう変わるかを説明できるか。</li><li>計算で置いた近似（負荷の電圧が一定、コイルの電圧が矩形波）がどのくらい成り立っているかを、負荷の電圧の振動から確かめられるか。</li></ul>
+    <h3>問題3：昇圧チョッパー回路</h3>
+    <ul><li>オンとオフの等価回路から、コイル・ダイオード・コンデンサの役割を説明できるか。</li><li>定常状態の条件から $v_C = V_0/(1-D)$ を導き、なぜ昇圧になるのかを説明できるか。</li><li>電力のつり合いからコイルの電流を求め、電流と電圧の振動の大きさを見積もれるか。</li></ul>
+    <h3>問題4：昇降圧チョッパー回路</h3>
+    <ul><li>定常状態の条件から $v_C = -\dfrac{D}{1-D}V_0$ を導き、出力の符号が反転する理由を説明できるか。</li><li>降圧・昇圧・昇降圧の電圧の比をデューティ比で比べられるか。</li></ul>
+    </div>
+    <section class="q">
+      <h2>問題１：降圧チョッパー回路の動作と出力電圧</h2>
+      <p class="lead">下図の降圧チョッパー回路について考える。点線の枠の中は制御スイッチ（MOSFET や IGBT）で、周期$T$のうち$0\leq t\lt DT$でオン、$DT\leq t\lt T$でオフになる（$D$はデューティ比）。ダイオードは理想的なもの（オンのときの電圧は$0$）とする。$V_{0}=10\,[\mathrm{V}]$、$D=0.5$、スイッチング周波数$f_\mathrm{sw}=1\,[\mathrm{kHz}]$、$L=30\,[\mathrm{mH}]$、$R=10\,[\Omega]$とする。負荷の電圧$v_{R}$は、1周期のあいだほぼ一定とみなしてよい。以下の問いに答えよ。</p>
+      <figure><img src="img/pe05_q1_buck.png" alt="降圧チョッパー回路。直流電源 V0、点線の枠の制御スイッチ、ダイオード（カソードが上）、コイル L、抵抗 R。i_L はコイルを右向き、v_L はコイルの左側が高い向き、i_D はダイオードを下から上、v_R は R の上が高い向き"></figure>
+      <ol>
+        <li>スイッチがオンの時とオフの時のそれぞれについて、等価回路を描き、コイルの電流$i_{L}$が流れる経路を示せ。また、オンの時にダイオードに電流が流れない理由を説明せよ。</li>
+        <li>オンの時とオフの時のそれぞれについて、KVL からコイルにかかる電圧$v_{L}$を$V_{0}$、$v_{R}$を用いて表せ。</li>
+        <li>定常状態の条件（1周期の$v_{L}$の積分が$0$）から、$v_{R}$を$D$と$V_{0}$で表し、その値を求めよ。また、コイルの電流$i_{L}$の平均値を求めよ。</li>
+        <li>ダイオードの両端の電圧（カソード側が高い向き）を$v_{in}(t)$とする。$v_{in}(t)$の波形を$0\leq t\leq 2T$の範囲で描け。さらに、スイッチとダイオードの部分を$v_{in}(t)$という方形波の電圧源に置き換えると、第4回の演習問題1と同じ回路になることを説明せよ。</li>
+        <li>制御スイッチとダイオードの代わりに、2つのスイッチを交互にオンオフさせる場合を考える。2つのスイッチが同時にオンになった時と、同時にオフになった時に、それぞれ何が起こるかを、枝構成式を用いて説明せよ。</li>
+      </ol>
+    </section>
+    <section class="q">
+      <h2>問題２：電流の振動の大きさと、計算の近似</h2>
+      <p class="lead">問題１の降圧チョッパー回路（$V_{0}=10\,[\mathrm{V}]$、$D=0.5$、$R=10\,[\Omega]$）で、コイルの電流の振動の大きさ$\Delta I = I_{\rm max}-I_{\rm min}$を考える。問題１と同じく、負荷の電圧$v_{R}$は1周期のあいだ一定（$v_{R}=DV_{0}$）とみなして計算する。以下の問いに答えよ。</p>
+      <ol>
+        <li>オンの区間（$0\leq t\lt DT$）で、コイルの電流は$I_{\rm min}$から$I_{\rm max}$まで増える。問題１(2)で求めたオンの時の$v_{L}$と、コイルの枝構成式$v_{L}=L\,di_{L}/dt$から、$\Delta I$を$D$、$V_{0}$、$L$、$T$で表せ。また、$f_\mathrm{sw}=1\,[\mathrm{kHz}]$、$L=30\,[\mathrm{mH}]$のときの値を求めよ。</li>
+        <li>(1)と同じ回路で、(a) $f_\mathrm{sw}=10\,[\mathrm{kHz}]$、$L=30\,[\mathrm{mH}]$、(b) $f_\mathrm{sw}=1\,[\mathrm{kHz}]$、$L=300\,[\mathrm{mH}]$ とした。それぞれ$\Delta I$を求めよ。また、(a)と(b)が同じ値になる理由を、(1)の式から説明せよ。</li>
+        <li>(1)の条件（$f_\mathrm{sw}=1\,[\mathrm{kHz}]$、$L=30\,[\mathrm{mH}]$）で、コイルの電流の平均値と、$I_{\rm max}$、$I_{\rm min}$を求めよ。また、$\Delta I$は平均値の何％か求めよ。</li>
+        <li>(1)の式は、$v_{R}$を一定とみなし、コイルの電圧$v_{L}$を矩形波として計算したものである。ところが実際には$v_{R}=Ri_{L}$なので、$i_{L}$が振動すると$v_{R}$も振動する。(3)の$I_{\rm max}$と$I_{\rm min}$から$v_{R}$の最大値と最小値を求め、オンの区間の始めと終わりで$v_{L}$がいくらになるかを求めよ。それを矩形波とみなした値（(1)で使った$v_{L}$）と比べよ。さらに、(2)の(a)の条件ではどうなるかを求め、この近似がよく成り立つためには$L$と$f_\mathrm{sw}$をどうすれば良いか答えよ。</li>
+      </ol>
+    </section>
+    <section class="q">
+      <h2>問題３：昇圧チョッパー回路</h2>
+      <p class="lead">下図の昇圧チョッパー回路について考える。制御スイッチは$0\leq t\lt DT$でオン、$DT\leq t\lt T$でオフになる。ダイオードは理想的なものとし、コンデンサの電圧$v_{C}$は1周期のあいだほぼ一定とみなしてよい。$V_{0}=5\,[\mathrm{V}]$、$f_\mathrm{sw}=20\,[\mathrm{kHz}]$、$L=700\,[\mu\mathrm{H}]$、$C=500\,[\mu\mathrm{F}]$、$R=28.8\,[\Omega]$とする。以下の問いに答えよ。</p>
+      <figure><img src="img/pe05_q3_boost.png" alt="昇圧チョッパー回路。直流電源 V0、コイル L、点線の枠の制御スイッチ（コイルの後ろと下の線の間）、ダイオード（右向き）、コンデンサ C と抵抗 R の並列。i_L はコイルを右向き、v_L はコイルの左側が高い向き、i_D はダイオードを右向き、i_C はコンデンサを下向き、v_C は上が高い向き"></figure>
+      <ol>
+        <li>スイッチがオンの時とオフの時のそれぞれについて、等価回路を描き、$i_{L}$が流れる経路を示せ。また、オンの時にダイオードに電流が流れない理由と、オンの時に負荷$R$に電流を流しているのは何かを説明せよ。</li>
+        <li>オンの時とオフの時のそれぞれについて、コイルにかかる電圧$v_{L}$を$V_{0}$、$v_{C}$を用いて表せ。</li>
+        <li>定常状態の条件から、$v_{C}=\dfrac{1}{1-D}V_{0}$となることを導け。また、$v_{C}$が$V_{0}$より大きくなる理由を、$D$のとりうる範囲から説明せよ。</li>
+        <li>$v_{C}=12\,[\mathrm{V}]$にしたい。$D$を求めよ。また、負荷で消費される電力を求め、入力と出力の電力が等しいとしてコイルの電流の平均値を求めよ。さらに、コイルの電流の振動の大きさ$\Delta I = I_{\rm max}-I_{\rm min}$を求め、平均値と比べよ。</li>
+        <li>オンの区間では、コンデンサだけが負荷に電流を流している。負荷の電流を$v_{C}/R$で一定とみなして、コンデンサの電圧の振動の大きさ$\Delta v_{C}$を求めよ。</li>
+      </ol>
+    </section>
+    <section class="q">
+      <h2>問題４：昇降圧チョッパー回路</h2>
+      <p class="lead">下図の昇降圧チョッパー回路について考える。制御スイッチは$0\leq t\lt DT$でオン、$DT\leq t\lt T$でオフになる。ダイオードは理想的なものとし、コンデンサの電圧$v_{C}$（向きは図の矢印）は1周期のあいだほぼ一定とみなしてよい。以下の問いに答えよ。</p>
+      <figure><img src="img/pe05_q4_buckboost.png" alt="昇降圧チョッパー回路。直流電源 V0、点線の枠の制御スイッチ、その後ろから下の線へコイル L、コイルの上の節点から右へダイオード（カソードがコイル側）、コンデンサ C と抵抗 R の並列。i_L はコイルを下向き、v_L はコイルの上が高い向き、v_C は上が高い向き"></figure>
+      <ol>
+        <li>スイッチがオンの時とオフの時のそれぞれについて、等価回路を描き、$i_{L}$が流れる経路を示せ。また、それぞれの区間でコイルにかかる電圧$v_{L}$を$V_{0}$、$v_{C}$を用いて表せ。</li>
+        <li>定常状態の条件から、$v_{C}$を$D$と$V_{0}$で表せ。また、$v_{C}$が負になる（入力と出力の符号が反転する）理由を、オフの時にコンデンサに流れ込む電流の向きから説明せよ。</li>
+        <li>入力$12\,[\mathrm{V}]$から大きさ$5\,[\mathrm{V}]$の出力を作る$D$と、入力$5\,[\mathrm{V}]$から大きさ$12\,[\mathrm{V}]$の出力を作る$D$をそれぞれ求めよ。また、問題３の昇圧チョッパーで$5\,[\mathrm{V}]$から$12\,[\mathrm{V}]$を作るときの$D$と比べよ。</li>
+        <li>降圧・昇圧・昇降圧チョッパーの出力電圧の大きさと$V_{0}$の比を、$0\leq D\lt 1$の範囲で1つのグラフに描け。また、昇降圧チョッパーの比が、降圧チョッパーの比と昇圧チョッパーの比の積になっていることを確かめよ。</li>
+      </ol>
+    </section>
+  </main>
+  <footer>パワーエレクトロニクス（2026年度） ｜ 神野 崇馬</footer>
+</body>
+</html>
